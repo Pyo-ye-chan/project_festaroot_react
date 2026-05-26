@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 // --- Sub-component: Hero ---
 const Hero = () => {
@@ -103,7 +104,7 @@ const ClosingSoon = () => {
       
       <div className="space-y-3 flex-grow">
         {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-4 p-4 bg-gray-50/50 hover:bg-white rounded-2xl transition-all duration-300 cursor-pointer group border border-transparent hover:border-rose-100 hover:shadow-sm">
+          <Link to={`/festival/${item.id}`} key={item.id} className="flex items-center gap-4 p-4 bg-gray-50/50 hover:bg-white rounded-2xl transition-all duration-300 cursor-pointer group border border-transparent hover:border-rose-100 hover:shadow-sm">
             <div className="flex-shrink-0 w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center border border-rose-100 group-hover:bg-rose-500 transition-all duration-300">
               <span className="text-sm font-black text-rose-500 group-hover:text-white">{item.dDay}</span>
             </div>
@@ -115,7 +116,7 @@ const ClosingSoon = () => {
               </div>
             </div>
             <svg className="w-4 h-4 text-gray-300 group-hover:text-rose-400 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg>
-          </div>
+          </Link>
         ))}
       </div>
     </section>
@@ -128,7 +129,7 @@ const RandomFestival = () => {
   const [result, setResult] = useState(null);
   const handlePick = () => {
     setIsSpinning(true);
-    setTimeout(() => { setResult('강원도 대관령 양떼목장 축제'); setIsSpinning(false); }, 800);
+    setTimeout(() => { setResult({ id: 1, name: '2026 별빛 밤거리 페스티벌' }); setIsSpinning(false); }, 800);
   };
   return (
     <section className="bg-purple-50 rounded-[2.5rem] p-8 border border-purple-100 shadow-sm relative overflow-hidden h-full flex flex-col justify-center text-center transition-all duration-300 hover:shadow-md hover:border-purple-200">
@@ -143,10 +144,10 @@ const RandomFestival = () => {
               <p className="text-[10px] font-black text-purple-400 animate-pulse uppercase tracking-wider">Finding Destiny...</p>
             </div>
           ) : result ? (
-            <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-purple-100 animate-in zoom-in duration-500">
-              <span className="text-purple-700 font-black text-base block mb-1">✨ {result}</span>
+            <Link to={`/festival/${result.id}`} className="bg-white p-5 rounded-[2rem] shadow-sm border border-purple-100 animate-in zoom-in duration-500 block hover:border-purple-300 transition-all">
+              <span className="text-purple-700 font-black text-base block mb-1">✨ {result.name}</span>
               <span className="text-[10px] text-purple-400 font-bold">당신에게 딱 맞는 축제를 찾았어요!</span>
-            </div>
+            </Link>
           ) : (
             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center border border-purple-100 shadow-inner group-hover:scale-110 transition-transform duration-500">
               <span className="text-3xl">🎲</span>
@@ -172,14 +173,14 @@ const TopFestivalsByRegion = () => {
   const regions = ['서울', '경기', '인천', '강원', '부산', '제주'];
   const festivalData = {
     '서울': [
-      { rank: 1, name: '한강 달빛 야시장', likes: '1.2k', region: '서울 반포한강공원', date: '05.20 - 06.15', img: 'https://picsum.photos/seed/se1/100/100' },
-      { rank: 2, name: '경복궁 야간 관람', likes: '850', region: '서울 종로구', date: '04.01 - 05.31', img: 'https://picsum.photos/seed/se2/100/100' },
-      { rank: 3, name: '남산골 축제', likes: '420', region: '서울 중구', date: '05.25 - 05.28', img: 'https://picsum.photos/seed/se3/100/100' }
+      { id: 1, rank: 1, name: '2026 별빛 밤거리 페스티벌', likes: '1.2k', region: '서울 반포한강공원', date: '05.20 - 06.15', img: 'https://picsum.photos/seed/se1/100/100' },
+      { id: 5, rank: 2, name: '경복궁 야간 관람', likes: '850', region: '서울 종로구', date: '04.01 - 05.31', img: 'https://picsum.photos/seed/se2/100/100' },
+      { id: 6, rank: 3, name: '남산골 축제', likes: '420', region: '서울 중구', date: '05.25 - 05.28', img: 'https://picsum.photos/seed/se3/100/100' }
     ],
     '경기': [
-      { rank: 1, name: '에버랜드 튤립 축제', likes: '2.1k', region: '경기 용인', date: '03.22 - 06.16', img: 'https://picsum.photos/seed/gg1/100/100' },
-      { rank: 2, name: '가평 자라섬 재즈', likes: '1.5k', region: '경기 가평', date: '10.05 - 10.08', img: 'https://picsum.photos/seed/gg2/100/100' },
-      { rank: 3, name: '수원 화성 문화제', likes: '900', region: '경기 수원', date: '10.07 - 10.09', img: 'https://picsum.photos/seed/gg3/100/100' }
+      { id: 7, rank: 1, name: '에버랜드 튤립 축제', likes: '2.1k', region: '경기 용인', date: '03.22 - 06.16', img: 'https://picsum.photos/seed/gg1/100/100' },
+      { id: 8, rank: 2, name: '가평 자라섬 재즈', likes: '1.5k', region: '경기 가평', date: '10.05 - 10.08', img: 'https://picsum.photos/seed/gg2/100/100' },
+      { id: 9, rank: 3, name: '수원 화성 문화제', likes: '900', region: '경기 수원', date: '10.07 - 10.09', img: 'https://picsum.photos/seed/gg3/100/100' }
     ],
   };
   const currentFestivals = festivalData[activeRegion] || festivalData['서울'];
@@ -191,7 +192,7 @@ const TopFestivalsByRegion = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {currentFestivals.map((fest) => (
-          <div key={fest.rank} className="bg-white p-5 rounded-3xl border border-gray-100 flex items-center gap-5 hover:shadow-xl hover:border-purple-100 transition-all duration-500 group cursor-default">
+          <Link to={`/festival/${fest.id}`} key={fest.rank} className="bg-white p-5 rounded-3xl border border-gray-100 flex items-center gap-5 hover:shadow-xl hover:border-purple-100 transition-all duration-500 group cursor-pointer">
             <div className="relative flex-shrink-0"><div className="w-20 h-20 rounded-2xl overflow-hidden border border-gray-100"><img src={fest.img} alt={fest.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /></div><div className="absolute -top-2 -left-2 w-8 h-8 bg-purple-600 text-white rounded-xl flex items-center justify-center font-black text-sm shadow-md">{fest.rank}</div></div>
             <div className="flex-grow min-w-0">
               <h4 className="font-bold text-gray-900 group-hover:text-purple-600 transition-colors duration-300 truncate">{fest.name}</h4>
@@ -204,7 +205,7 @@ const TopFestivalsByRegion = () => {
                 <span className="text-[11px]">{fest.likes}</span>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </section>
@@ -227,7 +228,7 @@ const FestivalList = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {festivals.map((fest) => (
-          <div key={fest.id} className="group cursor-pointer">
+          <Link to={`/festival/${fest.id}`} key={fest.id} className="group cursor-pointer">
             <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl hover:border-purple-100 border border-transparent transition-all duration-500 bg-gray-100">
               <img src={`https://picsum.photos/seed/${fest.id + 20}/800/1000`} alt={fest.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
               <div className="absolute top-4 left-4 flex gap-2"><span className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full text-[10px] font-black text-gray-900 shadow-sm">{fest.dDay}</span><span className="bg-purple-600/90 backdrop-blur px-3 py-1.5 rounded-full text-[10px] font-black text-white shadow-sm w-fit">TOP {fest.id}</span></div>
@@ -248,7 +249,7 @@ const FestivalList = () => {
                 <span className="text-[10px] text-purple-600 font-black px-2 py-0.5 bg-purple-50 rounded-md tracking-tighter">인기</span>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </section>
@@ -271,7 +272,7 @@ const OngoingFestivals = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
         {ongoing.map((fest) => (
-          <div key={fest.id} className="group cursor-pointer bg-white p-4 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100">
+          <Link to={`/festival/${fest.id}`} key={fest.id} className="group cursor-pointer bg-white p-4 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100">
             <div className="relative aspect-square rounded-[2rem] overflow-hidden mb-4 bg-gray-100 border border-gray-50">
               <img src={`https://picsum.photos/seed/${fest.id + 50}/600/600`} alt={fest.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
               <div className="absolute top-3 left-3"><span className="bg-green-500 text-white px-3 py-1 rounded-full text-[10px] font-black shadow-lg animate-pulse">● 진행중</span></div>
@@ -286,7 +287,7 @@ const OngoingFestivals = () => {
                 <svg className="w-4 h-4 text-gray-300 group-hover:text-green-500 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </section>

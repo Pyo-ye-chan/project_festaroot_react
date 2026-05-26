@@ -18,9 +18,9 @@ const Header = () => {
 
   const navItems = [
     { name: '홈', href: '/' },
-    { name: '축제 찾기', href: '#festivals' },
-    { name: '지도', href: '#map' },
-    { name: '커뮤니티', href: '#community' },
+    { name: '축제 찾기', href: '/test/map' },
+    { name: '지도', href: '/test/map' },
+    { name: '커뮤니티', href: '/community' },
     { name: 'AI 여행플래너', href: '#ai-planner' },
     { name: '마이페이지', href: '#mypage' },
   ];
