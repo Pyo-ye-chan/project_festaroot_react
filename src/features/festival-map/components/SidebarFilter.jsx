@@ -1,33 +1,18 @@
-import { useState } from 'react';
-import { Calendar, RotateCcw, X } from 'lucide-react';
+import { RotateCcw, X } from 'lucide-react';
+import useMapStore from '../../../store/useMapStore';
 
 function SidebarFilter() {
-  const [selectedFestival, setSelectedFestival] = useState({
-    name: "태안 세계튤립축제",
-    period: "2025.04.12 ~ 2025.05.07",
-    location: "충청남도 태안군",
-    image: "https://images.unsplash.com/photo-1526310283981-d25a8166c4c0?w=150&q=80"
-  });
+  // Zustand store에서 상태와 액션 가져오기
+  const { 
+    searchParams, 
+    setSelectedFestival, 
+    setRadius, 
+    setDates, 
+    toggleCategory, 
+    resetFilters 
+  } = useMapStore();
 
-  const [radius, setRadius] = useState(5);
-  const [startDate, setStartDate] = useState("2025-04-12");
-  const [endDate, setEndDate] = useState("2025-05-07");
-  const [categories, setCategories] = useState({
-    food: true,
-    tour: true,
-    festival: true
-  });
-
-  const handleCategoryChange = (type) => {
-    setCategories(prev => ({ ...prev, [type]: !prev[type] }));
-  };
-
-  const handleReset = () => {
-    setRadius(5);
-    setStartDate("2025-04-12");
-    setEndDate("2025-05-07");
-    setCategories({ food: true, tour: true, festival: true });
-  };
+  const { selectedFestival, radius, startDate, endDate, categories } = searchParams;
 
   const handleSearch = () => {
     alert(`검색 조건 실행!\n반경: ${radius}km\n기간: ${startDate} ~ ${endDate}\n카테고리: ${JSON.stringify(categories)}`);
@@ -111,11 +96,21 @@ function SidebarFilter() {
         <label className="block text-sm font-semibold text-slate-800 mb-3">3. 기간 설정</label>
         <div className="flex items-center gap-2">
           <div className="flex-1">
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 focus:ring-1 focus:ring-purple-200 focus:border-[#6B46FE] outline-none" />
+            <input 
+              type="date" 
+              value={startDate} 
+              onChange={(e) => setDates(e.target.value, endDate)} 
+              className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 focus:ring-1 focus:ring-purple-200 focus:border-[#6B46FE] outline-none" 
+            />
           </div>
           <span className="text-slate-400">~</span>
           <div className="flex-1">
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 focus:ring-1 focus:ring-purple-200 focus:border-[#6B46FE] outline-none" />
+            <input 
+              type="date" 
+              value={endDate} 
+              onChange={(e) => setDates(startDate, e.target.value)} 
+              className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 focus:ring-1 focus:ring-purple-200 focus:border-[#6B46FE] outline-none" 
+            />
           </div>
         </div>
       </div>
@@ -135,7 +130,7 @@ function SidebarFilter() {
               <input 
                 type="checkbox" 
                 checked={categories[cat.id]} 
-                onChange={() => handleCategoryChange(cat.id)} 
+                onChange={() => toggleCategory(cat.id)} 
                 className="w-4 h-4 accent-[#6B46FE] rounded border-slate-300" 
               />
               <span className="text-xs text-slate-600 font-medium">{cat.icon} {cat.label}</span>
@@ -153,7 +148,7 @@ function SidebarFilter() {
           조건으로 검색하기
         </button>
         <button 
-          onClick={handleReset}
+          onClick={resetFilters}
           className="w-full py-3 bg-white border border-slate-200 text-slate-500 rounded-xl text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-colors"
         >
           <RotateCcw size={14} /> 초기화

@@ -1,4 +1,8 @@
+import useMapStore from '../../../store/useMapStore';
+
 function MapCategoryTab() {
+  const { activeCategory, setActiveCategory } = useMapStore();
+
   const tabs = [
     { name: '전체', icon: '📍' },
     { name: '음식점', icon: '🍽️' },
@@ -11,8 +15,9 @@ function MapCategoryTab() {
       {tabs.map((tab, idx) => (
         <button 
           key={idx} 
+          onClick={() => setActiveCategory(tab.name)}
           className={`px-4 py-2.5 rounded-full text-xs font-bold shadow-lg transition-all flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
-            idx === 0 
+            activeCategory === tab.name 
               ? "bg-[#6B46FE] text-white shadow-purple-200" 
               : "bg-white text-slate-600 border border-slate-100 hover:bg-slate-50"
           }`}
