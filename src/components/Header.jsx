@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const Header = () => {
   const [region, setRegion] = useState('서울');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Simulated login state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isWeatherDropdownOpen, setIsWeatherDropdownOpen] = useState(false);
+  
+  const dropdownRef = useRef(null);
 
   // Colors aligned with Footer
   const primaryPurple = '#6B46FE';
@@ -21,6 +24,17 @@ const Header = () => {
     { name: 'AI 여행플래너', href: '#ai-planner' },
     { name: '마이페이지', href: '#mypage' },
   ];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsWeatherDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200 font-sans">
@@ -100,20 +114,36 @@ const Header = () => {
             ))}
           </ul>
           
-          <div className="flex items-center gap-3 py-3">
-            <div className="flex items-center bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 gap-2">
-              <select 
-                className="text-sm font-bold text-blue-700 bg-transparent border-none focus:ring-0 cursor-pointer outline-none" 
-                value={region} 
-                onChange={(e) => setRegion(e.target.value)}
-              >
-                {regions.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+          <div className="flex items-center gap-3 py-3 relative" ref={dropdownRef}>
+            {/* Custom Smooth Dropdown for Weather Region */}
+            <div className="flex items-center bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 gap-2 cursor-pointer hover:bg-blue-100 transition-colors"
+                 onClick={() => setIsWeatherDropdownOpen(!isWeatherDropdownOpen)}>
+              <span className="text-sm font-bold text-blue-700">{region}</span>
+              <svg className={`w-4 h-4 text-blue-400 transition-transform duration-300 ${isWeatherDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
               <div className="flex items-center gap-1 text-blue-500">
                 <span className="text-lg">☀️</span>
                 <span className="text-sm font-black">24°C</span>
+              </div>
+            </div>
+
+            {/* Smooth Transition Menu */}
+            <div className={`absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden transition-all duration-300 origin-top-right
+                            ${isWeatherDropdownOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}>
+              <div className="grid grid-cols-3 gap-1 p-2">
+                {regions.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      setRegion(r);
+                      setIsWeatherDropdownOpen(false);
+                    }}
+                    className={`px-2 py-2 text-xs font-bold rounded-xl transition-colors ${region === r ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    {r}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
