@@ -61,13 +61,13 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f3ff] text-[#111111] font-['Pretendard']">
+    <div className="min-h-screen bg-[#f8f9ff] text-[#111111] font-['Pretendard']">
       {/* Header */}
       <header className="h-[88px] bg-white/70 backdrop-blur-md border-b border-[#ece7ff]">
         <div className="max-w-[1280px] mx-auto h-full px-6 lg:px-10 flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#f6b800]/15 flex items-center justify-center text-[#f6b800] text-2xl">
+            <div className="w-10 h-10 rounded-full bg-[#f8f9ff]/15 flex items-center justify-center text-[#f6b800] text-2xl">
               ✺
             </div>
 

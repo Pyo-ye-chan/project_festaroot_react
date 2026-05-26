@@ -1,6 +1,10 @@
 import { Map, MapMarker, Circle } from "react-kakao-maps-sdk";
+import useMapStore from "../../store/useMapStore";
 
 function KakaoMapContainer() {
+  const { searchParams, activeCategory } = useMapStore();
+  const { radius } = searchParams;
+
   // 기준이 되는 축제 중심 좌표 (태안 세계튤립축제 근처 임시 좌표)
   const centerFestival = { lat: 36.65, lng: 126.33 };
 
@@ -9,49 +13,63 @@ function KakaoMapContainer() {
     { id: 1, title: "태안 회센터", lat: 36.6521, lng: 126.3345, type: "food" },
     { id: 2, title: "꽃지 해물칼국수", lat: 36.6590, lng: 126.3420, type: "food" },
     { id: 3, title: "꽃지 해수욕장", lat: 36.6415, lng: 126.3211, type: "tour" },
+    { id: 4, title: "안면도 게국지", lat: 36.6450, lng: 126.3500, type: "food" },
   ];
+
+  // 카테고리에 따른 마커 필터링
+  const filteredMarkers = mockMarkers.filter(marker => {
+    if (activeCategory === '전체') return true;
+    if (activeCategory === '음식점') return marker.type === 'food';
+    if (activeCategory === '관광지') return marker.type === 'tour';
+    if (activeCategory === '축제/행사') return marker.type === 'festival';
+    return true;
+  });
 
   return (
     <Map
       center={centerFestival}
-      style={{ width: "100%", height: "100%" }}
-      level={5} // 지도 확대/축소 레벨
+      className="w-full h-full"
+      level={radius > 10 ? 7 : radius > 5 ? 6 : 5} // 반경에 따른 지도 레벨 조정
     >
-      {/* 1. 중심 축제 위치 마커 (보라색이나 큰 마커로 구별 가능) */}
+      {/* 1. 중심 축제 위치 마커 */}
       <MapMarker 
         position={centerFestival}
-        clickable={true}
+        image={{
+          src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
+          size: { width: 24, height: 35 }
+        }}
       >
-        <div style={{ padding: "5px", color: "#6366F1", fontWeight: "bold", fontSize: "12px" }}>
+        <div className="p-1 px-2 text-[#6B46FE] font-bold text-[10px] bg-white rounded shadow-sm">
           📍 태안 세계튤립축제
         </div>
       </MapMarker>
 
-      {/* 2. 주변 추천 장소 마커들을 반복문으로 표시 */}
-      {mockMarkers.map((marker) => (
+      {/* 2. 주변 추천 장소 마커들 */}
+      {filteredMarkers.map((marker) => (
         <MapMarker
           key={marker.id}
           position={{ lat: marker.lat, lng: marker.lng }}
-          clickable={true}
           onClick={() => alert(`${marker.title} 클릭됨`)}
         >
-          <div style={{ padding: "4px", fontSize: "11px", color: "#334155" }}>
-            {marker.type === "food" ? " can 🧡 " : " 💚 "} {marker.title}
+          <div className="p-1 px-2 text-slate-700 text-[10px] bg-white/90 rounded border border-slate-100">
+            {marker.type === "food" ? "🍽️" : "⛰️"} {marker.title}
           </div>
         </MapMarker>
       ))}
 
-      {/* 3. 디자인 시안에 있던 5km 반경 투명 원 그리기 */}
-      <Circle
-        center={centerFestival}
-        radius={5000} // 5000m = 5km
-        strokeWeight={1}
-        strokeColor={"#6366F1"}
-        strokeOpacity={0.6}
-        strokeStyle={"dash"}
-        fillColor={"#6366F1"}
-        fillOpacity={0.05}
-      />
+      {/* 3. 설정된 반경(km)을 미터로 변환하여 원 표시 */}
+      {radius > 0 && (
+        <Circle
+          center={centerFestival}
+          radius={radius * 1000} // km to m
+          strokeWeight={1}
+          strokeColor={"#6B46FE"}
+          strokeOpacity={0.4}
+          strokeStyle={"solid"}
+          fillColor={"#6B46FE"}
+          fillOpacity={0.03}
+        />
+      )}
     </Map>
   );
 }

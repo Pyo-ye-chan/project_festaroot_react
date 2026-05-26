@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout';
 import { MapPin, Tag, Check, ChevronLeft, Sparkles, Heart } from 'lucide-react';
+import useAuthStore from '../../../store/useAuthStore';
 
 const SignupPreferencesPage = () => {
   const navigate = useNavigate();
+  const { resetSignupData } = useAuthStore();
   const [selectedRegions, setSelectedRegions] = useState([]);
   const [selectedThemes, setSelectedThemes] = useState([]);
 
@@ -49,6 +51,10 @@ const SignupPreferencesPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Preferences saved:', { selectedRegions, selectedThemes });
+    
+    // Clear signup data from store upon completion
+    resetSignupData();
+    
     alert('취향 설정이 완료되었습니다! 환영합니다.');
     navigate('/login');
   };

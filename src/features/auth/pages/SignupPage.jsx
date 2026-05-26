@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   User,
@@ -14,27 +14,19 @@ import {
   Info,
   Sparkles
 } from 'lucide-react';
+import useAuthStore from '../../../store/useAuthStore';
+import AuthLayout from '../components/AuthLayout';
 
 const SignupPage = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    id: '',
-    password: '',
-    confirmPassword: '',
-    phoneNumber: '',
-    nickname: '',
-    name: '',
-    gender: '',
-    birthdate: '',
-    email: '',
-    city: '',
-    district: '',
-    agreeTerms: false,
-    agreePrivacy: false,
-    agreeLocation: false
-  });
-
+  const { signupData, setSignupData } = useAuthStore();
+  const [formData, setFormData] = useState(signupData);
   const [passwordMatch, setPasswordMatch] = useState(true);
+
+  // Sync local state with store
+  useEffect(() => {
+    setFormData(signupData);
+  }, [signupData]);
 
   const cities = {
     '서울특별시': ['강남구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구', '금천구', '노원구', '도봉구', '동대문구', '동작구', '마포구', '서대문구', '서초구', '성동구', '성북구', '송파구', '양천구', '영등포구', '용산구', '은평구', '종로구', '중구', '중랑구'],
@@ -58,10 +50,12 @@ const SignupPage = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
+    const newData = {
+      ...formData,
       [name]: type === 'checkbox' ? checked : value
-    }));
+    };
+    setFormData(newData);
+    setSignupData(newData);
 
     if (name === 'confirmPassword') setPasswordMatch(formData.password === value);
     if (name === 'password') setPasswordMatch(value === formData.confirmPassword);
@@ -101,167 +95,152 @@ const SignupPage = () => {
   `;
 
   return (
-    <div className="min-h-screen bg-[#f8f9ff] text-[#111111] font-['Pretendard']">
-      {/* Real Site Header Placeholder */}
-      <header className="h-[80px] bg-white/80 backdrop-blur-xl border-b border-[#eee] sticky top-0 z-50">
-        <div className="max-w-[1200px] mx-auto h-full px-6 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-festival-purple flex items-center justify-center text-white shadow-lg shadow-purple-100">
-              <Sparkles size={20} fill="currentColor" />
+    <AuthLayout 
+      title="회원가입" 
+      subtitle="축제로와 함께 설레는 여행을 시작하세요" 
+      maxWidth="max-w-2xl"
+    >
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <section>
+          <SectionTitle>계정 정보</SectionTitle>
+          <div className="space-y-5">
+            <div>
+              <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">아이디</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <InputIcon><User size={19} /></InputIcon>
+                  <input type="text" name="id" value={formData.id} onChange={handleChange} placeholder="6~20자 영문, 숫자" className={`${inputClass} pl-11`} required />
+                </div>
+                <button type="button" className="px-6 h-[56px] rounded-2xl border-2 border-festival-purple text-festival-purple font-bold hover:bg-festival-purple hover:text-white transition-all whitespace-nowrap">중복확인</button>
+              </div>
             </div>
-            <span className="text-[22px] font-[900] tracking-tight text-[#22114f]">축제로</span>
-          </Link>
-          <div className="flex items-center gap-6 text-[15px] font-bold text-gray-500">
-            <Link to="/login" className="hover:text-festival-purple transition-colors">로그인</Link>
-            <Link to="/signup" className="text-festival-purple">회원가입</Link>
+
+            <div>
+              <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">비밀번호</label>
+              <div className="relative">
+                <InputIcon><Lock size={19} /></InputIcon>
+                <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="8자 이상 영문/숫자 혼합" className={`${inputClass} pl-11`} required />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">비밀번호 확인</label>
+              <div className="relative">
+                <InputIcon><Check size={19} /></InputIcon>
+                <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="비밀번호 다시 입력" className={`${inputClass} pl-11 ${!passwordMatch && formData.confirmPassword ? 'border-red-400 focus:ring-red-50' : ''}`} required />
+              </div>
+              {!passwordMatch && formData.confirmPassword && <p className="text-xs text-red-500 mt-2 ml-2 flex items-center gap-1 font-bold"><Info size={13}/> 비밀번호가 일치하지 않습니다.</p>}
+            </div>
+
+            <div>
+              <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">연락처</label>
+              <div className="relative">
+                <InputIcon><Phone size={19} /></InputIcon>
+                <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} placeholder="010-0000-0000" className={`${inputClass} pl-11`} required />
+              </div>
+            </div>
           </div>
-        </div>
-      </header>
+        </section>
 
-      <main className="max-w-[640px] mx-auto px-6 py-12 lg:py-20">
-        <div className="text-center mb-10">
-          <h1 className="text-[32px] font-[900] tracking-tight text-[#111] mb-3">회원가입</h1>
-          <p className="text-[#666] font-medium">축제로와 함께 설레는 여행을 시작하세요</p>
-        </div>
-
-        <div className="bg-white rounded-[32px] border border-[#eee] shadow-[0_20px_50px_rgba(0,0,0,0.03)] p-8 sm:p-10">
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <section>
-              <SectionTitle>계정 정보</SectionTitle>
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">아이디</label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <InputIcon><User size={19} /></InputIcon>
-                      <input type="text" name="id" value={formData.id} onChange={handleChange} placeholder="6~20자 영문, 숫자" className={`${inputClass} pl-11`} required />
-                    </div>
-                    <button type="button" className="px-6 h-[56px] rounded-2xl border-2 border-festival-purple text-festival-purple font-bold hover:bg-festival-purple hover:text-white transition-all whitespace-nowrap">중복확인</button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">비밀번호</label>
-                  <div className="relative">
-                    <InputIcon><Lock size={19} /></InputIcon>
-                    <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="8자 이상 영문/숫자 혼합" className={`${inputClass} pl-11`} required />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">비밀번호 확인</label>
-                  <div className="relative">
-                    <InputIcon><Check size={19} /></InputIcon>
-                    <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="비밀번호 다시 입력" className={`${inputClass} pl-11 ${!passwordMatch && formData.confirmPassword ? 'border-red-400 focus:ring-red-50' : ''}`} required />
-                  </div>
-                  {!passwordMatch && formData.confirmPassword && <p className="text-xs text-red-500 mt-2 ml-2 flex items-center gap-1 font-bold"><Info size={13}/> 비밀번호가 일치하지 않습니다.</p>}
-                </div>
-
-                <div>
-                  <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">연락처</label>
-                  <div className="relative">
-                    <InputIcon><Phone size={19} /></InputIcon>
-                    <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} placeholder="010-0000-0000" className={`${inputClass} pl-11`} required />
-                  </div>
+        <section>
+          <SectionTitle>개인 정보</SectionTitle>
+          <div className="space-y-5">
+            <div className="space-y-5">
+              <div>
+                <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">이름</label>
+                <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="실명 입력" className={`${inputClass} px-5`} required />
+              </div>
+              <div>
+                <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">닉네임</label>
+                <div className="flex gap-2">
+                  <input type="text" name="nickname" value={formData.nickname} onChange={handleChange} placeholder="닉네임" className={`${inputClass} px-5`} required />
+                  <button type="button" className="px-6 h-[56px] rounded-2xl border-2 border-festival-purple text-festival-purple font-bold hover:bg-festival-purple hover:text-white transition-all whitespace-nowrap">중복확인</button>
                 </div>
               </div>
-            </section>
-
-            <section>
-              <SectionTitle>개인 정보</SectionTitle>
-              <div className="space-y-5">
-                <div className="space-y-5">
-                  <div>
-                    <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">이름</label>
-                    <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="실명 입력" className={`${inputClass} px-5`} required />
-                  </div>
-                  <div>
-                    <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">닉네임</label>
-                    <div className="flex gap-2">
-                      <input type="text" name="nickname" value={formData.nickname} onChange={handleChange} placeholder="닉네임" className={`${inputClass} px-5`} required />
-                      <button type="button" className="px-6 h-[56px] rounded-2xl border-2 border-festival-purple text-festival-purple font-bold hover:bg-festival-purple hover:text-white transition-all whitespace-nowrap">중복확인</button>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">성별</label>
-                    <div className="h-[56px] bg-[#f8f9ff] border border-[#e7e2f7] p-1.5 rounded-2xl flex">
-                      <button type="button" onClick={() => setFormData({...formData, gender: 'male'})} className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'male' ? 'bg-white text-festival-purple shadow-md shadow-purple-50' : 'text-gray-400'}`}>남성</button>
-                      <button type="button" onClick={() => setFormData({...formData, gender: 'female'})} className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'female' ? 'bg-white text-festival-purple shadow-md shadow-purple-50' : 'text-gray-400'}`}>여성</button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">생년월일</label>
-                    <div className="relative">
-                      <InputIcon><Calendar size={19} /></InputIcon>
-                      <input type="date" name="birthdate" value={formData.birthdate} onChange={handleChange} className={`${inputClass} pl-11 pr-4`} required />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1 flex items-center gap-1"><MapPin size={14}/> 시/도</label>
-                    <select name="city" value={formData.city} onChange={handleChange} className={`${inputClass} px-5 bg-white appearance-none`} required>
-                      <option value="">시/도 선택</option>
-                      {Object.keys(cities).map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1 flex items-center gap-1"><MapPin size={14}/> 시/군/구</label>
-                    <select name="district" value={formData.district} onChange={handleChange} className={`${inputClass} px-5 bg-white appearance-none ${!formData.city ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : ''}`} required disabled={!formData.city}>
-                      <option value="">시/군/구 선택</option>
-                      {(cities[formData.city] || []).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">성별</label>
+                <div className="h-[56px] bg-[#f8f9ff] border border-[#e7e2f7] p-1.5 rounded-2xl flex">
+                  <button type="button" onClick={() => {
+                    const newData = {...formData, gender: 'male'};
+                    setFormData(newData);
+                    setSignupData(newData);
+                  }} className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'male' ? 'bg-white text-festival-purple shadow-md shadow-purple-50' : 'text-gray-400'}`}>남성</button>
+                  <button type="button" onClick={() => {
+                    const newData = {...formData, gender: 'female'};
+                    setFormData(newData);
+                    setSignupData(newData);
+                  }} className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'female' ? 'bg-white text-festival-purple shadow-md shadow-purple-50' : 'text-gray-400'}`}>여성</button>
                 </div>
               </div>
-            </section>
-
-            <section className="bg-gray-50 rounded-[32px] p-7 border border-[#eee]">
-              <label className="flex items-center gap-3 cursor-pointer mb-6">
-                <input type="checkbox" className="hidden" checked={formData.agreeTerms && formData.agreePrivacy && formData.agreeLocation} onChange={(e) => {
-                  const v = e.target.checked;
-                  setFormData({...formData, agreeTerms: v, agreePrivacy: v, agreeLocation: v});
-                }} />
-                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.agreeTerms && formData.agreePrivacy && formData.agreeLocation ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-100' : 'bg-white border-gray-300'}`}>
-                  <Check size={16} className="text-white" />
+              <div>
+                <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">생년월일</label>
+                <div className="relative">
+                  <InputIcon><Calendar size={19} /></InputIcon>
+                  <input type="date" name="birthdate" value={formData.birthdate} onChange={handleChange} className={`${inputClass} pl-11 pr-4`} required />
                 </div>
-                <span className="text-[16px] font-black text-gray-800">모든 약관에 동의합니다.</span>
-              </label>
-              <div className="space-y-4 ml-1">
-                {[
-                  { id: 'agreeTerms', label: '서비스 이용약관 동의 (필수)' },
-                  { id: 'agreePrivacy', label: '개인정보 처리방침 동의 (필수)' },
-                  { id: 'agreeLocation', label: '위치정보 이용 동의 (필수)' }
-                ].map(item => (
-                  <div key={item.id} className="flex items-center justify-between">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input type="checkbox" name={item.id} className="hidden" checked={formData[item.id]} onChange={handleChange} />
-                      <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData[item.id] ? 'bg-festival-purple border-festival-purple' : 'bg-white border-gray-300 group-hover:border-festival-purple'}`}>
-                        <Check size={14} className="text-white" />
-                      </div>
-                      <span className="text-sm text-gray-600 font-bold group-hover:text-gray-900 transition-colors">{item.label}</span>
-                    </label>
-                    <button type="button" className="text-xs text-gray-400 font-bold hover:text-festival-purple underline underline-offset-4">보기</button>
-                  </div>
-                ))}
               </div>
-            </section>
+            </div>
 
-            <button type="submit" className="w-full h-[64px] bg-festival-purple text-white font-[900] text-lg rounded-2xl shadow-xl shadow-purple-100 hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-              다음 단계로 진행
-              <ChevronRight size={22} />
-            </button>
-          </form>
-        </div>
-      </main>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1 flex items-center gap-1"><MapPin size={14}/> 시/도</label>
+                <select name="city" value={formData.city} onChange={handleChange} className={`${inputClass} px-5 bg-white appearance-none`} required>
+                  <option value="">시/도 선택</option>
+                  {Object.keys(cities).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1 flex items-center gap-1"><MapPin size={14}/> 시/군/구</label>
+                <select name="district" value={formData.district} onChange={handleChange} className={`${inputClass} px-5 bg-white appearance-none ${!formData.city ? 'bg-gray-50 text-gray-400 cursor-not-allowed' : ''}`} required disabled={!formData.city}>
+                  <option value="">시/군/구 선택</option>
+                  {(cities[formData.city] || []).map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
 
-      <footer className="py-12 bg-white border-t border-[#eee] text-center">
-        <p className="text-sm text-gray-400 font-bold">© 2026 FestaRoute. All rights reserved.</p>
-      </footer>
-    </div>
+        <section className="bg-gray-50 rounded-[32px] p-7 border border-[#eee]">
+          <label className="flex items-center gap-3 cursor-pointer mb-6">
+            <input type="checkbox" className="hidden" checked={formData.agreeTerms && formData.agreePrivacy && formData.agreeLocation} onChange={(e) => {
+              const v = e.target.checked;
+              const newData = {...formData, agreeTerms: v, agreePrivacy: v, agreeLocation: v};
+              setFormData(newData);
+              setSignupData(newData);
+            }} />
+            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.agreeTerms && formData.agreePrivacy && formData.agreeLocation ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-100' : 'bg-white border-gray-300'}`}>
+              <Check size={16} className="text-white" />
+            </div>
+            <span className="text-[16px] font-black text-gray-800">모든 약관에 동의합니다.</span>
+          </label>
+          <div className="space-y-4 ml-1">
+            {[
+              { id: 'agreeTerms', label: '서비스 이용약관 동의 (필수)' },
+              { id: 'agreePrivacy', label: '개인정보 처리방침 동의 (필수)' },
+              { id: 'agreeLocation', label: '위치정보 이용 동의 (필수)' }
+            ].map(item => (
+              <div key={item.id} className="flex items-center justify-between">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input type="checkbox" name={item.id} className="hidden" checked={formData[item.id]} onChange={handleChange} />
+                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData[item.id] ? 'bg-festival-purple border-festival-purple' : 'bg-white border-gray-300 group-hover:border-festival-purple'}`}>
+                    <Check size={14} className="text-white" />
+                  </div>
+                  <span className="text-sm text-gray-600 font-bold group-hover:text-gray-900 transition-colors">{item.label}</span>
+                </label>
+                <button type="button" className="text-xs text-gray-400 font-bold hover:text-festival-purple underline underline-offset-4">보기</button>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <button type="submit" className="w-full h-[64px] bg-festival-purple text-white font-[900] text-lg rounded-2xl shadow-xl shadow-purple-100 hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+          다음 단계로 진행
+          <ChevronRight size={22} />
+        </button>
+      </form>
+    </AuthLayout>
   );
 };
 
