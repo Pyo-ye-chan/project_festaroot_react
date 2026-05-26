@@ -1,10 +1,10 @@
 import React from 'react';
-import Hero from '../components/Hero';
-import WeatherDetail from '../components/WeatherDetail';
-import ClosingSoon from '../components/ClosingSoon';
-import RandomFestival from '../components/RandomFestival';
-import TopFestivalsByRegion from '../components/TopFestivalsByRegion';
-import FestivalList from '../components/FestivalList';
+import Hero from './components/Hero';
+import WeatherDetail from "./components/WeatherDetail";
+import ClosingSoon from './components/ClosingSoon';
+import RandomFestival from './components/RandomFestival';
+import TopFestivalsByRegion from './components/TopFestivalsByRegion';
+import FestivalList from './components/FestivalList';
 
 const Home = () => {
   return (
