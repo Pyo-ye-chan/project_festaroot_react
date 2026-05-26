@@ -1,20 +1,28 @@
 function MapCategoryTab() {
-  const tabs = ['전체', '음식점', '관광지', '축제/행사'];
+  const tabs = [
+    { name: '전체', icon: '📍' },
+    { name: '음식점', icon: '🍽️' },
+    { name: '관광지', icon: '⛰️' },
+    { name: '축제/행사', icon: '🎉' }
+  ];
+
   return (
-    <div style={styles.tabContainer}>
+    <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2 max-w-[calc(100%-32px)]">
       {tabs.map((tab, idx) => (
-        <button key={idx} style={idx === 0 ? styles.activeTab : styles.tab}>
-          {tab}
+        <button 
+          key={idx} 
+          className={`px-4 py-2.5 rounded-full text-xs font-bold shadow-lg transition-all flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
+            idx === 0 
+              ? "bg-[#6B46FE] text-white shadow-purple-200" 
+              : "bg-white text-slate-600 border border-slate-100 hover:bg-slate-50"
+          }`}
+        >
+          <span>{tab.icon}</span>
+          {tab.name}
         </button>
       ))}
     </div>
   );
 }
-
-const styles = {
-  tabContainer: { position: 'absolute', top: '16px', left: '16px', zIndex: 10, display: 'flex', gap: '8px' },
-  tab: { padding: '8px 16px', backgroundColor: '#FFF', border: '1px solid #E2E8F0', borderRadius: '20px', fontSize: '13px', fontWeight: '600', color: '#64748B', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
-  activeTab: { padding: '8px 16px', backgroundColor: '#6366F1', border: '1px solid #6366F1', borderRadius: '20px', fontSize: '13px', fontWeight: '600', color: '#FFF', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }
-};
 
 export default MapCategoryTab;
