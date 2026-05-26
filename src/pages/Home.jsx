@@ -93,7 +93,7 @@ const ClosingSoon = () => {
               <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500 font-black text-sm group-hover:bg-rose-500 group-hover:text-white transition-all duration-300">{item.dDay}</div>
               <div>
                 <h4 className="font-bold text-gray-900 group-hover:text-rose-600 transition-colors duration-300">{item.name}</h4>
-                <p className="text-xs text-gray-500">{item.region}</p>
+                {/* Region removed for cleaner UI */}
               </div>
             </div>
             <svg className="w-5 h-5 text-gray-300 group-hover:text-rose-400 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
@@ -176,7 +176,7 @@ const FestivalList = () => {
               <button className="absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-rose-500 transition-colors duration-300 shadow-sm active:scale-90"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001z" /></svg></button>
             </div>
             <div className="mt-4 px-1">
-              <p className="text-[10px] text-gray-500 font-bold mb-1 group-hover:text-purple-400 transition-colors duration-300">{fest.region}</p>
+              {/* Region removed for cleaner UI */}
               <h4 className="text-lg font-black text-gray-900 leading-tight group-hover:text-purple-600 transition-colors duration-300 line-clamp-1">{fest.name}</h4>
               <div className="flex items-center justify-between mt-2">
                 <div className="flex items-center gap-1"><span className="text-yellow-400 text-xs">★</span><span className="text-xs font-black text-gray-700">{fest.rating}</span></div>
@@ -199,7 +199,7 @@ const OngoingFestivals = () => {
     { id: 13, name: '담양 대나무 축제', region: '전남 담양', date: '05.11 - 05.15' },
   ];
   return (
-    <section className="max-w-7xl mx-auto py-20 px-4 sm:px-6 lg:px-8 bg-gray-50/50 rounded-[3rem] my-12 text-left">
+    <section className="max-w-7xl mx-auto py-20 px-4 sm:px-6 lg:px-8 bg-gray-50/50 rounded-[3rem] my-12 text-left transition-all duration-500 hover:bg-gray-100/50">
       <div className="flex justify-between items-end mb-10 px-4">
         <div><h3 className="text-3xl font-black text-gray-900 tracking-tight">지금 진행 중인 축제</h3><p className="text-gray-500 mt-2">오늘 바로 즐길 수 있는 축제들을 확인해 보세요.</p></div>
         <button className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 hover:text-green-600 transition-all duration-300 text-sm shadow-sm active:scale-95">전체보기<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></button>
@@ -213,8 +213,8 @@ const OngoingFestivals = () => {
             </div>
             <div className="px-2 pb-2">
               <h4 className="text-base font-black text-gray-900 mt-1 line-clamp-1 group-hover:text-green-600 transition-colors duration-300">{fest.name}</h4>
-              <p className="text-xs text-gray-400 mt-1 font-bold">📍 {fest.region}</p>
-              <div className="mt-3 pt-3 border-t border-gray-50 flex justify-between items-center"><span className="text-[10px] text-gray-500 font-black">📅 {fest.date}</span><svg className="w-4 h-4 text-gray-300 group-hover:text-green-500 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></div>
+              {/* Region removed for cleaner UI */}
+              <div className="mt-3 pt-3 border-t border-gray-50 flex justify-between items-center"><span className="text-[10px] text-gray-500 font-black">📅 {fest.date}</span><svg className="w-4 h-4 text-gray-300 group-hover:text-green-600 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></div>
             </div>
           </div>
         ))}
@@ -248,22 +248,37 @@ const PopularPosts = () => {
         </button>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {posts.map((post, index) => (
-          <div key={post.id} className="flex items-center gap-6 p-6 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-500 group cursor-pointer">
-            <div className="flex-shrink-0 w-14 h-14 flex items-center justify-center bg-purple-50 rounded-2xl text-2xl font-black text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-all duration-500">
+          <div key={post.id} className="flex items-center gap-6 p-6 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:border-purple-300 transition-all duration-500 group cursor-pointer">
+            {/* Rank Number Area */}
+            <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-purple-50 rounded-2xl text-2xl font-black text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-all duration-500">
               {index + 1}
             </div>
+
+            {/* Profile Image Area - Separated */}
+            <div className="flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden border-2 border-white shadow-sm group-hover:border-purple-100 transition-all duration-500">
+                <img 
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author}`} 
+                  alt={post.author}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+
+            {/* Content Area */}
             <div className="flex-grow min-w-0">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-xs font-bold text-gray-400 group-hover:text-gray-500 transition-colors duration-500">📍 {post.region}</span>
-                <span className="text-xs text-gray-200">•</span>
-                <span className="text-xs font-bold text-purple-500/70 group-hover:text-purple-600 transition-colors duration-500">{post.author}</span>
+                {/* Region removed for cleaner UI */}
+                <span className="text-xs font-bold text-purple-600/70 group-hover:text-purple-600 transition-colors duration-500">{post.author}</span>
               </div>
               <h4 className="text-lg font-bold text-gray-900 truncate group-hover:text-purple-600 transition-colors duration-500">
                 {post.title}
               </h4>
             </div>
+
+            {/* Stats Area */}
             <div className="flex-shrink-0 flex items-center gap-6 text-sm font-bold text-gray-400">
               <div className="flex items-center gap-1.5 transition-colors duration-500 group-hover:text-gray-600">
                 <span className="text-lg">👁️</span>
