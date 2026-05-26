@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 const Header = () => {
   const [region, setRegion] = useState('서울');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Simulated login state
 
   // Colors aligned with Footer
   const primaryPurple = '#6B46FE';
@@ -47,16 +48,22 @@ const Header = () => {
               <span className="absolute top-2 right-2 w-2 h-2 rounded-full border-2 border-white bg-rose-500"></span>
             </button>
 
-            {/* Profile/Login */}
-            <button className="flex items-center gap-2 p-1 pr-3 bg-gray-50 border border-gray-200 rounded-full hover:bg-white hover:shadow-sm transition-all">
-              <div className="w-8 h-8 rounded-full bg-gray-300 overflow-hidden">
+            {/* Profile/Login Button with Hover Effect */}
+            <button 
+              onClick={() => setIsLoggedIn(!isLoggedIn)}
+              className="group flex items-center gap-0 hover:gap-2 p-1 bg-white border border-gray-200 rounded-full hover:shadow-md transition-all duration-300 overflow-hidden"
+              title={isLoggedIn ? '로그아웃' : '로그인'}
+            >
+              <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
                 <img 
-                  src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" 
-                  alt="User profile" 
+                  src={isLoggedIn ? "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" : "https://api.dicebear.com/7.x/avataaars/svg?seed=Guest"} 
+                  alt="Profile" 
                   className="w-full h-full object-cover"
                 />
               </div>
-              <span className="hidden sm:inline text-sm font-bold text-gray-700">로그인</span>
+              <span className="max-w-0 group-hover:max-w-[80px] opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap text-sm font-bold text-gray-700 overflow-hidden pr-0 group-hover:pr-3">
+                {isLoggedIn ? '로그아웃' : '로그인'}
+              </span>
             </button>
 
             {/* Mobile Menu Toggle */}
