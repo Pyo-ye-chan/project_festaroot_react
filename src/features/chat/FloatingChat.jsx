@@ -56,7 +56,7 @@ const FloatingChat = () => {
   };
 
   return (
-    <Draggable nodeRef={nodeRef} handle=".drag-handle">
+    <Draggable nodeRef={nodeRef} handle=".drag-handle" bounds="parent">
       <div 
         ref={nodeRef}
         className={`fixed bottom-6 right-6 z-[9999] bg-white shadow-2xl rounded-3xl border border-gray-100 flex flex-col transition-[height,width,border-radius] duration-300 ${isMinimized ? 'w-16 h-16 rounded-2xl overflow-hidden' : 'w-96 h-[500px]'}`}
@@ -90,11 +90,11 @@ const FloatingChat = () => {
         {!isMinimized && (
           <>
             {/* Messages */}
-            <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-gray-50/30 custom-scrollbar">
+            <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-[#F8F9FF] custom-scrollbar">
               {messages.map(msg => (
                 <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-start gap-2`}>
                   {!msg.isMe && (
-                    <div className="w-8 h-8 rounded-xl bg-purple-100 overflow-hidden flex-shrink-0 mt-1">
+                    <div className="w-8 h-8 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 mt-1">
                       <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender}`} alt={msg.sender} />
                     </div>
                   )}
