@@ -3,7 +3,6 @@ import {
   Send, 
   Users, 
   ExternalLink, 
-  MoreVertical, 
   Image as ImageIcon, 
   Smile, 
   Search,
@@ -12,11 +11,14 @@ import {
   X,
   Phone,
   Video,
-  MessageCircle
+  MessageCircle,
+  MapPin,
+  Calendar,
+  Ban
 } from 'lucide-react';
 
 const ChatListPage = () => {
-  const [selectedChatId, setSelectedChatId] = useState(1);
+  const [selectedChatId, setSelectedChatId] = useState(null);
   const [message, setMessage] = useState('');
   const [showParticipants, setShowParticipants] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -36,23 +38,18 @@ const ChatListPage = () => {
       setShowParticipants(!showParticipants);
       setShowDetails(false);
     } else {
+      if (selectedChat?.type === 'private') return;
       setShowDetails(!showDetails);
       setShowParticipants(false);
     }
   };
 
-  // Mock Data: Chat Rooms (categorized)
   const chatRooms = [
-    { id: 1, type: 'festival', title: '한강 달빛 야시장 같이 가실 분? 🌙', lastMessage: '6시에 여의나루역에서 볼까요?', time: '오후 2:36', unreadCount: 3, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=River' },
-    { id: 2, type: 'festival', title: '경복궁 야간개장 티켓팅 성공 기원방 🏯', lastMessage: '내일 오후 2시 오픈이래요!', time: '오후 1:45', unreadCount: 0, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Palace' },
-    { id: 3, type: 'group', title: '전국 축제 도장깨기 모임 🚌', lastMessage: '다음 주는 어디로 갈까요?', time: '오전 11:20', unreadCount: 12, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Travel' },
-    { id: 4, type: 'group', title: '부산 불꽃축제 사진 동호회 🎆', lastMessage: '마린시티 쪽도 괜찮나요?', time: '어제', unreadCount: 0, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Fire' },
+    { id: 1, type: 'festival', title: '한강 달빛 야시장 같이 가실 분? 🌙', lastMessage: '6시에 여의나루역에서 볼까요?', time: '오후 2:36', unreadCount: 3, avatar: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=200', date: '2026.06.01 - 06.07', location: '서울 한강공원' },
+    { id: 2, type: 'festival', title: '경복궁 야간개장 티켓팅 성공 기원방 🏯', lastMessage: '내일 오후 2시 오픈이래요!', time: '오후 1:45', unreadCount: 0, avatar: 'https://images.unsplash.com/photo-1467307983825-619715426c70?auto=format&fit=crop&q=80&w=200', date: '2026.06.15 - 07.15', location: '서울 경복궁' },
+    { id: 3, type: 'group', title: '전국 축제 도장깨기 모임 🚌', lastMessage: '다음 주는 어디로 갈까요?', time: '오전 11:20', unreadCount: 12, avatar: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=200' },
+    { id: 4, type: 'group', title: '부산 불꽃축제 사진 동호회 🎆', lastMessage: '마린시티 쪽도 괜찮나요?', time: '어제', unreadCount: 0, avatar: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=200' },
     { id: 5, type: 'private', title: '김철수님', lastMessage: '오늘 축제 재밌었어요!', time: '오전 09:12', unreadCount: 0, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' },
-    { id: 6, type: 'festival', title: '보령 머드축제 같이 갈 사람 🌊', lastMessage: '준비물 뭐 챙겨가나요?', time: '오전 08:30', unreadCount: 1, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mud' },
-    { id: 7, type: 'festival', title: '전주 한옥마을 투어 🍚', lastMessage: '비빔밥 맛집 어디가 최고인가요?', time: '어제', unreadCount: 0, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Food' },
-    { id: 8, type: 'group', title: '축제 사진 공유방 📸', lastMessage: '오늘 사진들 올렸습니다!', time: '2일 전', unreadCount: 5, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Camera' },
-    { id: 9, type: 'group', title: '서울 불꽃축제 벙개 모임 🧨', lastMessage: '63빌딩 앞 스팟 확보 완료', time: '3일 전', unreadCount: 0, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Spark' },
-    { id: 10, type: 'private', title: '이영희님', lastMessage: '네 알겠습니다!', time: '3일 전', unreadCount: 0, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah' },
   ];
 
   const sections = [
@@ -61,8 +58,6 @@ const ChatListPage = () => {
     { id: 'private', label: '1:1 채팅' },
   ];
 
-
-  // Mock Data: Messages for selected chat
   const [messages, setMessages] = useState([
     { id: 1, sender: '김철수', text: '안녕하세요! 이번 주말에 다들 가시나요?', time: '오후 2:30', isMe: false },
     { id: 2, sender: '이영희', text: '네! 저도 참여하고 싶어요 ㅎㅎ', time: '오후 2:31', isMe: false },
@@ -74,45 +69,14 @@ const ChatListPage = () => {
   const participants = [
     { id: 1, name: '김철수', status: 'online', role: '방장' },
     { id: 2, name: '이영희', status: 'online', role: '멤버' },
-    { id: 3, name: '박지민', status: 'online', role: '멤버' },
-    { id: 4, name: '최다은', status: 'offline', role: '멤버' },
-    { id: 5, name: '정우성', status: 'online', role: '멤버' },
     { id: 6, name: '나', status: 'online', role: '나' },
   ];
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, selectedChatId]);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!message.trim()) return;
-
-    const newMessage = {
-      id: messages.length + 1,
-      sender: '나',
-      text: message,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isMe: true
-    };
-
-    setMessages([...messages, newMessage]);
+    setMessages([...messages, { id: messages.length + 1, sender: '나', text: message, time: '방금', isMe: true }]);
     setMessage('');
-  };
-
-  const handlePopOut = () => {
-    const width = 450;
-    const height = 700;
-    const left = (window.screen.width / 2) - (width / 2);
-    const top = (window.screen.height / 2) - (height / 2);
-    
-    window.open(
-      `/community/chat/${selectedChatId}`,
-      `ChatRoom_${selectedChatId}`,
-      `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes`
-    );
   };
 
   const selectedChat = chatRooms.find(c => c.id === selectedChatId);
@@ -120,31 +84,16 @@ const ChatListPage = () => {
   return (
     <div className="flex h-[calc(100vh-120px)] bg-gray-50 font-['Pretendard']">
       <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background-color: #e5e7eb;
-          border-radius: 20px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background-color: #d1d5db;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #d1d5db; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       <div className="max-w-7xl mx-auto w-full flex bg-white shadow-xl overflow-hidden md:my-10 md:rounded-[2.5rem] border border-gray-100">
         
-        {/* Left Sidebar: Chat List */}
         <aside className="w-full md:w-80 lg:w-96 flex flex-col border-r border-gray-100 bg-white z-20 custom-scrollbar overflow-y-auto">
           <div className="p-6 border-b border-gray-100">
             <h1 className="text-2xl font-black text-gray-900 mb-6 flex items-center gap-2">
@@ -152,11 +101,7 @@ const ChatListPage = () => {
               메시지
             </h1>
             <div className="relative group">
-              <input 
-                type="text" 
-                placeholder="채팅방 검색..."
-                className="w-full bg-gray-50 border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-purple-600/20 transition-all"
-              />
+              <input type="text" placeholder="채팅방 검색..." className="w-full bg-gray-50 border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-purple-600/20 transition-all" />
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-purple-600 w-4 h-4" />
             </div>
           </div>
@@ -164,41 +109,20 @@ const ChatListPage = () => {
           <div className="flex-grow overflow-y-auto custom-scrollbar">
             {sections.map(section => (
               <div key={section.id} className="border-b border-gray-50 last:border-0">
-                <button 
-                  onClick={() => toggleSection(section.id)}
-                  className="w-full flex items-center justify-between p-4 font-black text-gray-600 text-sm uppercase tracking-widest hover:bg-gray-50 transition-colors"
-                >
+                <button onClick={() => toggleSection(section.id)} className="w-full flex items-center justify-between p-4 font-black text-gray-600 text-sm uppercase tracking-widest hover:bg-gray-50 transition-colors">
                   {section.label}
                   {expandedSections[section.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
                 {expandedSections[section.id] && (
                   <div className="animate-in slide-in-from-top-2 duration-300">
                     {chatRooms.filter(c => c.type === section.id).map((chat) => (
-                      <button
-                        key={chat.id}
-                        onClick={() => setSelectedChatId(chat.id)}
-                        className={`w-full p-4 flex items-center gap-4 hover:bg-gray-50 transition-all border-l-4 ${
-                          selectedChatId === chat.id ? 'bg-purple-50/50 border-purple-600' : 'border-transparent'
-                        }`}
-                      >
+                      <button key={chat.id} onClick={() => setSelectedChatId(chat.id)} className={`w-full p-4 flex items-center gap-4 hover:bg-gray-50 transition-all border-l-4 ${selectedChatId === chat.id ? 'bg-purple-50/50 border-purple-600' : 'border-transparent'}`}>
                         <div className="relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden">
-                            <img src={chat.avatar} alt={chat.title} className="w-full h-full object-cover" />
-                          </div>
-                          {chat.unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full border-2 border-white">
-                              {chat.unreadCount}
-                            </span>
-                          )}
+                          <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden"><img src={chat.avatar} alt={chat.title} className="w-full h-full object-cover" /></div>
                         </div>
                         <div className="min-w-0 flex-grow text-left">
-                          <div className="flex justify-between items-center mb-1">
-                            <h3 className="font-black text-gray-900 text-sm truncate">{chat.title}</h3>
-                            <span className="text-[10px] font-bold text-gray-400 whitespace-nowrap">{chat.time}</span>
-                          </div>
-                          <p className="text-xs font-medium text-gray-500 truncate leading-relaxed">
-                            {chat.lastMessage}
-                          </p>
+                          <h3 className="font-black text-gray-900 text-sm truncate">{chat.title}</h3>
+                          <p className="text-xs font-medium text-gray-500 truncate">{chat.lastMessage}</p>
                         </div>
                       </button>
                     ))}
@@ -209,176 +133,124 @@ const ChatListPage = () => {
           </div>
         </aside>
 
-        {/* Right Area: Chat Window + Participants */}
-        <div className="hidden md:flex flex-grow min-w-0 bg-gray-50/30">
-          
-          {/* Main Chat Area */}
-          <div className="flex flex-col flex-grow min-w-0 bg-white">
-            {/* Chat Header */}
-            <header className="h-20 border-b border-gray-100 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md z-10">
-              <div className="flex items-center gap-4 min-w-0 cursor-pointer group" onClick={() => toggleSidebar('details')}>
-                <div className="w-10 h-10 rounded-xl bg-purple-100 overflow-hidden">
-                  <img src={selectedChat?.avatar} alt={selectedChat?.title} />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-lg font-black text-gray-900 truncate group-hover:text-purple-600 transition-colors">
-                    {selectedChat?.title}
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
-                      <Users className="w-3 h-3" /> 12명 참여 중
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={handlePopOut}
-                  className="p-2.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all"
-                  title="새 창으로 열기"
+        {selectedChatId ? (
+          <div className="hidden md:flex flex-grow min-w-0 bg-gray-50/30">
+            <div className="flex flex-col flex-grow min-w-0 bg-white">
+              <header className="h-20 border-b border-gray-100 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md z-10">
+                <div 
+                  className={`flex items-center gap-4 min-w-0 ${selectedChat?.type !== 'private' ? 'cursor-pointer group' : ''}`} 
+                  onClick={() => selectedChat?.type !== 'private' && toggleSidebar('details')}
                 >
-                  <ExternalLink className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={() => toggleSidebar('participants')}
-                  className={`p-2.5 rounded-xl transition-all ${showParticipants ? 'bg-purple-600 text-white shadow-lg shadow-purple-100' : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'}`}
-                >
-                  <Users className="w-5 h-5" />
-                </button>
-              </div>
-            </header>
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 overflow-hidden"><img src={selectedChat?.avatar} alt={selectedChat?.title} className="w-full h-full object-cover" /></div>
+                  <h2 className="text-lg font-black text-gray-900 truncate group-hover:text-purple-600">{selectedChat?.title}</h2>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button className="p-2.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all">
+                    <ExternalLink className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => toggleSidebar('participants')} className={`p-2.5 rounded-xl transition-all ${showParticipants ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-50'}`}><Users className="w-5 h-5" /></button>
+                  <button onClick={() => setSelectedChatId(null)} className="p-2.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl"><X className="w-5 h-5" /></button>
+                </div>
+              </header>
 
-            {/* Messages Area */}
-            <div 
-              ref={scrollRef}
-              className="flex-grow overflow-y-auto p-6 space-y-6 bg-gray-50/30 scrollbar-hide"
-            >
-              <div className="flex justify-center mb-10">
-                <span className="text-[10px] font-black text-gray-400 bg-gray-100 px-4 py-1.5 rounded-full uppercase tracking-widest">
-                  2026년 5월 27일
-                </span>
-              </div>
-
-              {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-end gap-2`}>
-                  {!msg.isMe && (
-                    <div className="w-9 h-9 rounded-2xl bg-purple-100 flex-shrink-0 mb-4 self-start overflow-hidden">
-                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender}`} alt={msg.sender} />
-                    </div>
-                  )}
-                  
-                  <div className={`flex flex-col ${msg.isMe ? 'items-end' : 'items-start'} max-w-[75%]`}>
+              <div ref={scrollRef} className="flex-grow overflow-y-auto p-6 space-y-6 bg-gray-50/30 scrollbar-hide">
+                {messages.map(msg => (
+                  <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-start gap-3`}>
                     {!msg.isMe && (
-                      <span className="text-[10px] font-black text-gray-400 mb-1.5 ml-1">{msg.sender}</span>
+                      <div className="w-10 h-10 rounded-2xl bg-purple-100 overflow-hidden flex-shrink-0 mt-1 shadow-sm">
+                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender}`} alt={msg.sender} className="w-full h-full object-cover" />
+                      </div>
                     )}
-                    <div className={`px-5 py-3 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${
-                      msg.isMe 
-                      ? 'bg-purple-600 text-white rounded-tr-none' 
-                      : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
-                    }`}>
-                      {msg.text}
+                    <div className={`flex flex-col gap-1.5 max-w-[70%] ${msg.isMe ? 'items-end' : 'items-start'}`}>
+                      {!msg.isMe && (
+                        <span className="text-xs font-black text-gray-700 ml-1">{msg.sender}</span>
+                      )}
+                      <div className={`flex items-end gap-2 ${msg.isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={`px-5 py-3 rounded-2xl text-sm font-medium shadow-sm ${msg.isMe ? 'bg-purple-600 text-white rounded-tr-none' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'}`}>
+                          {msg.type === 'file' ? (
+                            <div className="flex items-center gap-2">
+                              <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><ImageIcon className="w-4 h-4" /></div>
+                              <span className="underline cursor-pointer decoration-purple-300 underline-offset-4">{msg.text}</span>
+                            </div>
+                          ) : msg.text}
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-bold mb-1 flex-shrink-0">{msg.time}</span>
+                      </div>
                     </div>
                   </div>
-                  
-                  <span className="text-[10px] font-bold text-gray-400 mb-1">{msg.time}</span>
-                </div>
-              ))}
+                ))}
+              </div>
+
+              <div className="p-6 border-t border-gray-100 bg-white">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-3">
+                  <label className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl cursor-pointer transition-all">
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          setMessages([...messages, { 
+                            id: messages.length + 1, 
+                            sender: '나', 
+                            text: file.name, 
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
+                            isMe: true,
+                            type: 'file'
+                          }]);
+                        }
+                      }} 
+                    />
+                    <ImageIcon className="w-6 h-6" />
+                  </label>
+                  <div className="relative flex-grow flex items-center">
+                    <input 
+                      type="text" 
+                      value={message} 
+                      onChange={(e) => setMessage(e.target.value)} 
+                      placeholder="메시지를 입력하세요..." 
+                      className="w-full bg-gray-50 rounded-2xl py-3.5 px-6 font-medium text-sm focus:ring-2 focus:ring-purple-600/20" 
+                    />
+                  </div>
+                  <button type="submit" className="p-3.5 rounded-2xl bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200">
+                    <Send className="w-5 h-5" />
+                  </button>
+                </form>
+              </div>
             </div>
 
-            {/* Chat Input */}
-            <div className="p-6 bg-white border-t border-gray-100">
-              <form onSubmit={handleSendMessage} className="flex items-center gap-3">
-                <div className="flex gap-1">
-                  <button type="button" className="p-2.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all">
-                    <ImageIcon className="w-5 h-5" />
-                  </button>
-                  <button type="button" className="p-2.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all">
-                    <Smile className="w-5 h-5" />
-                  </button>
-                </div>
-                <input 
-                  type="text" 
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="메시지를 입력하세요..."
-                  className="flex-grow bg-gray-50 border-none rounded-2xl py-3.5 px-6 focus:ring-2 focus:ring-purple-600/20 transition-all font-medium text-sm"
-                />
-                <button 
-                  type="submit"
-                  className={`p-3.5 rounded-2xl transition-all shadow-lg ${
-                    message.trim() 
-                    ? 'bg-purple-600 text-white shadow-purple-200 hover:bg-purple-700 active:scale-95' 
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </form>
-            </div>
-          </div>
-
-          {/* Participants/Details Sidebar (Inside Right Area) */}
-          <aside className={`border-l border-gray-100 flex flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out custom-scrollbar overflow-y-auto ${(showParticipants || showDetails) ? 'w-64 opacity-100' : 'w-0 opacity-0'}`}>
-            {showParticipants && (
-              <>
-                <div className="p-6 border-b border-gray-100 whitespace-nowrap">
-                  <h3 className="font-black text-gray-900 text-sm flex items-center gap-2">
-                    참여 인원 
-                    <span className="text-purple-600 font-bold">{participants.length}</span>
-                  </h3>
-                </div>
-                
-                <div className="flex-grow overflow-y-auto p-3 space-y-1 custom-scrollbar">
-                  {participants.map((person) => (
-                    <div key={person.id} className="flex items-center justify-between p-3 rounded-2xl hover:bg-gray-50 transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <div className="w-9 h-9 rounded-xl bg-gray-100 overflow-hidden">
-                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${person.name}`} alt={person.name} />
-                          </div>
-                          {person.status === 'online' && (
-                            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-                          )}
+            <aside className={`border-l border-gray-100 flex flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out custom-scrollbar ${(showParticipants || showDetails) ? 'w-64 opacity-100' : 'w-0 opacity-0'}`}>
+              {showParticipants && (
+                <div className="p-4 space-y-2">
+                  <h3 className="font-black text-gray-900 text-sm mb-4">참여 인원</h3>
+                  {participants.map(p => (
+                    <div key={p.id} className="flex items-center justify-between p-2">
+                        <div className="flex items-center gap-3">
+                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`} className="w-8 h-8 rounded-full" />
+                            <span className="text-sm font-bold">{p.name}</span>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-black text-gray-800 truncate">{person.name}</p>
-                          <p className={`text-[10px] font-bold ${person.role === '방장' ? 'text-purple-600' : 'text-gray-400'}`}>
-                            {person.role}
-                          </p>
-                        </div>
-                      </div>
+                        <button className="text-gray-300 hover:text-rose-500"><Ban className="w-4 h-4"/></button>
                     </div>
                   ))}
                 </div>
-
-                <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-                  <button className="w-full py-3 bg-white text-rose-500 font-black text-xs rounded-xl hover:bg-rose-50 transition-all border border-rose-100">
-                    방 나가기
-                  </button>
+              )}
+              {showDetails && (
+                <div className="p-6 space-y-6">
+                  <h3 className="font-black text-gray-900 text-sm">채팅방 상세 정보</h3>
+                  {selectedChat?.type === 'festival' && (
+                    <>
+                      <div><p className="text-xs font-black text-gray-400">축제 기간</p><p className="text-sm font-bold">{selectedChat.date}</p></div>
+                      <div><p className="text-xs font-black text-gray-400">위치</p><p className="text-sm font-bold flex items-center gap-1"><MapPin className="w-4 h-4"/>{selectedChat.location}</p></div>
+                    </>
+                  )}
+                  <p className="text-sm text-gray-600 leading-relaxed">상세 설명이 들어갑니다.</p>
                 </div>
-              </>
-            )}
-
-            {showDetails && (
-              <div className="p-6">
-                <h3 className="font-black text-gray-900 mb-4 text-sm">채팅방 상세 정보</h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs font-black text-gray-400 mb-1">채팅방 설명</p>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {selectedChat?.title}에 대한 상세 설명입니다. 축제 기간 정보 및 공지사항을 확인하세요.
-                    </p>
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-2xl">
-                    <p className="text-xs font-black text-gray-400 mb-1">방 생성일</p>
-                    <p className="text-sm font-bold text-gray-700">2026. 05. 20</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </aside>
-        </div>
+              )}
+            </aside>
+          </div>
+        ) : (
+          <div className="flex flex-grow items-center justify-center text-gray-400 font-bold">채팅방을 선택해주세요.</div>
+        )}
       </div>
     </div>
   );
