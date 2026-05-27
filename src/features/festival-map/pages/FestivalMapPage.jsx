@@ -5,23 +5,23 @@ import SidebarFilter from "../components/SidebarFilter";
 
 function FestivalMapPage() {
     return (
-        <div className="flex flex-col md:flex-row w-screen h-screen overflow-hidden bg-gray-50 font-sans">
-            {/* 왼쪽 사이드바 영역 - 모바일에서는 상단 또는 숨김 처리가 필요할 수 있음 (여기서는 우선 상단 배치 후 md 이상에서 왼쪽 고정) */}
-            <div className="w-full md:w-[360px] h-auto md:h-full border-b md:border-b-0 md:border-r border-gray-200 overflow-y-auto z-20 bg-white">
+        <div className="flex flex-col md:flex-row w-full md:h-[1000px] bg-gray-50 font-sans overflow-hidden">
+            {/* 왼쪽 사이드바 영역 - 1000px 높이 내에서 여유롭게 모든 필터 노출 */}
+            <div className="w-full md:w-[320px] h-auto md:h-full border-b md:border-b-0 md:border-r border-gray-200 z-20 bg-white shrink-0">
                 <SidebarFilter />
             </div>
 
             {/* 오른쪽 메인 대시보드 영역 (지도 + 리스트) */}
-            <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+            <div className="flex-1 flex flex-col h-[800px] md:h-full overflow-hidden relative">
                 
-                {/* 지도 영역 */}
-                <div className="flex-1 relative w-full overflow-hidden">
+                {/* 지도 영역 - 1000px 높이 중 약 600px 차지 (매우 넓은 시야 확보) */}
+                <div className="flex-1 relative w-full overflow-hidden min-h-[400px]">
                     <MapCategoryTab />
                     <KakaoMapContainer />
                 </div>
 
-                {/* 하단 리스트 영역 */}
-                <div className="h-auto max-h-[40%] md:max-h-none md:h-[320px] bg-white border-t border-gray-200">
+                {/* 하단 리스트 영역 - 400px로 확대하여 카드와 리스트 내용을 여유롭게 노출 */}
+                <div className="h-[350px] md:h-[400px] bg-white border-t border-gray-200 shrink-0">
                     <PlaceCardList />
                 </div>
             </div>

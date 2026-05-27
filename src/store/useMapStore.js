@@ -1,17 +1,27 @@
 import { create } from 'zustand';
+import festivalService from '../api/festivalService';
+import ktoService from '../api/ktoService';
 
-const useMapStore = create((set) => ({
+const getTodayString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const useMapStore = create((set, get) => ({
+  // 상태 관리
+  festivals: [], // DB에서 가져온 축제 목록
+  isLoading: false,
+  error: null,
+
   // 검색 필터 상태
   searchParams: {
-    selectedFestival: {
-      name: "태안 세계튤립축제",
-      period: "2025.04.12 ~ 2025.05.07",
-      location: "충청남도 태안군",
-      image: "https://images.unsplash.com/photo-1526310283981-d25a8166c4c0?w=150&q=80"
-    },
+    selectedFestival: null, // 초기값 null
     radius: 5,
-    startDate: "2025-04-12",
-    endDate: "2025-05-07",
+    startDate: "",
+    endDate: "",
     categories: {
       food: true,
       tour: true,
@@ -19,21 +29,106 @@ const useMapStore = create((set) => ({
     }
   },
 
-  // 현재 선택된 카테고리 탭 (전체, 음식점, 관광지, 축제/행사)
+  // 현재 선택된 카테고리 탭
   activeCategory: '전체',
 
-  // 추천 장소 데이터
-  places: [
-    { id: 1, title: "태안 회센터", category: "한식·해산물", rating: 4.6, reviews: 125, distance: "1.2km", tag: "신선한 해산물", img: "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=200&q=80", type: 'food' },
-    { id: 2, title: "꽃지 해물칼국수", category: "한식·해산물", rating: 4.4, reviews: 98, distance: "2.3km", tag: "바다 전망", img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=200&q=80", type: 'food' },
-    { id: 3, title: "안면도 게국지", category: "한식", rating: 4.7, reviews: 156, distance: "3.8km", tag: "게국지 전문", img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&q=80", type: 'food' },
-    { id: 4, title: "꽃지 해수욕장", category: "자연관광지", rating: 4.8, reviews: 312, distance: "1.8km", tag: "낙조 명소", img: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=200&q=80", type: 'tour' },
-  ],
+  // 추천 장소 데이터 (KTO API 결과)
+  places: [],
 
   // Actions
-  setSelectedFestival: (festival) => set((state) => ({
-    searchParams: { ...state.searchParams, selectedFestival: festival }
-  })),
+  
+  // 1. 백엔드에서 축제 목록 가져오기
+  fetchFestivals: async () => {
+    set({ isLoading: true });
+    try {
+      const data = await festivalService.getFestivals();
+      set({ festivals: data, isLoading: false });
+    } catch (error) {
+      set({ error: error.message, isLoading: false });
+    }
+  },
+
+  // 2. 선택된 축제 설정 및 해당 좌표로 주변 정보 호출 준비
+  setSelectedFestival: (festival) => {
+    if (!festival) {
+      set((state) => ({
+        searchParams: { 
+          ...state.searchParams, 
+          selectedFestival: null, 
+          startDate: "", 
+          endDate: "" 
+        }
+      }));
+      return;
+    }
+
+    const formatDate = (dateStr) => {
+      if (!dateStr || dateStr.length !== 8) return "";
+      return `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
+    };
+
+    // 좌표를 숫자로 변환하여 저장 (snake_case 반영: map_x, map_y)
+    const normalizedFestival = {
+      ...festival,
+      map_x: parseFloat(festival.map_x),
+      map_y: parseFloat(festival.map_y)
+    };
+
+    set((state) => ({
+      searchParams: { 
+        ...state.searchParams, 
+        selectedFestival: normalizedFestival,
+        startDate: formatDate(festival.event_start_date),
+        endDate: formatDate(festival.event_end_date)
+      }
+    }));
+    
+    // 축제가 선택되면 주변 정보도 자동으로 호출 (map_x: 경도, map_y: 위도)
+    if (!isNaN(normalizedFestival.map_x) && !isNaN(normalizedFestival.map_y)) {
+      get().fetchNearbyPlaces();
+    }
+  },
+
+  // 3. 한국관광공사 API를 통한 주변 정보 호출
+  fetchNearbyPlaces: async () => {
+    const { selectedFestival, radius, categories } = get().searchParams;
+    if (!selectedFestival || !selectedFestival.map_x || !selectedFestival.map_y) return;
+
+    set({ isLoading: true });
+    try {
+      const typeIds = [];
+      if (categories.food) typeIds.push('39');
+      if (categories.tour) typeIds.push('12');
+      if (categories.festival) typeIds.push('15');
+      
+      const requests = typeIds.map(id => 
+        ktoService.getNearbyPlaces(selectedFestival.map_x, selectedFestival.map_y, radius * 1000, id)
+      );
+
+      const results = await Promise.all(requests);
+      const flatResults = results.flat();
+
+      // KTO 데이터를 UI 구조에 맞게 매핑
+      const mappedPlaces = flatResults.map(item => ({
+        id: item.contentid,
+        title: item.title,
+        category: item.contenttypeid === '39' ? '음식점' : item.contenttypeid === '12' ? '관광지' : '축제/행사',
+        rating: (Math.random() * (5.0 - 4.0) + 4.0).toFixed(1), // 별점 데이터가 없으므로 임시 랜덤값
+        reviews: Math.floor(Math.random() * 200), // 리뷰 수도 임시 랜덤값
+        distance: item.dist > 1000 ? `${(item.dist / 1000).toFixed(1)}km` : `${Math.floor(item.dist)}m`,
+        tag: item.addr1?.split(' ')[1] || '추천 장소',
+        img: item.firstimage || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=200&q=80',
+        type: item.contenttypeid === '39' ? 'food' : item.contenttypeid === '12' ? 'tour' : 'festival',
+        lat: parseFloat(item.mapy),
+        lng: parseFloat(item.mapx)
+      }));
+
+      set({ places: mappedPlaces, isLoading: false });
+    } catch (error) {
+      console.error('Fetch Nearby Places Error:', error);
+      set({ isLoading: false });
+    }
+  },
 
   setRadius: (radius) => set((state) => ({
     searchParams: { ...state.searchParams, radius }
@@ -57,22 +152,18 @@ const useMapStore = create((set) => ({
 
   resetFilters: () => set({
     searchParams: {
-      selectedFestival: {
-        name: "태안 세계튤립축제",
-        period: "2025.04.12 ~ 2025.05.07",
-        location: "충청남도 태안군",
-        image: "https://images.unsplash.com/photo-1526310283981-d25a8166c4c0?w=150&q=80"
-      },
+      selectedFestival: null,
       radius: 5,
-      startDate: "2025-04-12",
-      endDate: "2025-05-07",
+      startDate: "",
+      endDate: "",
       categories: {
         food: true,
         tour: true,
         festival: true
       }
     },
-    activeCategory: '전체'
+    activeCategory: '전체',
+    places: []
   })
 }));
 
