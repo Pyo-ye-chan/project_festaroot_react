@@ -14,10 +14,13 @@ import {
   MessageCircle,
   MapPin,
   Calendar,
-  Ban
+  Ban,
+  Paperclip
 } from 'lucide-react';
+import useChatStore from '../../../store/useChatStore';
 
 const ChatListPage = () => {
+  const { openFloatingChat } = useChatStore();
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [message, setMessage] = useState('');
   const [showParticipants, setShowParticipants] = useState(false);
@@ -81,6 +84,12 @@ const ChatListPage = () => {
 
   const selectedChat = chatRooms.find(c => c.id === selectedChatId);
 
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, selectedChatId]);
+
   return (
     <div className="flex h-[calc(100vh-120px)] bg-gray-50 font-['Pretendard']">
       <style jsx>{`
@@ -116,9 +125,15 @@ const ChatListPage = () => {
                 {expandedSections[section.id] && (
                   <div className="animate-in slide-in-from-top-2 duration-300">
                     {chatRooms.filter(c => c.type === section.id).map((chat) => (
-                      <button key={chat.id} onClick={() => setSelectedChatId(chat.id)} className={`w-full p-4 flex items-center gap-4 hover:bg-gray-50 transition-all border-l-4 ${selectedChatId === chat.id ? 'bg-purple-50/50 border-purple-600' : 'border-transparent'}`}>
+                      <button 
+                        key={chat.id} 
+                        onClick={() => setSelectedChatId(chat.id)} 
+                        className={`w-full p-4 flex items-center gap-4 hover:bg-gray-50 transition-all border-l-4 ${selectedChatId === chat.id ? 'bg-purple-50/50 border-purple-600' : 'border-transparent'}`}
+                      >
                         <div className="relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden"><img src={chat.avatar} alt={chat.title} className="w-full h-full object-cover" /></div>
+                          <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden">
+                            <img src={chat.avatar} alt={chat.title} className="w-full h-full object-cover" />
+                          </div>
                         </div>
                         <div className="min-w-0 flex-grow text-left">
                           <h3 className="font-black text-gray-900 text-sm truncate">{chat.title}</h3>
@@ -141,11 +156,16 @@ const ChatListPage = () => {
                   className={`flex items-center gap-4 min-w-0 ${selectedChat?.type !== 'private' ? 'cursor-pointer group' : ''}`} 
                   onClick={() => selectedChat?.type !== 'private' && toggleSidebar('details')}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-purple-100 overflow-hidden"><img src={selectedChat?.avatar} alt={selectedChat?.title} className="w-full h-full object-cover" /></div>
+                  <div className="w-10 h-10 rounded-xl bg-purple-100 overflow-hidden">
+                    <img src={selectedChat?.avatar} alt={selectedChat?.title} className="w-full h-full object-cover" />
+                  </div>
                   <h2 className="text-lg font-black text-gray-900 truncate group-hover:text-purple-600">{selectedChat?.title}</h2>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button className="p-2.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all">
+                  <button 
+                    onClick={() => openFloatingChat(selectedChatId)}
+                    className="p-2.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all"
+                  >
                     <ExternalLink className="w-5 h-5" />
                   </button>
                   <button onClick={() => toggleSidebar('participants')} className={`p-2.5 rounded-xl transition-all ${showParticipants ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-50'}`}><Users className="w-5 h-5" /></button>
@@ -169,7 +189,7 @@ const ChatListPage = () => {
                         <div className={`px-5 py-3 rounded-2xl text-sm font-medium shadow-sm ${msg.isMe ? 'bg-purple-600 text-white rounded-tr-none' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'}`}>
                           {msg.type === 'file' ? (
                             <div className="flex items-center gap-2">
-                              <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><ImageIcon className="w-4 h-4" /></div>
+                              <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Paperclip className="w-4 h-4" /></div>
                               <span className="underline cursor-pointer decoration-purple-300 underline-offset-4">{msg.text}</span>
                             </div>
                           ) : msg.text}
@@ -201,7 +221,7 @@ const ChatListPage = () => {
                         }
                       }} 
                     />
-                    <ImageIcon className="w-6 h-6" />
+                    <Paperclip className="w-6 h-6" />
                   </label>
                   <div className="relative flex-grow flex items-center">
                     <input 

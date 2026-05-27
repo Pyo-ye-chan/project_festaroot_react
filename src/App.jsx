@@ -17,6 +17,7 @@ import PostDetailPage from './features/community/pages/PostDetailPage'
 import PostWritePage from './features/community/pages/PostWritePage'
 import MainLayout from './components/MainLayout'
 import ChatListPage from './features/community/pages/ChatListPage'
+import FloatingChat from './components/FloatingChat'
 
 function App() {
 
@@ -42,6 +43,7 @@ function App() {
         <Route path="/signup/preferences" element={<SignupPreferencesPage />} />
         <Route path="/find-account" element={<FindAccountPage />} />
       </Routes>
+      <FloatingChat />
     </>
 
   )
