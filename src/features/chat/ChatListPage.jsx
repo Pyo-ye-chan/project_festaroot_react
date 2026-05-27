@@ -17,7 +17,7 @@ import {
   Ban,
   Paperclip
 } from 'lucide-react';
-import useChatStore from '../../../store/useChatStore';
+import useChatStore from '../../store/useChatStore';
 
 const ChatListPage = () => {
   const { openFloatingChat } = useChatStore();
@@ -163,7 +163,10 @@ const ChatListPage = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <button 
-                    onClick={() => openFloatingChat(selectedChatId)}
+                    onClick={() => {
+                      openFloatingChat(selectedChatId);
+                      setSelectedChatId(null);
+                    }}
                     className="p-2.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all"
                   >
                     <ExternalLink className="w-5 h-5" />

@@ -16,11 +16,12 @@ import BoardListPage from './features/community/pages/BoardListPage'
 import PostDetailPage from './features/community/pages/PostDetailPage'
 import PostWritePage from './features/community/pages/PostWritePage'
 import MainLayout from './components/MainLayout'
-import ChatListPage from './features/community/pages/ChatListPage'
-import FloatingChat from './components/FloatingChat'
+import ChatListPage from './features/chat/ChatListPage'
+import FloatingChat from './features/chat/FloatingChat'
+import useChatStore from './store/useChatStore'
 
 function App() {
-
+  const { isFloating } = useChatStore();
 
   return (
     <>
@@ -43,7 +44,7 @@ function App() {
         <Route path="/signup/preferences" element={<SignupPreferencesPage />} />
         <Route path="/find-account" element={<FindAccountPage />} />
       </Routes>
-      <FloatingChat />
+      {isFloating && <FloatingChat />}
     </>
 
   )
