@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Eye,
   EyeOff,
@@ -9,8 +9,12 @@ import {
   Bell,
   ChevronRight
 } from 'lucide-react';
+import { login } from '../../../api/authApi';
+import useAuthStore from '../../../store/useAuthStore';
 
 const LoginPage = () => {
+  const navigate = useNavigate();
+  const { setLoginState } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -48,13 +52,19 @@ const LoginPage = () => {
 
     try {
       setIsSubmitting(true);
+      const response = await login({ member_id: formData.id, password: formData.password });
 
-      // TODO: 로그인 API 연동
-      console.log('Login submitted:', formData);
-
-      alert(`${formData.id}님, 환영합니다!`);
+      if (response.data && response.data !== 'login_fail') {
+        const token = response.data;
+        setLoginState(true, token, { id: formData.id }); // 사용자 정보는 백엔드 응답에 따라 채워넣을 수 있음
+        alert(`${formData.id}님, 환영합니다!`);
+        navigate('/'); // 로그인 성공 시 메인 페이지로 이동
+      } else {
+        setError('아이디 또는 비밀번호가 올바르지 않습니다.');
+      }
     } catch (err) {
-      setError('아이디 또는 비밀번호가 올바르지 않습니다.');
+      console.error("Login error:", err);
+      setError('로그인 중 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
     }
