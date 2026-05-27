@@ -18,6 +18,7 @@ import PostWritePage from './features/community/pages/PostWritePage'
 import MainLayout from './components/MainLayout'
 import ChatListPage from './features/chat/ChatListPage'
 import FloatingChat from './features/chat/FloatingChat'
+import SearchPage from './features/search/pages/SearchPage'
 import useChatStore from './store/useChatStore'
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
           <Route path="/community/write" element={<PostWritePage />} />
           
           <Route path="/chats" element={<ChatListPage />} />
+          <Route path="/search" element={<SearchPage />} />
         </Route>
 
         <Route path="/login" element={<LoginPage />} />
