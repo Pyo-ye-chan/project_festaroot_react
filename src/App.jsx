@@ -36,7 +36,8 @@ function App() {
           <Route path="/community/board/:category" element={<BoardListPage />} />
           <Route path="/community/post/:id" element={<PostDetailPage />} />
           <Route path="/community/write" element={<PostWritePage />} />
-          <Route path="/community/chats" element={<ChatListPage />} />
+          
+          <Route path="/chats" element={<ChatListPage />} />
         </Route>
 
         <Route path="/login" element={<LoginPage />} />
