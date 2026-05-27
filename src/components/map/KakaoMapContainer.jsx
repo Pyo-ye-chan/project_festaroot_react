@@ -1,13 +1,9 @@
-import { Map, MapMarker, Circle } from "react-kakao-maps-sdk";
+import { Map, MapMarker, Circle, MarkerClusterer } from "react-kakao-maps-sdk";
 import useMapStore from "../../store/useMapStore";
 
 function KakaoMapContainer() {
   const { searchParams, activeCategory, places } = useMapStore();
   const { radius, selectedFestival } = searchParams;
-
-  // 디버깅을 위한 로그 (콘솔에서 확인 가능)
-  // console.log('Selected Festival:', selectedFestival);
-  // console.log('Places Data:', places);
 
   // 1. 기준 좌표 설정
   const getCenter = () => {
@@ -27,7 +23,6 @@ function KakaoMapContainer() {
   };
 
   const center = getCenter();
-  //console.log('Final Map Center:', center);
 
   // 2. 카테고리에 따른 마커 필터링
   const filteredMarkers = places.filter(place => {
@@ -48,10 +43,11 @@ function KakaoMapContainer() {
       className="w-full h-full"
       level={radius > 15 ? 8 : radius > 10 ? 7 : radius > 5 ? 6 : 5}
     >
-      {/* 1. 기준 축제 위치 마커 */}
+      {/* 1. 기준 축제 위치 마커 (클러스터링 제외) */}
       {selectedFestival && !isNaN(center.lat) && center.lat !== 37.5665 && (
         <MapMarker 
           position={center}
+          zIndex={10} // 기준 마커가 항상 위에 보이도록 설정
           image={{
             src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
             size: { width: 24, height: 35 }
@@ -63,20 +59,25 @@ function KakaoMapContainer() {
         </MapMarker>
       )}
 
-      {/* 2. 주변 추천 장소 마커들 */}
-      {filteredMarkers.map((marker) => (
-        marker.lat && marker.lng && (
-          <MapMarker
-            key={marker.id}
-            position={{ lat: marker.lat, lng: marker.lng }}
-            onClick={() => alert(`${marker.title}\n${marker.category}`)}
-          >
-            <div className="p-1 px-2 text-slate-700 text-[10px] bg-white/90 rounded border border-slate-100 whitespace-nowrap">
-              {marker.type === "food" ? "🍽️" : marker.type === "tour" ? "⛰️" : "🎉"} {marker.title}
-            </div>
-          </MapMarker>
-        )
-      ))}
+      {/* 2. 주변 추천 장소 마커들 (클러스터링 적용) */}
+      <MarkerClusterer
+        averageCenter={true} // 클러스터 마커의 위치를 평균점으로 설정
+        minLevel={6} // 6레벨 이상에서 클러스터링 시작
+      >
+        {filteredMarkers.map((marker) => (
+          marker.lat && marker.lng && (
+            <MapMarker
+              key={marker.id}
+              position={{ lat: marker.lat, lng: marker.lng }}
+              onClick={() => alert(`${marker.title}\n${marker.category}`)}
+            >
+              <div className="p-1 px-2 text-slate-700 text-[10px] bg-white/90 rounded border border-slate-100 whitespace-nowrap">
+                {marker.type === "food" ? "🍽️" : marker.type === "tour" ? "⛰️" : "🎉"} {marker.title}
+              </div>
+            </MapMarker>
+          )
+        ))}
+      </MarkerClusterer>
 
       {/* 3. 모든 값이 유효할 때만 원 표시 */}
       {selectedFestival && isValidRadius && center.lat !== 37.5665 && (

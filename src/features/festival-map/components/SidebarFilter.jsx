@@ -10,13 +10,12 @@ function SidebarFilter() {
     searchParams, 
     setSelectedFestival, 
     setRadius, 
-    setDates, 
     toggleCategory, 
     resetFilters,
     fetchNearbyPlaces
   } = useMapStore();
 
-  const { selectedFestival, radius, startDate, endDate, categories } = searchParams;
+  const { selectedFestival, radius, categories } = searchParams;
 
   const handleSearch = () => {
     if (!selectedFestival) {
@@ -121,34 +120,10 @@ function SidebarFilter() {
         </div>
       </div>
 
-      {/* 3. 기간 설정 */}
-      <div className="mb-12">
-        <label className="block text-[13px] font-semibold text-slate-800 mb-5">3. 기간 설정</label>
-        <div className="flex items-center gap-2">
-          <div className="flex-1">
-            <input 
-              type="date" 
-              value={startDate} 
-              onChange={(e) => setDates(e.target.value, endDate)} 
-              className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-[12px] text-slate-700 outline-none" 
-            />
-          </div>
-          <span className="text-slate-400 text-xs">~</span>
-          <div className="flex-1">
-            <input 
-              type="date" 
-              value={endDate} 
-              onChange={(e) => setDates(startDate, e.target.value)} 
-              className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-[12px] text-slate-700 outline-none" 
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 4. 카테고리 선택 */}
+      {/* 3. 카테고리 선택 */}
       <div className="mb-12">
         <label className="block text-[13px] font-semibold text-slate-800 mb-5">
-          4. 카테고리 선택 <span className="text-[11px] text-slate-400 font-normal ml-1">(복수 선택)</span>
+          3. 카테고리 선택 <span className="text-[11px] text-slate-400 font-normal ml-1">(복수 선택)</span>
         </label>
         <div className="flex flex-wrap gap-2.5">
           {[

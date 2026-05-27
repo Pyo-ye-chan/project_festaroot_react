@@ -20,8 +20,8 @@ const useMapStore = create((set, get) => ({
   searchParams: {
     selectedFestival: null, // 초기값 null
     radius: 5,
-    startDate: getTodayString(),
-    endDate: getTodayString(),
+    startDate: "",
+    endDate: "",
     categories: {
       food: true,
       tour: true,
@@ -55,8 +55,8 @@ const useMapStore = create((set, get) => ({
         searchParams: { 
           ...state.searchParams, 
           selectedFestival: null, 
-          startDate: getTodayString(), 
-          endDate: getTodayString() 
+          startDate: "", 
+          endDate: "" 
         }
       }));
       return;
@@ -154,8 +154,8 @@ const useMapStore = create((set, get) => ({
     searchParams: {
       selectedFestival: null,
       radius: 5,
-      startDate: getTodayString(),
-      endDate: getTodayString(),
+      startDate: "",
+      endDate: "",
       categories: {
         food: true,
         tour: true,
