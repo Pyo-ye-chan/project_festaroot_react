@@ -3,13 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout';
 import { MapPin, ChevronLeft, Sparkles, Heart } from 'lucide-react';
 import { signup } from '../../../api/memberApi';
-import useAuthStore from '../../../store/useAuthStore';
-import Header from '../../../components/Header';
-import Footer from '../../../components/Footer';
+import useMemberStore from '../../../store/useMemberStore';
+
 
 const SignupPreferencesPage = () => {
   const navigate = useNavigate();
-  const { signupData, resetSignupData } = useAuthStore();
+  const { signupData, resetSignupData } = useMemberStore();
 
   const [selectedRegions, setSelectedRegions] = useState(signupData.regions || []);
   const [selectedThemes, setSelectedThemes] = useState(signupData.themes || []);
@@ -105,9 +104,7 @@ const SignupPreferencesPage = () => {
   };
 
   return (
-    <>
-    <Header />
-    <main>
+
     <AuthLayout
       title="취향 설정"
       subtitle="나에게 딱 맞는 축제와 여행 정보를 추천해드릴게요"
@@ -195,9 +192,7 @@ const SignupPreferencesPage = () => {
         </div>
       </form>
     </AuthLayout>
-    </main>
-    <Footer />
-    </>
+
   );
 };
 

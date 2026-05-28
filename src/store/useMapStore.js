@@ -35,6 +35,11 @@ const useMapStore = create((set, get) => ({
   // 추천 장소 데이터 (KTO API 결과)
   places: [],
 
+  // 상세 정보를 보여줄 선택된 장소
+  selectedPlace: null,
+  placeDetail: null,
+  isDetailLoading: false,
+
   // Actions
   
   // 1. 백엔드에서 축제 목록 가져오기
@@ -111,13 +116,13 @@ const useMapStore = create((set, get) => ({
       // KTO 데이터를 UI 구조에 맞게 매핑
       const mappedPlaces = flatResults.map(item => ({
         id: item.contentid,
+        contentTypeId: item.contenttypeid, // 백엔드 호출을 위한 ID 추가
         title: item.title,
         category: item.contenttypeid === '39' ? '음식점' : item.contenttypeid === '12' ? '관광지' : '축제/행사',
-        rating: (Math.random() * (5.0 - 4.0) + 4.0).toFixed(1), // 별점 데이터가 없으므로 임시 랜덤값
-        reviews: Math.floor(Math.random() * 200), // 리뷰 수도 임시 랜덤값
         distance: item.dist > 1000 ? `${(item.dist / 1000).toFixed(1)}km` : `${Math.floor(item.dist)}m`,
         tag: item.addr1?.split(' ')[1] || '추천 장소',
         img: item.firstimage || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=200&q=80',
+        thumbnail: item.firstimage2, // 썸네일 이미지 추가
         type: item.contenttypeid === '39' ? 'food' : item.contenttypeid === '12' ? 'tour' : 'festival',
         lat: parseFloat(item.mapy),
         lng: parseFloat(item.mapx)
@@ -127,6 +132,31 @@ const useMapStore = create((set, get) => ({
     } catch (error) {
       console.error('Fetch Nearby Places Error:', error);
       set({ isLoading: false });
+    }
+  },
+
+  // 4. 장소 상세 정보 가져오기 (백엔드 API 호출)
+  fetchPlaceDetail: async (contentId, contentTypeId) => {
+    set({ isDetailLoading: true, placeDetail: null });
+    try {
+      let data;
+      switch (contentTypeId) {
+        case '39': // 음식점
+          data = await festivalService.getFoodDetail(contentId);
+          break;
+        case '12': // 관광지
+          data = await festivalService.getTourDetail(contentId);
+          break;
+        case '15': // 축제/행사
+          data = await festivalService.getEventDetail(contentId);
+          break;
+        default:
+          data = null;
+      }
+      set({ placeDetail: data, isDetailLoading: false });
+    } catch (error) {
+      console.error('Fetch Place Detail Error:', error);
+      set({ isDetailLoading: false });
     }
   },
 
@@ -150,6 +180,8 @@ const useMapStore = create((set, get) => ({
 
   setActiveCategory: (category) => set({ activeCategory: category }),
 
+  setSelectedPlace: (place) => set({ selectedPlace: place }),
+
   resetFilters: () => set({
     searchParams: {
       selectedFestival: null,
@@ -163,7 +195,8 @@ const useMapStore = create((set, get) => ({
       }
     },
     activeCategory: '전체',
-    places: []
+    places: [],
+    selectedPlace: null
   })
 }));
 
