@@ -12,14 +12,12 @@ import {
   Mail
 } from 'lucide-react';
 
-import useAuthStore from '../../../store/useAuthStore';
+import useMemberStore from '../../../store/useMemberStore';
 import AuthLayout from '../components/AuthLayout';
-import Header from '../../../components/Header';
-import Footer from '../../../components/Footer';  
 
 const SignupPage = () => {
   const navigate = useNavigate();
-  const { signupData, setSignupData } = useAuthStore();
+  const { signupData, setSignupData } = useMemberStore();
 
   const [formData, setFormData] = useState({
     member_id: '',
@@ -217,9 +215,6 @@ const SignupPage = () => {
 
   return (
 
-    <>
-    <Header />
-    <main>
     <AuthLayout
       title="회원가입"
       subtitle="축제로와 함께 설레는 여행을 시작하세요"
@@ -591,18 +586,60 @@ const SignupPage = () => {
           </div>
         </section>
 
-        <button
-          type="submit"
-          className="w-full h-[64px] bg-festival-purple text-white font-[900] text-lg rounded-2xl shadow-xl shadow-purple-100 hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-        >
-          다음 단계로 진행
-          <ChevronRight size={22} />
-        </button>
+<div className="pt-4 sm:pt-6 flex gap-3">
+
+  {/* Cancel */}
+  <button
+    type="button"
+    onClick={() => navigate('/login')}
+    className="
+      flex-1 sm:flex-none
+      sm:w-[140px]
+      h-[52px] sm:h-[56px]
+      rounded-2xl
+      border border-[#e5e7eb]
+      bg-white
+      text-[#666]
+      text-[14px] sm:text-[15px]
+      font-[700]
+      transition-all
+      hover:bg-gray-50
+      hover:border-gray-300
+      active:scale-[0.98]
+      flex items-center justify-center gap-1.5 sm:gap-2
+      whitespace-nowrap
+    "
+  >
+    취소
+  </button>
+
+  {/* Next */}
+  <button
+    type="submit"
+    className="
+      flex-[1.5]
+      h-[52px] sm:h-[56px]
+      rounded-2xl
+      bg-[#5b21b6]
+      text-white
+      text-[14px] sm:text-[16px]
+      font-[800]
+      shadow-[0_10px_24px_rgba(91,33,182,0.18)]
+      transition-all
+      hover:bg-[#4c1d95]
+      active:scale-[0.98]
+      flex items-center justify-center gap-2
+      whitespace-nowrap
+    "
+  >
+    다음 단계로 진행
+    <ChevronRight size={20} />
+  </button>
+
+</div>
       </form>
     </AuthLayout>
-    </main>
-    <Footer />
-    </> 
+   
   );
 };
 
