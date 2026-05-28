@@ -29,7 +29,7 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/festival/:id" element={<FestivalDetailPage />} />
-          <Route path="/test/map" element={<FestivalMapPage />} />
+          <Route path="/festival/map" element={<FestivalMapPage />} />
 
           {/* 커뮤니티 경로 */}
           <Route path="/community" element={<CommunityMainPage />} />

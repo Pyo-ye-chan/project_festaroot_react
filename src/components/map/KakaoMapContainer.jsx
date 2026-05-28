@@ -1,12 +1,31 @@
+import { useState, useEffect } from "react";
 import { Map, MapMarker, Circle, MarkerClusterer } from "react-kakao-maps-sdk";
 import useMapStore from "../../store/useMapStore";
 
 function KakaoMapContainer() {
-  const { searchParams, activeCategory, places } = useMapStore();
+  const { searchParams, activeCategory, places, selectedPlace, setSelectedPlace, fetchPlaceDetail } = useMapStore();
   const { radius, selectedFestival } = searchParams;
 
-  // 1. 기준 좌표 설정
+  // 1. 초기 레벨 설정 및 상태 관리
+  const initialLevel = radius > 15 ? 8 : radius > 10 ? 7 : radius > 5 ? 6 : 5;
+  const [level, setLevel] = useState(initialLevel);
+
+  // radius나 selectedPlace가 변경될 때마다 레벨 업데이트 (상세 정보 볼 때는 줌인)
+  useEffect(() => {
+    if (selectedPlace) {
+      setLevel(4); // 상세 정보 클릭 시 4레벨로 줌인
+    } else {
+      setLevel(initialLevel);
+    }
+  }, [radius, selectedPlace]);
+
+  // 2. 기준 좌표 설정
   const getCenter = () => {
+    // 선택된 상세 장소가 있으면 그곳을 중심으로
+    if (selectedPlace && selectedPlace.lat && selectedPlace.lng) {
+      return { lat: selectedPlace.lat, lng: selectedPlace.lng };
+    }
+
     if (selectedFestival && 
         selectedFestival.map_y !== undefined && 
         selectedFestival.map_x !== undefined) {
@@ -24,7 +43,7 @@ function KakaoMapContainer() {
 
   const center = getCenter();
 
-  // 2. 카테고리에 따른 마커 필터링
+  // 3. 카테고리에 따른 마커 필터링
   const filteredMarkers = places.filter(place => {
     if (activeCategory === '전체') return true;
     if (activeCategory === '음식점') return place.type === 'food';
@@ -33,15 +52,24 @@ function KakaoMapContainer() {
     return true;
   });
 
-  // 3. 원의 반지름 유효성 확인
+  // 4. 원의 반지름 유효성 확인
   const isValidRadius = !isNaN(radius) && radius > 0;
+
+  // 5. 클러스터링 적용 여부 (MarkerClusterer의 minLevel=6과 동일하게 설정)
+  const isClustered = level >= 6;
+
+  const handleMarkerClick = (marker) => {
+    setSelectedPlace(marker);
+    fetchPlaceDetail(marker.id, marker.contentTypeId);
+  };
 
   return (
     <Map
       center={center}
       isPanto={true} // 부드러운 이동 효과 추가
       className="w-full h-full"
-      level={radius > 15 ? 8 : radius > 10 ? 7 : radius > 5 ? 6 : 5}
+      level={level}
+      onZoomChanged={(map) => setLevel(map.getLevel())}
     >
       {/* 1. 기준 축제 위치 마커 (클러스터링 제외) */}
       {selectedFestival && !isNaN(center.lat) && center.lat !== 37.5665 && (
@@ -53,9 +81,12 @@ function KakaoMapContainer() {
             size: { width: 24, height: 35 }
           }}
         >
-          <div className="p-1 px-2 text-[#6B46FE] font-bold text-[10px] bg-white rounded shadow-sm">
-            📍 {selectedFestival.title}
-          </div>
+          {/* 클러스터링 수준에서는 설명 바를 숨김 */}
+          {!isClustered && (
+            <div className="p-1 px-2 text-[#6B46FE] font-bold text-[10px] bg-white rounded shadow-sm">
+              📍 {selectedFestival.title}
+            </div>
+          )}
         </MapMarker>
       )}
 
@@ -69,11 +100,14 @@ function KakaoMapContainer() {
             <MapMarker
               key={marker.id}
               position={{ lat: marker.lat, lng: marker.lng }}
-              onClick={() => alert(`${marker.title}\n${marker.category}`)}
+              onClick={() => handleMarkerClick(marker)}
             >
-              <div className="p-1 px-2 text-slate-700 text-[10px] bg-white/90 rounded border border-slate-100 whitespace-nowrap">
-                {marker.type === "food" ? "🍽️" : marker.type === "tour" ? "⛰️" : "🎉"} {marker.title}
-              </div>
+              {/* 클러스터링 수준에서는 설명 바를 숨김 */}
+              {!isClustered && (
+                <div className="p-1 px-2 text-slate-700 text-[10px] bg-white/90 rounded border border-slate-100 whitespace-nowrap">
+                  {marker.type === "food" ? "🍽️" : marker.type === "tour" ? "⛰️" : "🎉"} {marker.title}
+                </div>
+              )}
             </MapMarker>
           )
         ))}
