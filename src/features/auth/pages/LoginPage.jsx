@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Eye,
   EyeOff,
@@ -9,8 +9,14 @@ import {
   Bell,
   ChevronRight
 } from 'lucide-react';
+import { login } from '../../../api/authApi';
+import useAuthStore from '../../../store/useAuthStore';
+import Header from '../../../components/Header';
+import Footer from '../../../components/Footer';
 
 const LoginPage = () => {
+  const navigate = useNavigate();
+  const { setLoginState } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -48,87 +54,29 @@ const LoginPage = () => {
 
     try {
       setIsSubmitting(true);
+      const response = await login({ member_id: formData.id, password: formData.password });
 
-      // TODO: 로그인 API 연동
-      console.log('Login submitted:', formData);
-
-      alert(`${formData.id}님, 환영합니다!`);
+      if (response.data && response.data !== 'login_fail') {
+        const token = response.data;
+        setLoginState(true, token, { id: formData.id }); // 사용자 정보는 백엔드 응답에 따라 채워넣을 수 있음
+        alert(`${formData.id}님, 환영합니다!`);
+        navigate('/'); // 로그인 성공 시 메인 페이지로 이동
+      } else {
+        setError('아이디 또는 비밀번호가 올바르지 않습니다.');
+      }
     } catch (err) {
-      setError('아이디 또는 비밀번호가 올바르지 않습니다.');
+      console.error("Login error:", err);
+      setError('로그인 중 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
+    <>
+    <Header />
+    <main>
     <div className="min-h-screen bg-[#f8f9ff] text-[#111111] font-['Pretendard']">
-      {/* Header */}
-      <header className="h-[88px] bg-white/70 backdrop-blur-md border-b border-[#ece7ff]">
-        <div className="max-w-[1280px] mx-auto h-full px-6 lg:px-10 flex items-center justify-between">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#f8f9ff]/15 flex items-center justify-center text-[#f6b800] text-2xl">
-              ✺
-            </div>
-
-            <div>
-              <div className="text-[28px] font-[800] tracking-[-0.05em] text-[#22114f]">
-                축제로
-              </div>
-
-              <div className="text-xs font-[500] text-[#8b8b8b] mt-0.5">
-                축제와 여행이 만나는 곳
-              </div>
-            </div>
-          </Link>
-
-          {/* Navigation */}
-          <nav className="hidden md:flex items-center gap-10 text-[15px] font-[600] text-[#444]">
-            <Link
-              to="/festival"
-              className="hover:text-festival-purple transition-colors"
-            >
-              축제 찾기
-            </Link>
-
-            <Link
-              to="/region"
-              className="hover:text-festival-purple transition-colors"
-            >
-              지역별 축제
-            </Link>
-
-            <Link
-              to="/travel"
-              className="hover:text-festival-purple transition-colors"
-            >
-              여행 정보
-            </Link>
-
-            <Link
-              to="/community"
-              className="hover:text-festival-purple transition-colors"
-            >
-              커뮤니티
-            </Link>
-          </nav>
-
-          {/* Right Menu */}
-          <div className="hidden sm:flex items-center gap-5 text-[#111111]">
-            <Heart size={22} strokeWidth={1.8} />
-
-            <div className="relative">
-              <Bell size={22} strokeWidth={1.8} />
-
-              <span className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-festival-purple text-white text-[10px] font-[700] flex items-center justify-center">
-                3
-              </span>
-            </div>
-
-            <User size={22} strokeWidth={1.8} />
-          </div>
-        </div>
-      </header>
 
       {/* Main */}
       <main className="min-h-[calc(100vh-88px-120px)] flex flex-col items-center px-5 py-14 lg:py-16">
@@ -415,39 +363,11 @@ const LoginPage = () => {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="h-[120px] bg-white border-t border-[#ece7ff]">
-        <div className="max-w-[1280px] mx-auto h-full px-6 lg:px-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm font-[500] text-[#999]">
-          <div>
-            <div className="flex items-center gap-6 mb-3">
-              <Link to="/terms" className="hover:text-[#555]">
-                이용약관
-              </Link>
-
-              <Link to="/privacy" className="hover:text-[#555]">
-                개인정보처리방침
-              </Link>
-
-              <Link to="/help" className="hover:text-[#555]">
-                고객센터
-              </Link>
-
-              <Link to="/partnership" className="hover:text-[#555]">
-                제휴문의
-              </Link>
-            </div>
-
-            <p>
-              © 2025 축제로. All rights reserved.
-            </p>
-          </div>
-
-          <button className="px-4 h-10 rounded-xl border border-[#e7e2f7] bg-white text-[#555] font-[500]">
-            한국어
-          </button>
-        </div>
-      </footer>
+      
     </div>
+    </main>
+    <Footer />
+    </>
   );
 };
 
