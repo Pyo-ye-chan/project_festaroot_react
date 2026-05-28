@@ -1,19 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate} from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/useAuthStore';
 
 const Header = () => {
   const [region, setRegion] = useState('서울');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { isLoggedIn, logout } = useAuthStore();
   const navigate = useNavigate();
   const [isWeatherDropdownOpen, setIsWeatherDropdownOpen] = useState(false);
-  
+
   const dropdownRef = useRef(null);
 
   // Colors aligned with Footer
   const primaryPurple = '#6B46FE';
   const regions = [
-    '서울', '경기', '인천', '강원', '충북', '충남', '대전', '세종', 
+    '서울', '경기', '인천', '강원', '충북', '충남', '대전', '세종',
     '경북', '경남', '대구', '울산', '부산', '전북', '전남', '광주', '제주'
   ];
 
@@ -28,11 +29,10 @@ const Header = () => {
 
   const handleLoginLogout = () => {
     if (isLoggedIn) {
-      // Perform logout logic here (e.g., clear tokens, reset state)
-      setIsLoggedIn(true);
-      navigate('/'); // Redirect to home after logout
+      logout();
+      navigate('/');
     } else {
-      navigate('/login'); // Redirect to login page
+      navigate('/login');
     }
 
   }
@@ -75,15 +75,15 @@ const Header = () => {
             </button>
 
             {/* Profile/Login Button with Hover Effect */}
-            <button 
+            <button
               onClick={handleLoginLogout}
               className="group flex items-center gap-0 hover:gap-2 p-1 bg-white border border-gray-200 rounded-full hover:shadow-md transition-all duration-300 overflow-hidden"
               title={isLoggedIn ? '로그아웃' : '로그인'}
             >
               <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                <img 
-                  src={isLoggedIn ? "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" : "https://api.dicebear.com/7.x/avataaars/svg?seed=Guest"} 
-                  alt="Profile" 
+                <img
+                  src={isLoggedIn ? "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" : "https://api.dicebear.com/7.x/avataaars/svg?seed=Guest"}
+                  alt="Profile"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -93,7 +93,7 @@ const Header = () => {
             </button>
 
             {/* Mobile Menu Toggle */}
-            <button 
+            <button
               className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
@@ -115,7 +115,7 @@ const Header = () => {
           <ul className="flex gap-10">
             {navItems.map((item) => (
               <li key={item.name}>
-                <a 
+                <a
                   href={item.href}
                   className="block py-4 text-[16px] font-bold text-gray-600 hover:text-purple-600 transition-colors border-b-2 border-transparent hover:border-purple-600"
                   style={{ '--hover-color': primaryPurple }}
@@ -125,11 +125,11 @@ const Header = () => {
               </li>
             ))}
           </ul>
-          
+
           <div className="flex items-center gap-3 py-3 relative" ref={dropdownRef}>
             {/* Custom Smooth Dropdown for Weather Region */}
             <div className="flex items-center bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 gap-2 cursor-pointer hover:bg-blue-100 transition-colors"
-                 onClick={() => setIsWeatherDropdownOpen(!isWeatherDropdownOpen)}>
+              onClick={() => setIsWeatherDropdownOpen(!isWeatherDropdownOpen)}>
               <span className="text-sm font-bold text-blue-700">{region}</span>
               <svg className={`w-4 h-4 text-blue-400 transition-transform duration-300 ${isWeatherDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -168,7 +168,7 @@ const Header = () => {
           <ul className="grid grid-cols-2 gap-3">
             {navItems.map((item) => (
               <li key={item.name}>
-                <a 
+                <a
                   href={item.href}
                   className="flex items-center justify-center p-4 bg-gray-50 rounded-xl text-sm font-bold text-gray-700 active:bg-purple-50 active:text-purple-600 transition-colors"
                   onClick={() => setIsMenuOpen(false)}
@@ -178,14 +178,14 @@ const Header = () => {
               </li>
             ))}
           </ul>
-          
+
           <div className="pt-4 border-t border-gray-100">
             <div className="flex items-center justify-between px-2">
               <span className="text-sm font-bold text-gray-500">현재 지역 날씨</span>
               <div className="flex items-center gap-3">
-                <select 
-                  className="text-sm font-bold text-gray-700 bg-gray-100 px-3 py-2 rounded-lg border-none outline-none" 
-                  value={region} 
+                <select
+                  className="text-sm font-bold text-gray-700 bg-gray-100 px-3 py-2 rounded-lg border-none outline-none"
+                  value={region}
                   onChange={(e) => setRegion(e.target.value)}
                 >
                   {regions.map((r) => (
