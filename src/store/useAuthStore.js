@@ -2,21 +2,30 @@ import { create } from 'zustand';
 
 const useAuthStore = create((set) => ({
   signupData: {
-    id: '',
+    member_id: '',
     password: '',
     confirmPassword: '',
-    phoneNumber: '',
+    phone: '',
     nickname: '',
     name: '',
     gender: '',
     birthdate: '',
     email: '',
-    city: '',
-    district: '',
+    addr_sido: '',
+    addr_sigungu: '',
     agreeTerms: false,
     agreePrivacy: false,
-    agreeLocation: false
+    agreeLocation: false,
+    regions: [],
+    themes: []
   },
+  
+  // 로그인 상태 관련
+  isLoggedIn: false,
+  authToken: null,
+  user: null, // 로그인한 사용자 정보 (필요시 추가)
+
+  setLoginState: (isLoggedIn, authToken, user) => set({ isLoggedIn, authToken, user }),
   
   setSignupData: (data) => set((state) => ({
     signupData: { ...state.signupData, ...data }
@@ -24,20 +33,22 @@ const useAuthStore = create((set) => ({
   
   resetSignupData: () => set({
     signupData: {
-      id: '',
+      member_id: '',
       password: '',
       confirmPassword: '',
-      phoneNumber: '',
+      phone: '',
       nickname: '',
       name: '',
       gender: '',
       birthdate: '',
       email: '',
-      city: '',
-      district: '',
+      addr_sido: '',
+      addr_sigungu: '',
       agreeTerms: false,
       agreePrivacy: false,
-      agreeLocation: false
+      agreeLocation: false,
+      regions: [],
+      themes: []
     }
   })
 }));

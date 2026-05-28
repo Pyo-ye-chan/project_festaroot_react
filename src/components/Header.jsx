@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate} from 'react-router-dom';
 
 const Header = () => {
   const [region, setRegion] = useState('서울');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate();
   const [isWeatherDropdownOpen, setIsWeatherDropdownOpen] = useState(false);
   
   const dropdownRef = useRef(null);
@@ -24,6 +25,17 @@ const Header = () => {
     { name: 'AI 여행플래너', href: '#ai-planner' },
     { name: '마이페이지', href: '#mypage' },
   ];
+
+  const handleLoginLogout = () => {
+    if (isLoggedIn) {
+      // Perform logout logic here (e.g., clear tokens, reset state)
+      setIsLoggedIn(true);
+      navigate('/'); // Redirect to home after logout
+    } else {
+      navigate('/login'); // Redirect to login page
+    }
+
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -64,7 +76,7 @@ const Header = () => {
 
             {/* Profile/Login Button with Hover Effect */}
             <button 
-              onClick={() => setIsLoggedIn(!isLoggedIn)}
+              onClick={handleLoginLogout}
               className="group flex items-center gap-0 hover:gap-2 p-1 bg-white border border-gray-200 rounded-full hover:shadow-md transition-all duration-300 overflow-hidden"
               title={isLoggedIn ? '로그아웃' : '로그인'}
             >
