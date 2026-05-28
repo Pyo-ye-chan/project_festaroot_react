@@ -14,6 +14,8 @@ import {
 
 import useAuthStore from '../../../store/useAuthStore';
 import AuthLayout from '../components/AuthLayout';
+import Header from '../../../components/Header';
+import Footer from '../../../components/Footer';  
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -214,6 +216,10 @@ const SignupPage = () => {
   `;
 
   return (
+
+    <>
+    <Header />
+    <main>
     <AuthLayout
       title="회원가입"
       subtitle="축제로와 함께 설레는 여행을 시작하세요"
@@ -594,6 +600,9 @@ const SignupPage = () => {
         </button>
       </form>
     </AuthLayout>
+    </main>
+    <Footer />
+    </> 
   );
 };
 
