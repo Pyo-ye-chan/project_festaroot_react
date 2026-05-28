@@ -14,7 +14,7 @@ function PlaceCardList() {
   });
 
   const handlePlaceSelect = (place) => {
-    console.log(place.id)
+    
     setSelectedPlace(place);
     fetchPlaceDetail(place.id, place.contentTypeId);
   };

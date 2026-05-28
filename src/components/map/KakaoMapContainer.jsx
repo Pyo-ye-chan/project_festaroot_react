@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Map, MapMarker, Circle, MarkerClusterer } from "react-kakao-maps-sdk";
+import { Map, MapMarker, Circle, MarkerClusterer, CustomOverlayMap } from "react-kakao-maps-sdk";
 import useMapStore from "../../store/useMapStore";
 
 function KakaoMapContainer() {
@@ -73,21 +73,33 @@ function KakaoMapContainer() {
     >
       {/* 1. 기준 축제 위치 마커 (클러스터링 제외) */}
       {selectedFestival && !isNaN(center.lat) && center.lat !== 37.5665 && (
-        <MapMarker 
-          position={center}
-          zIndex={10} // 기준 마커가 항상 위에 보이도록 설정
-          image={{
-            src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
-            size: { width: 24, height: 35 }
-          }}
-        >
-          {/* 클러스터링 수준에서는 설명 바를 숨김 */}
+        <>
+          <MapMarker 
+            position={center}
+            zIndex={10}
+            image={{
+              src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
+              size: { width: 24, height: 35 }
+            }}
+          />
+          {/* 설명 바 오버레이 */}
           {!isClustered && (
-            <div className="p-1 px-2 text-[#6B46FE] font-bold text-[10px] bg-white rounded shadow-sm">
-              📍 {selectedFestival.title}
-            </div>
+            <CustomOverlayMap 
+              position={center} 
+              yAnchor={1.4} // 마커 위쪽으로 위치 조정
+              zIndex={11}
+            >
+              <div className="relative flex flex-col items-center">
+                <div className="px-3 py-1.5 bg-[#6B46FE] text-white font-bold text-[11px] rounded-full shadow-xl flex items-center gap-1.5 border-2 border-white whitespace-nowrap">
+                  <span className="text-[12px]">📍</span>
+                  {selectedFestival.title}
+                </div>
+                {/* Arrow (Tail) */}
+                <div className="w-2.5 h-2.5 bg-[#6B46FE] rotate-45 -mt-1.5 border-r-2 border-b-2 border-white shadow-lg" />
+              </div>
+            </CustomOverlayMap>
           )}
-        </MapMarker>
+        </>
       )}
 
       {/* 2. 주변 추천 장소 마커들 (클러스터링 적용) */}
@@ -97,18 +109,30 @@ function KakaoMapContainer() {
       >
         {filteredMarkers.map((marker) => (
           marker.lat && marker.lng && (
-            <MapMarker
-              key={marker.id}
-              position={{ lat: marker.lat, lng: marker.lng }}
-              onClick={() => handleMarkerClick(marker)}
-            >
-              {/* 클러스터링 수준에서는 설명 바를 숨김 */}
+            <div key={marker.id}>
+              <MapMarker
+                position={{ lat: marker.lat, lng: marker.lng }}
+                onClick={() => handleMarkerClick(marker)}
+              />
+              {/* 설명 바 오버레이 */}
               {!isClustered && (
-                <div className="p-1 px-2 text-slate-700 text-[10px] bg-white/90 rounded border border-slate-100 whitespace-nowrap">
-                  {marker.type === "food" ? "🍽️" : marker.type === "tour" ? "⛰️" : "🎉"} {marker.title}
-                </div>
+                <CustomOverlayMap 
+                  position={{ lat: marker.lat, lng: marker.lng }} 
+                  yAnchor={2.2} // 마커 위쪽으로 위치 조정
+                >
+                  <div className="relative flex flex-col items-center group pointer-events-none">
+                    <div className="px-2 py-1 bg-white text-slate-700 font-bold text-[10px] rounded-full shadow-md flex items-center gap-1.5 border border-slate-100 whitespace-nowrap">
+                      <span className="w-5 h-5 flex items-center justify-center bg-slate-50 rounded-full text-[11px]">
+                        {marker.type === "food" ? "🍽️" : marker.type === "tour" ? "⛰️" : "🎉"}
+                      </span>
+                      {marker.title}
+                    </div>
+                    {/* Arrow (Tail) */}
+                    <div className="w-2 h-2 bg-white rotate-45 -mt-1 border-r border-b border-slate-100 shadow-sm" />
+                  </div>
+                </CustomOverlayMap>
               )}
-            </MapMarker>
+            </div>
           )
         ))}
       </MarkerClusterer>

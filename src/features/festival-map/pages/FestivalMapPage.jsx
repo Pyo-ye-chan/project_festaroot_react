@@ -11,21 +11,31 @@ function FestivalMapPage() {
     const [isListVisible, setIsListVisible] = useState(true);
 
     return (
-        <div className="relative flex w-full h-[calc(100vh-140px-210px)] min-h-[700px] bg-slate-50 font-sans overflow-hidden">
-            {/* 1. 왼쪽 사이드바 영역 */}
+        <div className="relative flex w-full h-[calc(100vh-64px)] md:h-[calc(100vh-140px)] bg-slate-50 font-sans overflow-hidden">
+            {/* 1. 사이드바 영역 (모바일: 드로어, 데스크탑: 사이드바) */}
+            
+            {/* 모바일용 Backdrop */}
+            <div 
+                className={`md:hidden fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                onClick={() => setIsSidebarOpen(false)}
+            />
+
             <div 
                 className={`
                     fixed md:relative top-0 left-0 h-full z-40 transition-all duration-300 ease-in-out
-                    ${isSidebarOpen ? 'w-full md:w-[320px]' : 'w-0'}
+                    ${isSidebarOpen 
+                        ? 'translate-x-0 w-[300px] md:w-[320px]' 
+                        : '-translate-x-full md:translate-x-0 md:w-0'
+                    }
                 `}
             >
                 {/* 실제 사이드바 내용 컨테이너 */}
                 <div className={`h-full bg-white border-r border-slate-200 overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-                    <div className="w-[320px] h-full relative">
+                    <div className="w-[300px] md:w-[320px] h-full relative">
                         {/* 모바일용 닫기 버튼 */}
                         <button 
                             onClick={() => setIsSidebarOpen(false)}
-                            className="md:hidden absolute top-4 right-4 p-2 bg-slate-100 rounded-full text-slate-500 z-50"
+                            className="md:hidden absolute top-4 right-4 p-2 bg-slate-100 rounded-full text-slate-500 z-50 hover:bg-slate-200"
                         >
                             <ChevronLeft size={20} />
                         </button>
@@ -33,7 +43,7 @@ function FestivalMapPage() {
                     </div>
                 </div>
 
-                {/* 데스크탑 사이드바 토글 버튼 */}
+                {/* 데스크탑 사이드바 토글 버튼 (데스크탑에서만 노출) */}
                 <button 
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                     className={`

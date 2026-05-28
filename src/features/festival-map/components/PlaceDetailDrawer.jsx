@@ -98,6 +98,40 @@ const TourDetailSection = ({ data }) => (
       </div>
     </div>
 
+    {/* Convenience Facilities */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+        <span className="text-[11px] text-slate-400 font-bold block mb-1">주차 시설</span>
+        <p className="text-sm text-slate-700 font-medium" dangerouslySetInnerHTML={{ __html: data?.parking || '정보 없음' }} />
+      </div>
+      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+        <span className="text-[11px] text-slate-400 font-bold block mb-1">반려동물</span>
+        <p className="text-sm text-slate-700 font-medium">{data?.chkpet || '동반 불가'}</p>
+      </div>
+      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+        <span className="text-[11px] text-slate-400 font-bold block mb-1">유모차 대여</span>
+        <p className="text-sm text-slate-700 font-medium">{data?.chkbabycarriage || '불가'}</p>
+      </div>
+    </div>
+
+    {/* Experience Information */}
+    {(data?.expguide || data?.expagerange) && (
+      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-4">
+        {data?.expguide && (
+          <div>
+            <span className="text-[11px] text-slate-400 font-bold block mb-2">체험 안내</span>
+            <p className="text-sm text-slate-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: data.expguide }} />
+          </div>
+        )}
+        {data?.expagerange && (
+          <div className="pt-3 border-t border-slate-200/60">
+            <span className="text-[11px] text-slate-400 font-bold block mb-1">체험 가능연령</span>
+            <p className="text-sm text-slate-700 font-medium">{data.expagerange}</p>
+          </div>
+        )}
+      </div>
+    )}
+
     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
       <span className="text-[11px] text-slate-400 font-bold block mb-1">문의 및 안내</span>
       <p className="text-sm text-slate-700" dangerouslySetInnerHTML={{ __html: data?.infocenter || '정보 없음' }} />
@@ -105,30 +139,125 @@ const TourDetailSection = ({ data }) => (
   </section>
 );
 
-const FestivalDetailSection = ({ data }) => (
-  <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-    <div>
-      <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-        축제 프로그램
-      </h3>
-      <div className="bg-purple-50/30 border border-purple-100 rounded-2xl p-4">
-        <p className="text-sm text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: data?.program || '상세 프로그램 정보가 준비 중입니다.' }} />
-      </div>
-    </div>
+const FestivalDetailSection = ({ data }) => {
+  const getStatus = () => {
+    if (!data?.eventstartdate || !data?.eventenddate) return null;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const start = new Date(
+      data.eventstartdate.substring(0, 4),
+      parseInt(data.eventstartdate.substring(4, 6)) - 1,
+      data.eventstartdate.substring(6, 8)
+    );
+    const end = new Date(
+      data.eventenddate.substring(0, 4),
+      parseInt(data.eventenddate.substring(4, 6)) - 1,
+      data.eventenddate.substring(6, 8)
+    );
 
-    <div className="grid grid-cols-2 gap-3">
-      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-        <span className="text-[11px] text-slate-400 font-bold block mb-1">이용요금</span>
-        <p className="text-sm text-slate-700 truncate" dangerouslySetInnerHTML={{ __html: data?.usetimefestival || '무료' }} />
+    if (today < start) return { label: '진행예정', color: 'bg-blue-500' };
+    if (today > end) return { label: '진행종료', color: 'bg-gray-400' };
+    return { label: '진행중', color: 'bg-green-500 animate-pulse' };
+  };
+
+  const status = getStatus();
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr.length !== 8) return dateStr;
+    return `${dateStr.substring(0, 4)}.${dateStr.substring(4, 6)}.${dateStr.substring(6, 8)}`;
+  };
+
+  return (
+    <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      {/* Date and Status Badge */}
+      <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+        <div className="flex flex-col gap-1">
+          <span className="text-[11px] text-slate-400 font-bold">행사 기간</span>
+          <p className="text-sm text-slate-700 font-bold">
+            {formatDate(data?.eventstartdate)} ~ {formatDate(data?.eventenddate)}
+          </p>
+        </div>
+        {status && (
+          <span className={`${status.color} text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-sm`}>
+            {status.label}
+          </span>
+        )}
       </div>
-      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-        <span className="text-[11px] text-slate-400 font-bold block mb-1">공연시간</span>
-        <p className="text-sm text-slate-700 truncate" dangerouslySetInnerHTML={{ __html: data?.playtime || '정보 없음' }} />
+
+      {/* Main Info */}
+      <div className="space-y-4">
+        <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+          축제 상세 정보
+        </h3>
+        
+        <div className="grid grid-cols-1 gap-3">
+          {data?.eventplace && (
+            <div className="bg-purple-50/30 border border-purple-100 p-4 rounded-xl">
+              <span className="text-[11px] text-purple-600 font-bold block mb-1">상세 장소</span>
+              <p className="text-sm text-slate-700 font-medium">{data.eventplace}</p>
+            </div>
+          )}
+          {data?.usefee && (
+            <div className="bg-purple-50/30 border border-purple-100 p-4 rounded-xl">
+              <span className="text-[11px] text-purple-600 font-bold block mb-1">이용 요금</span>
+              <p className="text-sm text-slate-700 font-medium" dangerouslySetInnerHTML={{ __html: data.usefee }} />
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  </section>
-);
+
+      {/* Program and Schedule */}
+      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-4">
+        <div>
+          <span className="text-[11px] text-slate-400 font-bold block mb-2">주요 프로그램</span>
+          <p className="text-sm text-slate-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: data?.program || '정보 없음' }} />
+        </div>
+        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200/60">
+          <div>
+            <span className="text-[11px] text-slate-400 font-bold block mb-1">공연 시간</span>
+            <p className="text-sm text-slate-700 font-medium">{data?.playtime || '정보 없음'}</p>
+          </div>
+          <div>
+            <span className="text-[11px] text-slate-400 font-bold block mb-1">관람 소요시간</span>
+            <p className="text-sm text-slate-700 font-medium">{data?.spendtimefestival || '정보 없음'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Info */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+          <span className="text-[11px] text-gray-400 font-bold block mb-1">관람 가능연령</span>
+          <p className="text-sm text-slate-700 font-medium">{data?.agelimit || '전체 관람가'}</p>
+        </div>
+        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+          <span className="text-[11px] text-gray-400 font-bold block mb-1">예매처</span>
+          <p className="text-sm text-slate-700 font-medium">{data?.bookingplace || '현장 예매'}</p>
+        </div>
+      </div>
+
+      {data?.discountinfofestival && (
+        <div className="bg-rose-50/30 border border-rose-100 p-4 rounded-xl">
+          <span className="text-[11px] text-rose-500 font-bold block mb-1">할인 정보</span>
+          <p className="text-sm text-slate-700 font-medium" dangerouslySetInnerHTML={{ __html: data.discountinfofestival }} />
+        </div>
+      )}
+
+      {/* Sponsors */}
+      {(data?.sponsor1 || data?.sponsor1tel) && (
+        <div className="bg-slate-100/50 p-4 rounded-xl border border-slate-200/50">
+          <span className="text-[11px] text-slate-500 font-bold block mb-2">주최/주관</span>
+          <div className="flex flex-wrap justify-between items-center gap-2">
+            <p className="text-sm text-slate-800 font-bold">{data.sponsor1}</p>
+            <p className="text-sm text-purple-600 font-black">{data.sponsor1tel}</p>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};
 
 // --- Main Drawer Component ---
 
