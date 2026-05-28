@@ -3,23 +3,47 @@ import { Link } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 
 const AuthLayout = ({ children, title, subtitle, maxWidth = 'max-w-md' }) => {
+
+  const primaryPurple = '#5b21b6';
+  
   return (
     <div className="min-h-screen bg-[#f8f9ff] text-[#111111] font-['Pretendard']">
       {/* Header consistent with the app's branding */}
-      <header className="h-[80px] bg-white/80 backdrop-blur-xl border-b border-[#eee] sticky top-0 z-50">
-        <div className="max-w-[1200px] mx-auto h-full px-6 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-festival-purple flex items-center justify-center text-white shadow-lg shadow-purple-100">
-              <Sparkles size={20} fill="currentColor" />
-            </div>
-            <span className="text-[22px] font-[900] tracking-tight text-[#22114f]">축제로</span>
-          </Link>
-          <div className="flex items-center gap-6 text-[15px] font-bold text-gray-500">
-            <Link to="/login" className="hover:text-festival-purple transition-colors">로그인</Link>
-            <Link to="/signup" className="text-festival-purple hover:text-festival-purple/80 transition-colors">회원가입</Link>
-          </div>
-        </div>
-      </header>
+            <header className="w-full bg-white border-b border-gray-200 shrink-0">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center h-[60px] sm:h-[68px] lg:h-[72px]">
+      
+                  <Link to="/" className="flex items-center gap-2 group">
+                    <div
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105"
+                      style={{ backgroundColor: primaryPurple }}
+                    >
+                      <svg
+                        className="w-5 h-5 sm:w-6 sm:h-6 text-white"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                        <path d="M2 17l10 5 10-5" />
+                        <path d="M2 12l10 5 10-5" />
+                      </svg>
+                    </div>
+      
+                    <span
+                      className="text-xl sm:text-2xl font-black tracking-tight"
+                      style={{ color: primaryPurple }}
+                    >
+                      축제로
+                    </span>
+                  </Link>
+      
+                </div>
+              </div>
+            </header>
 
       <main className={`${maxWidth} mx-auto px-6 py-12 lg:py-20`}>
         <div className="text-center mb-10">
