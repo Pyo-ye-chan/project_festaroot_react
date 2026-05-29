@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Eye,
@@ -11,11 +11,33 @@ import {
 import { login } from '../../../api/authApi';
 import useAuthStore from '../../../store/useAuthStore';
 
-
 const LoginPage = () => {
+
+  useEffect(() => {
+
+    const receiveMessage = (event) => {
+
+      if (event.data.type === 'KAKAO_LOGIN_SUCCESS') {
+
+        const { token, user } = event.data;
+
+        setAuthLogin(token, user);
+
+        navigate('/');
+
+      }
+
+    };
+
+    window.addEventListener('message', receiveMessage);
+
+    return () => {
+      window.removeEventListener('message', receiveMessage);
+    };
+
+  }, []);
+
   const navigate = useNavigate();
-
-
 
   const { login: setAuthLogin } = useAuthStore();
 
@@ -58,6 +80,7 @@ const LoginPage = () => {
     }
 
     try {
+
       setIsSubmitting(true);
 
       const response = await login({
@@ -65,24 +88,70 @@ const LoginPage = () => {
         password: formData.password
       });
 
-      if (response.data && response.data !== 'login_fail') {
-        const token = response.data;
+      const data = response.data;
+
+      if (data.success) {
+
+        const token = data.token;
 
         setAuthLogin(token, {
           id: formData.id
         });
 
-        alert(`${formData.id}님, 환영합니다!`);
+        alert(data.message);
+
         navigate('/');
+
       } else {
-        setError('아이디 또는 비밀번호가 올바르지 않습니다.');
+
+        setError(data.message);
+
       }
+
     } catch (err) {
+
       console.error('Login error:', err);
-      setError('로그인 중 오류가 발생했습니다.');
+
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('로그인 중 오류가 발생했습니다.');
+      }
+
     } finally {
+
       setIsSubmitting(false);
+
     }
+  };
+
+  const handleKakaoLogin = () => {
+
+    const width = 500;
+    const height = 700;
+
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    const kakaoURL =
+      `https://kauth.kakao.com/oauth/authorize` +
+      `?client_id=${import.meta.env.VITE_KAKAO_REST_API_KEY}` +
+      `&redirect_uri=${import.meta.env.VITE_KAKAO_REDIRECT_URI}` +
+      `&response_type=code`;
+
+    window.open(
+      kakaoURL,
+      'kakaoLogin',
+      `
+      width=${width},
+      height=${height},
+      left=${left},
+      top=${top},
+      resizable=no,
+      scrollbars=no,
+      status=no
+    `
+    );
   };
 
   return (
@@ -255,6 +324,25 @@ const LoginPage = () => {
 
           {/* Social Login */}
           <div className="grid grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 gap-2 sm:gap-3">
+
+            <button
+              type="button"
+              onClick={handleKakaoLogin}
+              className="h-[44px] sm:h-[46px] rounded-xl bg-[#FEE500] hover:brightness-95 transition-all flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-[700] text-[#191919]"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                className="w-5 h-5"
+                fill="currentColor"
+              >
+                <path d="M12 3C6.477 3 2 6.438 2 10.667c0 2.694 1.82 5.06 4.563 6.42l-1.152 4.21a.5.5 0 0 0 .74.553l4.87-3.19c.32.03.646.046.979.046 5.523 0 10-3.438 10-7.667S17.523 3 12 3z" />
+              </svg>
+
+              카카오
+            </button>
+
+
             <button
               type="button"
               className="h-[44px] sm:h-[46px] rounded-xl border border-[#e7e2f7] bg-white hover:bg-[#faf8ff] transition-colors flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-[600] text-[#333]"
@@ -275,15 +363,7 @@ const LoginPage = () => {
               구글
             </button>
 
-            <button
-              type="button"
-              className="h-[44px] sm:h-[46px] rounded-xl border border-[#e7e2f7] bg-white hover:bg-[#faf8ff] transition-colors flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-[600] text-[#333]"
-            >
-              <span className="text-lg sm:text-xl">
-                
-              </span>
-              Apple
-            </button>
+
           </div>
         </section>
 

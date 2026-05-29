@@ -11,9 +11,9 @@ import {
   Info,
   Mail
 } from 'lucide-react';
-
 import useMemberStore from '../../../store/useMemberStore';
 import AuthLayout from '../components/AuthLayout';
+import { getSidoList, getSigunguList } from '../../../api/regionApi';
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -29,8 +29,12 @@ const SignupPage = () => {
     gender: '',
     birthdate: '',
     email: '',
+
     addr_sido: '',
     addr_sigungu: '',
+    reside_area_code: '',
+    reside_sigungu_code: '',
+    
     agreeTerms: false,
     agreePrivacy: false,
     agreeLocation: false,
@@ -39,38 +43,36 @@ const SignupPage = () => {
 
   const [errors, setErrors] = useState({});
 
-  const passwordMatch =
-    formData.confirmPassword === '' ||
-    formData.password === formData.confirmPassword;
 
-  const cities = {
-    '서울특별시': ['강남구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구', '금천구', '노원구', '도봉구', '동대문구', '동작구', '마포구', '서대문구', '서초구', '성동구', '성북구', '송파구', '양천구', '영등포구', '용산구', '은평구', '종로구', '중구', '중랑구'],
-    '인천광역시': ['계양구', '미추홀구', '남동구', '동구', '부평구', '서구', '연수구', '중구', '강화군', '옹진군'],
-    '경기도': ['수원시', '성남시', '고양시', '용인시', '부천시', '안산시', '남양주시', '안양시', '화성시', '평택시', '시흥시', '파주시', '의정부시', '김포시', '광주시', '광명시', '군포시', '하남시', '오산시', '양주시', '이천시', '구리시', '안성시', '포천시', '의왕시', '양평군', '여주시', '동두천시', '가평군', '과천시', '연천군'],
-    '강원특별자치도': ['춘천시', '원주시', '강릉시', '동해시', '태백시', '속초시', '삼척시', '홍천군', '횡성군', '영월군', '평창군', '정선군', '철원군', '화천군', '양구군', '인제군', '고성군', '양양군'],
-    '충청북도': ['청주시', '충주시', '제천시', '보은군', '옥천군', '영동군', '증평군', '진천군', '괴산군', '음성군', '단양군'],
-    '충청남도': ['천안시', '공주시', '보령시', '아산시', '서산시', '논산시', '계룡시', '당진시', '금산군', '부여군', '서천군', '청양군', '홍성군', '예산군', '태안군'],
-    '대전광역시': ['대덕구', '동구', '서구', '유성구', '중구'],
-    '세종특별자치시': ['세종시'],
-    '전라북도': ['전주시', '군산시', '익산시', '정읍시', '남원시', '김제시', '완주군', '진안군', '무주군', '장수군', '임실군', '순창군', '고창군', '부안군'],
-    '전라남도': ['목포시', '여수시', '순천시', '나주시', '광양시', '담양군', '곡성군', '구례군', '고흥군', '보성군', '화순군', '장흥군', '강진군', '해남군', '영암군', '무안군', '함평군', '영광군', '장성군', '완도군', '진도군', '신안군'],
-    '광주광역시': ['광산구', '동구', '서구', '남구', '북구'],
-    '경상북도': ['포항시', '경주시', '김천시', '안동시', '구미시', '영주시', '영천시', '상주시', '문경시', '경산시', '군위군', '의성군', '청송군', '영양군', '영덕군', '청도군', '고령군', '성주군', '칠곡군', '예천군', '봉화군', '울진군', '울릉군'],
-    '경상남도': ['창원시', '진주시', '통영시', '사천시', '김해시', '밀양시', '거제시', '양산시', '의령군', '함안군', '창녕군', '고성군', '남해군', '하동군', '산청군', '함양군', '거창군', '합천군'],
-    '대구광역시': ['남구', '달서구', '동구', '북구', '서구', '수성구', '중구', '달성군'],
-    '울산광역시': ['남구', '동구', '북구', '중구', '울주군'],
-    '부산광역시': ['강서구', '금정구', '남구', '동구', '동래구', '부산진구', '북구', '사상구', '사하구', '서구', '수영구', '연제구', '영도구', '중구', '해운대구', '기장군'],
-    '제주특별자치도': ['제주시', '서귀포시']
-  };
+  const [sidoList, setSidoList] = useState([]);
+  const [sigunguList, setSigunguList] = useState([]);
+  const [isSigunguLoading, setIsSigunguLoading] = useState(false);
 
   useEffect(() => {
+    const fetchSidoList = async () => {
+      try {
+        const res = await getSidoList();
+        setSidoList(res.data);
+      } catch (error) {
+        console.error('시/도 목록 조회 실패:', error);
+      }
+    };
+
+    fetchSidoList();
+
     setFormData((prev) => ({
       ...prev,
       ...signupData
     }));
   }, [signupData]);
 
+
+  const passwordMatch =
+    formData.confirmPassword === '' ||
+    formData.password === formData.confirmPassword;
+
   const validate = () => {
+
     const newErrors = {};
 
     const idRegex = /^[a-zA-Z0-9]{6,20}$/;
@@ -114,11 +116,11 @@ const SignupPage = () => {
       newErrors.gender = '성별을 선택해주세요.';
     }
 
-    if (!formData.addr_sido) {
+    if (!formData.reside_area_code) {
       newErrors.addr_sido = '시/도를 선택해주세요.';
     }
 
-    if (!formData.addr_sigungu) {
+    if (!formData.reside_sigungu_code) {
       newErrors.addr_sigungu = '시/군/구를 선택해주세요.';
     }
 
@@ -133,6 +135,57 @@ const SignupPage = () => {
       ...formData,
       [name]: type === 'checkbox' ? checked : value,
       ...(name === 'addr_sido' ? { addr_sigungu: '' } : {})
+    };
+
+    setFormData(newData);
+    setSignupData(newData);
+  };
+
+  const handleSidoChange = async (e) => {
+    const regionCode = e.target.value;
+
+    const selectedSido = sidoList.find(
+      (item) => item.region_code === regionCode
+    );
+
+    const newData = {
+      ...formData,
+      reside_area_code: regionCode,
+      addr_sido: selectedSido?.region_name || '',
+      reside_sigungu_code: '',
+      addr_sigungu: ''
+    };
+
+    setFormData(newData);
+    setSignupData(newData);
+    setSigunguList([]);
+
+    if (!regionCode) return;
+
+    try {
+      setIsSigunguLoading(true);
+
+      const res = await getSigunguList(regionCode);
+      setSigunguList(res.data);
+    } catch (error) {
+      console.error('시/군/구 목록 조회 실패:', error);
+      setSigunguList([]);
+    } finally {
+      setIsSigunguLoading(false);
+    }
+  };
+
+  const handleSigunguChange = (e) => {
+    const sigunguCode = e.target.value;
+
+    const selectedSigungu = sigunguList.find(
+      (item) => item.sigungu_code === sigunguCode
+    );
+
+    const newData = {
+      ...formData,
+      reside_sigungu_code: sigunguCode,
+      addr_sigungu: selectedSigungu?.sigungu_name || ''
     };
 
     setFormData(newData);
@@ -289,11 +342,10 @@ const SignupPage = () => {
                   value={formData.confirmPassword || ''}
                   onChange={handleChange}
                   placeholder="비밀번호 다시 입력"
-                  className={`${inputClass} pl-11 ${
-                    !passwordMatch && formData.confirmPassword
-                      ? 'border-red-400 focus:ring-red-50'
-                      : ''
-                  }`}
+                  className={`${inputClass} pl-11 ${!passwordMatch && formData.confirmPassword
+                    ? 'border-red-400 focus:ring-red-50'
+                    : ''
+                    }`}
                   required
                 />
               </div>
@@ -408,11 +460,10 @@ const SignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('M')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
-                      formData.gender === 'M'
-                        ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
-                        : 'text-gray-400'
-                    }`}
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'M'
+                      ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
+                      : 'text-gray-400'
+                      }`}
                   >
                     남성
                   </button>
@@ -420,11 +471,10 @@ const SignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('F')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
-                      formData.gender === 'F'
-                        ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
-                        : 'text-gray-400'
-                    }`}
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'F'
+                      ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
+                      : 'text-gray-400'
+                      }`}
                   >
                     여성
                   </button>
@@ -465,16 +515,16 @@ const SignupPage = () => {
                 </label>
 
                 <select
-                  name="addr_sido"
-                  value={formData.addr_sido || ''}
-                  onChange={handleChange}
+                  name="reside_area_code"
+                  value={formData.reside_area_code || ''}
+                  onChange={handleSidoChange}
                   className={`${inputClass} px-5 bg-white appearance-none`}
                   required
                 >
                   <option value="">시/도 선택</option>
-                  {Object.keys(cities).map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                  {sidoList.map((sido) => (
+                    <option key={sido.region_code} value={sido.region_code}>
+                      {sido.region_name}
                     </option>
                   ))}
                 </select>
@@ -489,21 +539,23 @@ const SignupPage = () => {
                 </label>
 
                 <select
-                  name="addr_sigungu"
-                  value={formData.addr_sigungu || ''}
-                  onChange={handleChange}
-                  className={`${inputClass} px-5 bg-white appearance-none ${
-                    !formData.addr_sido
-                      ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                      : ''
-                  }`}
+                  name="reside_sigungu_code"
+                  value={formData.reside_sigungu_code || ''}
+                  onChange={handleSigunguChange}
+                  className={`${inputClass} px-5 bg-white appearance-none ${!formData.reside_area_code
+                    ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                    : ''
+                    }`}
                   required
-                  disabled={!formData.addr_sido}
+                  disabled={!formData.reside_area_code || isSigunguLoading}
                 >
-                  <option value="">시/군/구 선택</option>
-                  {(cities[formData.addr_sido] || []).map((d) => (
-                    <option key={d} value={d}>
-                      {d}
+                  <option value="">
+                    {isSigunguLoading ? '로딩 중...' : '시/군/구 선택'}
+                  </option>
+
+                  {sigunguList.map((sigungu) => (
+                    <option key={sigungu.sigungu_code} value={sigungu.sigungu_code}>
+                      {sigungu.sigungu_name}
                     </option>
                   ))}
                 </select>
@@ -528,13 +580,12 @@ const SignupPage = () => {
             />
 
             <div
-              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                formData.agreeTerms &&
+              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.agreeTerms &&
                 formData.agreePrivacy &&
                 formData.agreeLocation
-                  ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-100'
-                  : 'bg-white border-gray-300'
-              }`}
+                ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-100'
+                : 'bg-white border-gray-300'
+                }`}
             >
               <Check size={16} className="text-white" />
             </div>
@@ -561,11 +612,10 @@ const SignupPage = () => {
                   />
 
                   <div
-                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-                      formData[item.id]
-                        ? 'bg-festival-purple border-festival-purple'
-                        : 'bg-white border-gray-300 group-hover:border-festival-purple'
-                    }`}
+                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData[item.id]
+                      ? 'bg-festival-purple border-festival-purple'
+                      : 'bg-white border-gray-300 group-hover:border-festival-purple'
+                      }`}
                   >
                     <Check size={14} className="text-white" />
                   </div>
@@ -586,13 +636,13 @@ const SignupPage = () => {
           </div>
         </section>
 
-<div className="pt-4 sm:pt-6 flex gap-3">
+        <div className="pt-4 sm:pt-6 flex gap-3">
 
-  {/* Cancel */}
-  <button
-    type="button"
-    onClick={() => navigate('/login')}
-    className="
+          {/* Cancel */}
+          <button
+            type="button"
+            onClick={() => navigate('/login')}
+            className="
       flex-1 sm:flex-none
       sm:w-[140px]
       h-[52px] sm:h-[56px]
@@ -609,14 +659,14 @@ const SignupPage = () => {
       flex items-center justify-center gap-1.5 sm:gap-2
       whitespace-nowrap
     "
-  >
-    취소
-  </button>
+          >
+            취소
+          </button>
 
-  {/* Next */}
-  <button
-    type="submit"
-    className="
+          {/* Next */}
+          <button
+            type="submit"
+            className="
       flex-[1.5]
       h-[52px] sm:h-[56px]
       rounded-2xl
@@ -631,15 +681,15 @@ const SignupPage = () => {
       flex items-center justify-center gap-2
       whitespace-nowrap
     "
-  >
-    다음 단계로 진행
-    <ChevronRight size={20} />
-  </button>
+          >
+            다음 단계로 진행
+            <ChevronRight size={20} />
+          </button>
 
-</div>
+        </div>
       </form>
     </AuthLayout>
-   
+
   );
 };
 
