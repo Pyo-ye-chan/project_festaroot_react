@@ -1,21 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import festivalService from '../../api/festivalService';
 
 // --- Sub-component: Hero ---
 const Hero = () => {
+
+  // 축제 데이터 업데이트 버튼을 눌렀을 때,
+  const handleUpdateDB = async () => {
+    if (confirm("축제API 데이터가 DB에 업데이트 됩니다. 진행하시겠습니까?")) {
+      try {
+        // axios 호출
+        alert("try 진입")
+        const result = await festivalService.upsertFestivals();
+        console.log(result)
+        alert(result)
+      } catch (error) {
+        console.error("메인에서 잡은 에러 : ", error)
+        alert("서버 연결에 실패했거나 업데이트 중 오류가 발생했습니다.")
+      }
+    } else { // 취소 버튼을 눌렀을 때,
+      alert("업데이트가 취소되었습니다.")
+    }
+  }
+
   return (
     <section className="relative h-[550px] flex items-center justify-center overflow-hidden bg-slate-900">
       <div className="absolute inset-0">
-        <img 
-          src="https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=2070" 
-          alt="Festival background" 
+        <img
+          src="https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=2070"
+          alt="Festival background"
           className="w-full h-full object-cover opacity-50"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/20 to-slate-900/60"></div>
       </div>
       <div className="relative z-10 w-full max-w-4xl px-4 text-center">
         <h2 className="text-4xl md:text-6xl font-black text-white mb-8 drop-shadow-lg leading-tight">
-          함께 즐기는 모든 순간, <br/>
+          함께 즐기는 모든 순간, <br />
           <span className="text-purple-400">축제로</span>부터
         </h2>
         <div className="flex flex-wrap justify-center gap-4">
@@ -32,6 +52,11 @@ const Hero = () => {
             </svg>
             지도에서 찾기
           </button>
+
+          <button onClick={handleUpdateDB} className="px-8 py-4 bg-green-500/10 backdrop-blur-md border border-green-500/20 hover:bg-green-500/20 text-white font-bold rounded-2xl transition-all duration-300 flex items-center gap-2 text-lg active:scale-95">
+            축제 데이터 DB 업데이트 하기
+          </button>
+
         </div>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           {['#인기축제', '#가족과함께', '#서울야경', '#먹거리축제'].map(tag => (
@@ -101,7 +126,7 @@ const ClosingSoon = () => {
         </h3>
         <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-full uppercase tracking-tighter border border-gray-100">Hurry Up</span>
       </div>
-      
+
       <div className="space-y-3 flex-grow">
         {items.map((item) => (
           <Link to={`/festival/${item.id}`} key={item.id} className="flex items-center gap-4 p-4 bg-gray-50/50 hover:bg-white rounded-2xl transition-all duration-300 cursor-pointer group border border-transparent hover:border-rose-100 hover:shadow-sm">
@@ -136,7 +161,7 @@ const RandomFestival = () => {
       <div className="relative z-10">
         <h3 className="text-xl font-black mb-1 text-purple-900 font-black">어디 갈지 고민인가요?</h3>
         <p className="text-purple-400 text-[10px] font-bold opacity-80 mb-8 uppercase tracking-widest">Random Pick</p>
-        
+
         <div className="min-h-[100px] flex items-center justify-center mb-8">
           {isSpinning ? (
             <div className="flex flex-col items-center gap-3">
@@ -155,7 +180,7 @@ const RandomFestival = () => {
           )}
         </div>
 
-        <button 
+        <button
           onClick={handlePick}
           disabled={isSpinning}
           className="w-full bg-purple-600 text-white font-black py-4 rounded-2xl hover:bg-purple-700 transition-all duration-300 active:scale-95 disabled:opacity-50 shadow-lg shadow-purple-200"
@@ -327,8 +352,8 @@ const PopularPosts = () => {
             </div>
             <div className="flex-shrink-0">
               <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden border-2 border-white shadow-sm group-hover:border-purple-100 transition-all duration-500">
-                <img 
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author}`} 
+                <img
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author}`}
                   alt={post.author}
                   className="w-full h-full object-cover"
                 />
