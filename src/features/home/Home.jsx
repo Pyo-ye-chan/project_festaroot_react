@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import festivalService from '../../api/festivalService';
+import useLoadingStore from '../../store/useLoadingStore';
 
 // --- Sub-component: Hero ---
 const Hero = () => {
+
+  const { startLoading, stopLoading } = useLoadingStore(); // 로딩바 zustand로 가져오기
 
   // 축제 데이터 업데이트 버튼을 눌렀을 때,
   const handleUpdateDB = async () => {
     if (confirm("축제API 데이터가 DB에 업데이트 됩니다. 진행하시겠습니까?")) {
       try {
+        // 로딩바 시작
+        startLoading();
+
         // axios 호출
         const result = await festivalService.upsertFestivals();
         console.log(result)
@@ -16,6 +22,8 @@ const Hero = () => {
       } catch (error) {
         console.error("메인에서 잡은 에러 : ", error)
         alert("서버 연결에 실패했거나 업데이트 중 오류가 발생했습니다.")
+      } finally { // 연결에 성공하든 실패하든 로딩 종료하기
+        stopLoading();
       }
     } else { // 취소 버튼을 눌렀을 때,
       alert("업데이트가 취소되었습니다.")
