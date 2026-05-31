@@ -10,7 +10,6 @@ const Hero = () => {
     if (confirm("축제API 데이터가 DB에 업데이트 됩니다. 진행하시겠습니까?")) {
       try {
         // axios 호출
-        alert("try 진입")
         const result = await festivalService.upsertFestivals();
         console.log(result)
         alert(result)
