@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { maxios } from './axiosApi';
 
 // 백엔드 API 베이스 URL (개발 환경에 맞춰 조정 필요)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost/api';
@@ -61,7 +62,19 @@ const festivalService = {
       console.error(`Error fetching event detail ${contentId}:`, error);
       throw error;
     }
+  },
+
+  // 축제 정보 업데이트 코드
+  upsertFestivals: async () => {
+    try{
+      const response = await maxios.post(`/api/festivals/sync`); // 백엔드에 축제 데이터 동기화 API 호출
+      return response.data; // 백엔드가 보낸 결과 데이터 호출부로 반환
+    }catch(error){
+      console.error('Error sycing festivals', error);
+      throw error; // 에러 메인으로 던지기
+    }
   }
+
 };
 
 export default festivalService;

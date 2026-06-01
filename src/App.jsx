@@ -18,14 +18,16 @@ import PostWritePage from './features/community/pages/PostWritePage'
 import MainLayout from './components/MainLayout'
 import ChatListPage from './features/chat/ChatListPage'
 import FloatingChat from './features/chat/FloatingChat'
+import SearchPage from './features/search/pages/SearchPage'
 import useChatStore from './store/useChatStore'
+import LoadingSpinner from './components/LoadingSpinner'
+import useLoadingStore from './store/useLoadingStore'
 import KakaoCallbackPage from './features/auth/pages/KakaoCallbackPage'
 import SocialSignupPage from './features/auth/pages/SolcialSignupPage'
 
 function App() {
-
-
-  const { isFloating } = useChatStore();
+  const { isFloating } = useChatStore(); // 채팅방 띄우기
+  const isLoading = useLoadingStore(state => state.isLoading); // 로딩 상태 확인
 
   return (
     <>
@@ -40,8 +42,9 @@ function App() {
           <Route path="/community/board/:category" element={<BoardListPage />} />
           <Route path="/community/post/:id" element={<PostDetailPage />} />
           <Route path="/community/write" element={<PostWritePage />} />
-          
+
           <Route path="/chats" element={<ChatListPage />} />
+          <Route path="/search" element={<SearchPage />} />
         </Route>
 
         <Route path="/login" element={<LoginPage />} />
@@ -52,6 +55,9 @@ function App() {
         <Route path="oauth/kakao/callback" element={<KakaoCallbackPage />} />
         <Route path="/find-account" element={<FindAccountPage />} />
       </Routes>
+
+      {/* Routes 바깥 영역에 조건부 렌더링으로 배치 / 주소창 영향X */}
+      {isLoading && <LoadingSpinner />}
       {isFloating && <FloatingChat />}
     </>
 
