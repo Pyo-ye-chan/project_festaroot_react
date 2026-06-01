@@ -1,49 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  User,
-  Lock,
   Calendar,
   MapPin,
   Check,
   ChevronRight,
   Phone,
   Info,
-  Mail
+  Mail,
+  User
 } from 'lucide-react';
+
 import useMemberStore from '../../../store/useMemberStore';
 import AuthLayout from '../components/AuthLayout';
 import { getSidoList, getSigunguList } from '../../../api/regionApi';
 
-const SignupPage = () => {
+const SocialSignupPage = () => {
   const navigate = useNavigate();
   const { signupData, setSignupData } = useMemberStore();
 
   const [formData, setFormData] = useState({
-    member_id: '',
-    password: '',
-    confirmPassword: '',
-    phone: '',
-    name: '',
-    nickname: '',
-    gender: '',
-    birthdate: '',
-    email: '',
+    social_provider: signupData.social_provider || '',
+    social_id: signupData.social_id || '',
 
-    addr_sido: '',
-    addr_sigungu: '',
-    reside_area_code: '',
-    reside_sigungu_code: '',
-    
-    agreeTerms: false,
-    agreePrivacy: false,
-    agreeLocation: false,
-    ...signupData
+    name: signupData.name || '',
+    nickname: signupData.nickname || '',
+    email: signupData.email || '',
+    phone: signupData.phone || '',
+    gender: signupData.gender || '',
+    birthdate: signupData.birthdate || '',
+
+    addr_sido: signupData.addr_sido || '',
+    addr_sigungu: signupData.addr_sigungu || '',
+    reside_area_code: signupData.reside_area_code || '',
+    reside_sigungu_code: signupData.reside_sigungu_code || '',
+
+    agreeTerms: signupData.agreeTerms || false,
+    agreePrivacy: signupData.agreePrivacy || false,
+    agreeLocation: signupData.agreeLocation || false,
+
+    profile_image_url: signupData.profile_image_url || ''
   });
 
   const [errors, setErrors] = useState({});
-
-
   const [sidoList, setSidoList] = useState([]);
   const [sigunguList, setSigunguList] = useState([]);
   const [isSigunguLoading, setIsSigunguLoading] = useState(false);
@@ -59,61 +58,63 @@ const SignupPage = () => {
     };
 
     fetchSidoList();
+  }, []);
 
-    setFormData((prev) => ({
-      ...prev,
-      ...signupData
-    }));
-  }, [signupData]);
+  useEffect(() => {
+    const fetchSigunguList = async () => {
+      if (!formData.reside_area_code) return;
 
+      try {
+        setIsSigunguLoading(true);
+        const res = await getSigunguList(formData.reside_area_code);
+        setSigunguList(res.data);
+      } catch (error) {
+        console.error('시/군/구 목록 조회 실패:', error);
+        setSigunguList([]);
+      } finally {
+        setIsSigunguLoading(false);
+      }
+    };
 
-  const passwordMatch =
-    formData.confirmPassword === '' ||
-    formData.password === formData.confirmPassword;
+    fetchSigunguList();
+  }, [formData.reside_area_code]);
 
   const validate = () => {
-
     const newErrors = {};
 
-    const idRegex = /^[a-zA-Z0-9]{6,20}$/;
-    const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/;
     const phoneRegex = /^010-\d{4}-\d{4}$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!idRegex.test(formData.member_id || '')) {
-      newErrors.member_id = '아이디는 6~20자 영문, 숫자여야 합니다.';
+    if (!formData.social_provider) {
+      newErrors.social_provider = '소셜 로그인 정보가 없습니다.';
     }
 
-    if (!passwordRegex.test(formData.password || '')) {
-      newErrors.password = '비밀번호는 8자 이상 영문/숫자 혼합이어야 합니다.';
+    if (!formData.social_id) {
+      newErrors.social_id = '소셜 사용자 정보가 없습니다.';
     }
 
-    if ((formData.password || '') !== (formData.confirmPassword || '')) {
-      newErrors.confirmPassword = '비밀번호가 일치하지 않습니다.';
+    if (!formData.name.trim()) {
+      newErrors.name = '이름을 입력해주세요.';
     }
 
-    if (!phoneRegex.test(formData.phone || '')) {
-      newErrors.phone = '전화번호 형식이 올바르지 않습니다. 예: 010-0000-0000';
+    if (!formData.nickname.trim()) {
+      newErrors.nickname = '닉네임을 입력해주세요.';
     }
 
     if (!emailRegex.test(formData.email || '')) {
       newErrors.email = '이메일 형식이 올바르지 않습니다.';
     }
 
-    if (!formData.name) {
-      newErrors.name = '이름을 입력해주세요.';
-    }
-
-    if (!formData.nickname) {
-      newErrors.nickname = '닉네임을 입력해주세요.';
-    }
-
-    if (!formData.birthdate) {
-      newErrors.birthdate = '생년월일을 선택해주세요.';
+    if (!phoneRegex.test(formData.phone || '')) {
+      newErrors.phone = '전화번호 형식이 올바르지 않습니다. 예: 010-0000-0000';
     }
 
     if (!formData.gender) {
       newErrors.gender = '성별을 선택해주세요.';
+    }
+
+    if (!formData.birthdate) {
+      newErrors.birthdate = '생년월일을 선택해주세요.';
     }
 
     if (!formData.reside_area_code) {
@@ -128,20 +129,23 @@ const SignupPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const saveFormData = (newData) => {
+    setFormData(newData);
+    setSignupData(newData);
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
     const newData = {
       ...formData,
-      [name]: type === 'checkbox' ? checked : value,
-      ...(name === 'addr_sido' ? { addr_sigungu: '' } : {})
+      [name]: type === 'checkbox' ? checked : value
     };
 
-    setFormData(newData);
-    setSignupData(newData);
+    saveFormData(newData);
   };
 
-  const handleSidoChange = async (e) => {
+  const handleSidoChange = (e) => {
     const regionCode = e.target.value;
 
     const selectedSido = sidoList.find(
@@ -156,23 +160,8 @@ const SignupPage = () => {
       addr_sigungu: ''
     };
 
-    setFormData(newData);
-    setSignupData(newData);
     setSigunguList([]);
-
-    if (!regionCode) return;
-
-    try {
-      setIsSigunguLoading(true);
-
-      const res = await getSigunguList(regionCode);
-      setSigunguList(res.data);
-    } catch (error) {
-      console.error('시/군/구 목록 조회 실패:', error);
-      setSigunguList([]);
-    } finally {
-      setIsSigunguLoading(false);
-    }
+    saveFormData(newData);
   };
 
   const handleSigunguChange = (e) => {
@@ -188,8 +177,7 @@ const SignupPage = () => {
       addr_sigungu: selectedSigungu?.sigungu_name || ''
     };
 
-    setFormData(newData);
-    setSignupData(newData);
+    saveFormData(newData);
   };
 
   const handleGenderChange = (gender) => {
@@ -198,22 +186,20 @@ const SignupPage = () => {
       gender
     };
 
-    setFormData(newData);
-    setSignupData(newData);
+    saveFormData(newData);
   };
 
   const handleAllAgreeChange = (e) => {
-    const v = e.target.checked;
+    const checked = e.target.checked;
 
     const newData = {
       ...formData,
-      agreeTerms: v,
-      agreePrivacy: v,
-      agreeLocation: v
+      agreeTerms: checked,
+      agreePrivacy: checked,
+      agreeLocation: checked
     };
 
-    setFormData(newData);
-    setSignupData(newData);
+    saveFormData(newData);
   };
 
   const handleSubmit = (e) => {
@@ -230,8 +216,30 @@ const SignupPage = () => {
       return;
     }
 
-    setSignupData(formData);
-    console.log('Signup step 1 complete:', formData);
+    setSignupData({
+      ...signupData,
+
+      social_provider: formData.social_provider,
+      social_id: formData.social_id,
+
+      name: formData.name,
+      nickname: formData.nickname,
+      email: formData.email,
+      phone: formData.phone,
+      gender: formData.gender,
+      birthdate: formData.birthdate,
+
+      addr_sido: formData.addr_sido,
+      addr_sigungu: formData.addr_sigungu,
+      reside_area_code: formData.reside_area_code,
+      reside_sigungu_code: formData.reside_sigungu_code,
+
+      agreeTerms: formData.agreeTerms,
+      agreePrivacy: formData.agreePrivacy,
+      agreeLocation: formData.agreeLocation,
+
+      profile_image_url: formData.profile_image_url || ''
+    });
 
     navigate('/signup/preferences');
   };
@@ -267,99 +275,30 @@ const SignupPage = () => {
   `;
 
   return (
-
     <AuthLayout
-      title="회원가입"
-      subtitle="축제로와 함께 설레는 여행을 시작하세요"
+      title="소셜 간편가입"
+      subtitle="추가 정보를 입력하고 축제로를 시작하세요"
       maxWidth="max-w-2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-8">
-        <section>
-          <SectionTitle>계정 정보</SectionTitle>
-
-          <div className="space-y-5">
-            <div>
-              <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">
-                아이디
-              </label>
-
-              <div className="relative">
-                <InputIcon>
-                  <User size={19} />
-                </InputIcon>
-
-                <input
-                  type="text"
-                  name="member_id"
-                  value={formData.member_id || ''}
-                  onChange={handleChange}
-                  placeholder="아이디 입력"
-                  className={`${inputClass} pl-11`}
-                  required
-                />
-              </div>
-
-              <ErrorText message={errors.member_id} />
+        <section className="bg-[#faf7ff] border border-[#e7e2f7] rounded-[28px] p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+              <User size={20} className="text-festival-purple" />
             </div>
 
             <div>
-              <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">
-                비밀번호
-              </label>
-
-              <div className="relative">
-                <InputIcon>
-                  <Lock size={19} />
-                </InputIcon>
-
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password || ''}
-                  onChange={handleChange}
-                  placeholder="8자 이상 영문/숫자 혼합"
-                  className={`${inputClass} pl-11`}
-                  required
-                />
-              </div>
-
-              <ErrorText message={errors.password} />
-            </div>
-
-            <div>
-              <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">
-                비밀번호 확인
-              </label>
-
-              <div className="relative">
-                <InputIcon>
-                  <Check size={19} />
-                </InputIcon>
-
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword || ''}
-                  onChange={handleChange}
-                  placeholder="비밀번호 다시 입력"
-                  className={`${inputClass} pl-11 ${!passwordMatch && formData.confirmPassword
-                    ? 'border-red-400 focus:ring-red-50'
-                    : ''
-                    }`}
-                  required
-                />
-              </div>
-
-              {!passwordMatch && formData.confirmPassword && (
-                <p className="text-xs text-red-500 mt-2 ml-2 flex items-center gap-1 font-bold">
-                  <Info size={13} />
-                  비밀번호가 일치하지 않습니다.
-                </p>
-              )}
-
-              <ErrorText message={errors.confirmPassword} />
+              <p className="text-sm font-bold text-[#5b21b6]">
+                {formData.social_provider || 'SOCIAL'} 계정으로 가입 중
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                소셜 인증은 완료되었습니다. 서비스 이용을 위한 추가 정보만 입력해주세요.
+              </p>
             </div>
           </div>
+
+          <ErrorText message={errors.social_provider} />
+          <ErrorText message={errors.social_id} />
         </section>
 
         <section>
@@ -460,10 +399,11 @@ const SignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('M')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'M'
-                      ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
-                      : 'text-gray-400'
-                      }`}
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
+                      formData.gender === 'M'
+                        ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
+                        : 'text-gray-400'
+                    }`}
                   >
                     남성
                   </button>
@@ -471,10 +411,11 @@ const SignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('F')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'F'
-                      ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
-                      : 'text-gray-400'
-                      }`}
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
+                      formData.gender === 'F'
+                        ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
+                        : 'text-gray-400'
+                    }`}
                   >
                     여성
                   </button>
@@ -542,10 +483,11 @@ const SignupPage = () => {
                   name="reside_sigungu_code"
                   value={formData.reside_sigungu_code || ''}
                   onChange={handleSigunguChange}
-                  className={`${inputClass} px-5 bg-white appearance-none ${!formData.reside_area_code
-                    ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                    : ''
-                    }`}
+                  className={`${inputClass} px-5 bg-white appearance-none ${
+                    !formData.reside_area_code
+                      ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                      : ''
+                  }`}
                   required
                   disabled={!formData.reside_area_code || isSigunguLoading}
                 >
@@ -554,7 +496,10 @@ const SignupPage = () => {
                   </option>
 
                   {sigunguList.map((sigungu) => (
-                    <option key={sigungu.sigungu_code} value={sigungu.sigungu_code}>
+                    <option
+                      key={sigungu.sigungu_code}
+                      value={sigungu.sigungu_code}
+                    >
                       {sigungu.sigungu_name}
                     </option>
                   ))}
@@ -580,12 +525,13 @@ const SignupPage = () => {
             />
 
             <div
-              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.agreeTerms &&
+              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                formData.agreeTerms &&
                 formData.agreePrivacy &&
                 formData.agreeLocation
-                ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-100'
-                : 'bg-white border-gray-300'
-                }`}
+                  ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-100'
+                  : 'bg-white border-gray-300'
+              }`}
             >
               <Check size={16} className="text-white" />
             </div>
@@ -612,10 +558,11 @@ const SignupPage = () => {
                   />
 
                   <div
-                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData[item.id]
-                      ? 'bg-festival-purple border-festival-purple'
-                      : 'bg-white border-gray-300 group-hover:border-festival-purple'
-                      }`}
+                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                      formData[item.id]
+                        ? 'bg-festival-purple border-festival-purple'
+                        : 'bg-white border-gray-300 group-hover:border-festival-purple'
+                    }`}
                   >
                     <Check size={14} className="text-white" />
                   </div>
@@ -689,8 +636,7 @@ const SignupPage = () => {
         </div>
       </form>
     </AuthLayout>
-
   );
 };
 
-export default SignupPage;
+export default SocialSignupPage;

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Footer from './components/Footer'
 import './App.css'
 import SidebarFilter from './features/festival-map/components/SidebarFilter'
@@ -19,8 +19,12 @@ import MainLayout from './components/MainLayout'
 import ChatListPage from './features/chat/ChatListPage'
 import FloatingChat from './features/chat/FloatingChat'
 import useChatStore from './store/useChatStore'
+import KakaoCallbackPage from './features/auth/pages/KakaoCallbackPage'
+import SocialSignupPage from './features/auth/pages/SolcialSignupPage'
 
 function App() {
+
+
   const { isFloating } = useChatStore();
 
   return (
@@ -41,8 +45,11 @@ function App() {
         </Route>
 
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/oauth/kakao/callback" element={<KakaoCallbackPage/>} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/signup/social" element={<SocialSignupPage />} />
         <Route path="/signup/preferences" element={<SignupPreferencesPage />} />
+        <Route path="oauth/kakao/callback" element={<KakaoCallbackPage />} />
         <Route path="/find-account" element={<FindAccountPage />} />
       </Routes>
       {isFloating && <FloatingChat />}

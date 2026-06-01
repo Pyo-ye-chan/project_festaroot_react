@@ -1,56 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout';
-import { MapPin, ChevronLeft, Sparkles, Heart } from 'lucide-react';
+import {
+  MapPin,
+  ChevronLeft,
+  Sparkles,
+  Heart
+} from 'lucide-react';
 import { signup } from '../../../api/memberApi';
 import useMemberStore from '../../../store/useMemberStore';
-
+import { getSidoList } from '../../../api/regionApi';
+import { getThemeList } from '../../../api/themeApi';
 
 const SignupPreferencesPage = () => {
   const navigate = useNavigate();
   const { signupData, resetSignupData } = useMemberStore();
 
+  const [sidoOptions, setSidoOptions] = useState([]);
+  const [themeOptions, setThemeOptions] = useState([]);
+
   const [selectedRegions, setSelectedRegions] = useState(signupData.regions || []);
   const [selectedThemes, setSelectedThemes] = useState(signupData.themes || []);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const regions = [
-    '전국', '서울', '경기', '인천', '강원', '충북', '충남', '대전', '세종',
-    '전북', '전남', '광주', '경북', '경남', '대구', '울산', '부산', '제주'
-  ];
+  useEffect(() => {
+    console.log(signupData)
+    const fetchInitialData = async () => {
+      try {
+        const [sidoRes, themeRes] = await Promise.all([
+          getSidoList(),
+          getThemeList()
+        ]);
 
-  const themes = [
-    '힐링', '체험', '먹거리', '축제', '공연', '자연', '역사', '문화', '쇼핑', '캠핑',
-    '등산', '바다', '카페', '야경', '데이트', '가족여행', '반려동물', '레저', '온천', '예술',
-    '사진', '드라이브', '테마파크', '전통시장', '사찰/종교', '섬 여행', '미술관', '박물관',
-    '클래식', '음악페스티벌', '스포츠관람', '액티비티', '워터파크', '스키/보드', '골프',
-    '낚시', '플로깅', '호캉스', '기차여행', '자전거', '숲캉스', '미식투어', '로컬체험', '교육/학습'
-  ];
+        setSidoOptions(sidoRes.data || []);
+        setThemeOptions(themeRes.data || []);
+      } catch (error) {
+        console.error('초기 코드 목록 조회 실패:', error);
+        alert('지역/테마 정보를 불러오지 못했습니다.');
+      }
+    };
 
-  const handleRegionToggle = (region) => {
-    if (region === '전국') {
-      setSelectedRegions((prev) => (prev.includes('전국') ? [] : ['전국']));
+    fetchInitialData();
+  }, []);
+
+  const handleRegionToggle = (regionCode) => {
+    const code = String(regionCode);
+
+    if (code === 'ALL') {
+      setSelectedRegions((prev) => (prev.includes('ALL') ? [] : ['ALL']));
       return;
     }
 
     setSelectedRegions((prev) => {
-      const filtered = prev.filter((item) => item !== '전국');
+      const filtered = prev.filter((item) => item !== 'ALL');
 
-      if (filtered.includes(region)) {
-        return filtered.filter((item) => item !== region);
+      if (filtered.includes(code)) {
+        return filtered.filter((item) => item !== code);
       }
 
-      return [...filtered, region];
+      return [...filtered, code];
     });
   };
 
-  const handleThemeToggle = (theme) => {
+  const handleThemeToggle = (themeCode) => {
+    const code = String(themeCode);
+
     setSelectedThemes((prev) => {
-      if (prev.includes(theme)) {
-        return prev.filter((item) => item !== theme);
+      if (prev.includes(code)) {
+        return prev.filter((item) => item !== code);
       }
 
-      return [...prev, theme];
+      return [...prev, code];
     });
   };
 
@@ -58,25 +79,38 @@ const SignupPreferencesPage = () => {
     e.preventDefault();
 
     if (!signupData.email) {
-      alert('이메일 정보가 없습니다. 이전 단계에서 이메일을 입력해주세요.');
-      navigate('/signup');
+      alert('이메일 정보가 없습니다.');
+      navigate(
+        signupData.social_provider && signupData.social_provider !== 'LOCAL'
+          ? '/signup/social-info'
+          : '/signup'
+      );
+      return;
+    }
+
+    if (selectedRegions.length === 0) {
+      alert('관심 지역을 1개 이상 선택해주세요.');
+      return;
+    }
+
+    if (selectedThemes.length === 0) {
+      alert('관심 테마를 1개 이상 선택해주세요.');
       return;
     }
 
     const finalData = {
       ...signupData,
 
-      // 백엔드 MEMBER 필수/기본값 보정
-      email: signupData.email || '',
       social_provider: signupData.social_provider || 'LOCAL',
       profile_image_url: signupData.profile_image_url || '',
       title_id: signupData.title_id || 1,
 
-      // TourAPI 코드 임시값
-      reside_area_code: signupData.reside_area_code || '0',
-      reside_sigungu_code: signupData.reside_sigungu_code || '0',
+      // 회원가입 1단계에서 받은 주소 정보 유지
+      addr_sido: signupData.addr_sido || '',
+      reside_area_code: signupData.reside_area_code || '',
+      addr_sigungu: signupData.addr_sigungu || '',
+      reside_sigungu_code: signupData.reside_sigungu_code || '',
 
-      // 취향 정보
       regions: selectedRegions,
       themes: selectedThemes
     };
@@ -104,7 +138,6 @@ const SignupPreferencesPage = () => {
   };
 
   return (
-
     <AuthLayout
       title="취향 설정"
       subtitle="나에게 딱 맞는 축제와 여행 정보를 추천해드릴게요"
@@ -119,64 +152,85 @@ const SignupPreferencesPage = () => {
 
       <form onSubmit={handleSubmit} className="space-y-10">
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <MapPin size={20} className="text-festival-purple" />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+            <h3 className="text-[17px] sm:text-lg font-bold text-gray-800 flex items-center gap-2">
+              <MapPin size={20} className="text-festival-purple shrink-0" />
               어디로 떠나고 싶으신가요?
             </h3>
-            <span className="text-xs text-gray-400 font-medium">복수 선택 가능</span>
+            <span className="text-xs text-gray-400 font-medium">
+              복수 선택 가능
+            </span>
           </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-            {regions.map((region) => (
-              <button
-                key={region}
-                type="button"
-                onClick={() => handleRegionToggle(region)}
-                className={`h-11 rounded-xl text-sm font-bold transition-all border ${
-                  selectedRegions.includes(region)
-                    ? 'bg-festival-purple border-festival-purple text-white shadow-md shadow-purple-100'
-                    : 'bg-white border-gray-100 text-gray-500 hover:border-festival-purple hover:text-festival-purple'
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => handleRegionToggle('ALL')}
+              className={`min-w-[72px] h-11 px-4 rounded-full text-sm font-bold transition-all border whitespace-nowrap ${selectedRegions.includes('ALL')
+                  ? 'bg-festival-purple border-festival-purple text-white shadow-md shadow-purple-100'
+                  : 'bg-white border-gray-100 text-gray-500 hover:border-festival-purple hover:text-festival-purple'
                 }`}
-              >
-                {region}
-              </button>
-            ))}
+            >
+              전국
+            </button>
+
+            {sidoOptions.map((region) => {
+              const regionCode = String(region.region_code);
+
+              return (
+                <button
+                  key={regionCode}
+                  type="button"
+                  onClick={() => handleRegionToggle(regionCode)}
+                  className={`min-w-[72px] h-11 px-4 rounded-full text-sm font-bold transition-all border whitespace-nowrap ${selectedRegions.includes(regionCode)
+                      ? 'bg-festival-purple border-festival-purple text-white shadow-md shadow-purple-100'
+                      : 'bg-white border-gray-100 text-gray-500 hover:border-festival-purple hover:text-festival-purple'
+                    }`}
+                >
+                  {region.region_name}
+                </button>
+              );
+            })}
           </div>
         </section>
 
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <Heart size={20} className="text-red-400" />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+            <h3 className="text-[17px] sm:text-lg font-bold text-gray-800 flex items-center gap-2">
+              <Heart size={20} className="text-red-400 shrink-0" />
               어떤 테마를 좋아하시나요?
             </h3>
-            <span className="text-xs text-gray-400 font-medium">복수 선택 가능</span>
+            <span className="text-xs text-gray-400 font-medium">
+              복수 선택 가능
+            </span>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {themes.map((theme) => (
-              <button
-                key={theme}
-                type="button"
-                onClick={() => handleThemeToggle(theme)}
-                className={`px-5 h-10 rounded-full text-sm font-bold transition-all border ${
-                  selectedThemes.includes(theme)
-                    ? 'bg-festival-yellow border-festival-yellow text-gray-900 shadow-md shadow-yellow-50'
-                    : 'bg-white border-gray-100 text-gray-500 hover:border-festival-yellow hover:text-gray-900'
-                }`}
-              >
-                {theme}
-              </button>
-            ))}
+            {themeOptions.map((theme) => {
+              const themeCode = String(theme.theme_code);
+
+              return (
+                <button
+                  key={themeCode}
+                  type="button"
+                  onClick={() => handleThemeToggle(themeCode)}
+                  className={`h-10 px-4 sm:px-5 rounded-full text-sm font-bold transition-all border whitespace-nowrap ${selectedThemes.includes(themeCode)
+                      ? 'bg-festival-yellow border-festival-yellow text-gray-900 shadow-md shadow-yellow-50'
+                      : 'bg-white border-gray-100 text-gray-500 hover:border-festival-yellow hover:text-gray-900'
+                    }`}
+                >
+                  {theme.theme_name}
+                </button>
+              );
+            })}
           </div>
         </section>
 
-        <div className="pt-6 flex gap-3">
+        <div className="pt-6 flex flex-col-reverse sm:flex-row gap-3">
           <button
             type="button"
             onClick={() => navigate('/signup')}
-            className="flex-1 h-14 rounded-2xl border border-gray-200 text-gray-500 font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+            className="w-full sm:flex-1 h-14 rounded-2xl border border-gray-200 text-gray-500 font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
           >
             <ChevronLeft size={20} />
             이전으로
@@ -185,14 +239,13 @@ const SignupPreferencesPage = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex-[2] h-14 rounded-2xl bg-festival-purple text-white font-bold shadow-lg shadow-purple-100 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
+            className="w-full sm:flex-[2] h-14 rounded-2xl bg-festival-purple text-white font-bold shadow-lg shadow-purple-100 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
           >
             {isSubmitting ? '가입 처리 중...' : '가입 완료하기'}
           </button>
         </div>
       </form>
     </AuthLayout>
-
   );
 };
 
