@@ -48,14 +48,38 @@ const MyProfileTab = ({ user }) => {
           </div>
 
           <div className="flex flex-wrap justify-center md:justify-start gap-2 sm:gap-4 pt-2">
-            <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-gray-400 font-bold bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100">
+            <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-400 font-bold bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100">
               <span>📅</span>
               가입일: {user.joinDate}
             </div>
-          </div>
-        </div>
-        
-        <button className="w-full md:w-auto px-6 py-3 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition-colors shadow-lg shadow-gray-200">
+            </div>
+
+            {/* Interests Section */}
+            <div className="pt-2 space-y-3">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+              <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-2 py-1 rounded-md uppercase tracking-wider">나의 관심지역</span>
+              <div className="flex flex-wrap gap-1.5">
+                {user.interests.regions.map(region => (
+                  <span key={region} className="text-[11px] font-bold text-gray-600 bg-white border border-gray-200 px-2.5 py-1 rounded-full shadow-sm hover:border-purple-300 transition-colors">
+                    📍 {region}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+              <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md uppercase tracking-wider">나의 관심테마</span>
+              <div className="flex flex-wrap gap-1.5">
+                {user.interests.themes.map(theme => (
+                  <span key={theme} className="text-[11px] font-bold text-gray-600 bg-white border border-gray-200 px-2.5 py-1 rounded-full shadow-sm hover:border-indigo-300 transition-colors">
+                    ✨ {theme}
+                  </span>
+                ))}
+              </div>
+            </div>
+            </div>
+            </div>
+
+            <button className="w-full md:w-auto px-6 py-3 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition-colors shadow-lg shadow-gray-200">
           프로필 수정
         </button>
       </div>

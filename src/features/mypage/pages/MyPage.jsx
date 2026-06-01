@@ -22,6 +22,10 @@ const MyPage = () => {
     rank: '축제 마스터',
     currentExp: 450,
     nextLevelExp: 600,
+    interests: {
+      regions: ['서울', '강원', '제주'],
+      themes: ['전통문화', 'K-POP', '불꽃놀이', '지역맛집']
+    },
     stats: {
       posts: 12,
       comments: 45,
