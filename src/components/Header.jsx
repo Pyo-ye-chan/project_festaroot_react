@@ -23,8 +23,8 @@ const Header = () => {
     { name: '축제 찾기', href: '/search' },
     { name: '지도', href: '/festival/map' },
     { name: '커뮤니티', href: '/community' },
-    { name: 'AI 여행플래너', href: '#ai-planner' },
-    { name: '마이페이지', href: '#mypage' },
+    { name: 'AI 여행플래너', href: '/ai-planner' },
+    { name: '마이페이지', href: '/mypage' },
   ];
 
   const handleLoginLogout = () => {

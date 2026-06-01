@@ -19,6 +19,8 @@ import MainLayout from './components/MainLayout'
 import ChatListPage from './features/chat/ChatListPage'
 import FloatingChat from './features/chat/FloatingChat'
 import SearchPage from './features/search/pages/SearchPage'
+import MyPage from './features/mypage/pages/MyPage'
+import AIPlannerPage from './features/ai-planner/pages/AIPlannerPage'
 import useChatStore from './store/useChatStore'
 import LoadingSpinner from './components/LoadingSpinner'
 import useLoadingStore from './store/useLoadingStore'
@@ -45,6 +47,8 @@ function App() {
 
           <Route path="/chats" element={<ChatListPage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/mypage" element={<MyPage />} />
+          <Route path="/ai-planner" element={<AIPlannerPage />} />
         </Route>
 
         <Route path="/login" element={<LoginPage />} />
