@@ -20,7 +20,7 @@ const Header = () => {
 
   const navItems = [
     { name: '홈', href: '/' },
-    { name: '축제 찾기', href: '/test/map' },
+    { name: '축제 찾기', href: '/search' },
     { name: '지도', href: '/festival/map' },
     { name: '커뮤니티', href: '/community' },
     { name: 'AI 여행플래너', href: '#ai-planner' },
@@ -115,13 +115,13 @@ const Header = () => {
           <ul className="flex gap-10">
             {navItems.map((item) => (
               <li key={item.name}>
-                <a
-                  href={item.href}
+                <Link 
+                  to={item.href}
                   className="block py-4 text-[16px] font-bold text-gray-600 hover:text-purple-600 transition-colors border-b-2 border-transparent hover:border-purple-600"
                   style={{ '--hover-color': primaryPurple }}
                 >
                   {item.name}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
