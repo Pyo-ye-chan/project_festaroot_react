@@ -20,6 +20,8 @@ const SocialSignupPage = () => {
   const { signupData, setSignupData } = useMemberStore();
 
   const [formData, setFormData] = useState({
+    member_id: signupData.member_id || '',
+
     social_provider: signupData.social_provider || '',
     social_id: signupData.social_id || '',
 
@@ -219,8 +221,13 @@ const SocialSignupPage = () => {
     setSignupData({
       ...signupData,
 
+      member_id: formData.member_id,
+
       social_provider: formData.social_provider,
       social_id: formData.social_id,
+
+
+
 
       name: formData.name,
       nickname: formData.nickname,
@@ -240,6 +247,9 @@ const SocialSignupPage = () => {
 
       profile_image_url: formData.profile_image_url || ''
     });
+
+    console.log("소셜페이지 formData:", formData);
+    console.log("소셜페이지 signupData:", signupData);
 
     navigate('/signup/preferences');
   };
@@ -399,11 +409,10 @@ const SocialSignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('M')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
-                      formData.gender === 'M'
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'M'
                         ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
                         : 'text-gray-400'
-                    }`}
+                      }`}
                   >
                     남성
                   </button>
@@ -411,11 +420,10 @@ const SocialSignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('F')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
-                      formData.gender === 'F'
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'F'
                         ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
                         : 'text-gray-400'
-                    }`}
+                      }`}
                   >
                     여성
                   </button>
@@ -483,11 +491,10 @@ const SocialSignupPage = () => {
                   name="reside_sigungu_code"
                   value={formData.reside_sigungu_code || ''}
                   onChange={handleSigunguChange}
-                  className={`${inputClass} px-5 bg-white appearance-none ${
-                    !formData.reside_area_code
+                  className={`${inputClass} px-5 bg-white appearance-none ${!formData.reside_area_code
                       ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
                       : ''
-                  }`}
+                    }`}
                   required
                   disabled={!formData.reside_area_code || isSigunguLoading}
                 >
@@ -525,13 +532,12 @@ const SocialSignupPage = () => {
             />
 
             <div
-              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                formData.agreeTerms &&
-                formData.agreePrivacy &&
-                formData.agreeLocation
+              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.agreeTerms &&
+                  formData.agreePrivacy &&
+                  formData.agreeLocation
                   ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-100'
                   : 'bg-white border-gray-300'
-              }`}
+                }`}
             >
               <Check size={16} className="text-white" />
             </div>
@@ -558,11 +564,10 @@ const SocialSignupPage = () => {
                   />
 
                   <div
-                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-                      formData[item.id]
+                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData[item.id]
                         ? 'bg-festival-purple border-festival-purple'
                         : 'bg-white border-gray-300 group-hover:border-festival-purple'
-                    }`}
+                      }`}
                   >
                     <Check size={14} className="text-white" />
                   </div>

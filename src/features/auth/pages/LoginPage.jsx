@@ -14,79 +14,84 @@ import useMemberStore from '../../../store/useMemberStore';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-
-  const {setSignupData} = useMemberStore();
- 
+  const { setSignupData } = useMemberStore();
   const { login: setAuthLogin } = useAuthStore();
-
-  useEffect(() => {
-  const handleKakaoMessage = (event) => {
-    if (event.origin !== window.location.origin) return;
-
-    const { type, data, message } = event.data;
-
-    if (type === 'KAKAO_LOGIN_FAIL') {
-      alert(message);
-      return;
-    }
-
-    if (type !== 'KAKAO_LOGIN_SUCCESS') return;
-
-    console.log('카카오 로그인 응답:', data);
-
-    // 신규 소셜 회원
-    if (data.isNewUser === true) {
-      setSignupData({
-        social_provider: data.social_provider || 'KAKAO',
-        social_id: data.social_id,
-        email: data.email || '',
-        nickname: data.nickname || '',
-        name: data.name || '',
-        profile_image_url: data.profile_image_url || ''
-      });
-
-      navigate('/signup/social');
-      return;
-    }
-
-    // 기존 회원 로그인
-    if (data.token) {
-      localStorage.setItem('token', data.token);
-
-      setAuthLogin(data.token, {
-        member_id: data.member_id,
-        nickname: data.nickname,
-        email: data.email,
-        social_provider: data.social_provider
-      });
-
-      navigate('/');
-      return;
-    }
-
-    alert('카카오 로그인 응답에 토큰이 없습니다.');
-  };
-
-  window.addEventListener('message', handleKakaoMessage);
-
-  return () => {
-    window.removeEventListener('message', handleKakaoMessage);
-  };
-}, [navigate, setSignupData, setAuthLogin]); 
-
-
   const primaryPurple = '#5b21b6';
-
   const [showPassword, setShowPassword] = useState(false);
-
   const [formData, setFormData] = useState({
     id: '',
     password: '',
     rememberMe: true
   });
-
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const handleSocialMessage = (event) => {
+      if (event.origin !== window.location.origin) return;
+
+      const { type, data, message } = event.data;
+
+      if (type === 'KAKAO_LOGIN_FAIL' || type === 'NAVER_LOGIN_FAIL' || type === 'GOOGLE_LOGIN_FAIL') {
+        alert(message || '소셜 로그인에 실패했습니다.');
+        return;
+      }
+
+      if (type !== 'KAKAO_LOGIN_SUCCESS' && type !== 'NAVER_LOGIN_SUCCESS' && type !== 'GOOGLE_LOGIN_SUCCESS') {
+        return;
+      }
+
+      const provider =
+        type === 'KAKAO_LOGIN_SUCCESS' 
+          ? 'KAKAO' 
+          : type === 'NAVER_LOGIN_SUCCESS'
+          ? 'NAVER' 
+          : 'GOOGLE';
+
+      console.log(`${provider} 로그인 응답:`, data);
+
+      if (data.isNewUser === true) {
+        setSignupData({
+          member_id: data.member_id,
+          social_provider: data.social_provider || provider,
+          social_id: data.social_id,
+          email: data.email || '',
+          nickname: data.nickname || '',
+          name: data.name || '',
+          profile_image_url: data.profile_image_url || ''
+        });
+
+        navigate('/signup/social');
+        return;
+      }
+
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+
+        console.log(data.token);
+
+        setAuthLogin(data.token, {
+          member_id: data.member_id,
+          nickname: data.nickname,
+          email: data.email,
+          social_provider: data.social_provider || provider
+        });
+
+        navigate('/');
+        return;
+      }
+
+      alert(`${provider} 로그인 응답에 토큰이 없습니다.`);
+    };
+
+    window.addEventListener('message', handleSocialMessage);
+
+    return () => {
+      window.removeEventListener('message', handleSocialMessage);
+    };
+  }, [navigate, setSignupData, setAuthLogin]);
+
+
 
 
   const handleChange = (e) => {
@@ -185,6 +190,39 @@ const LoginPage = () => {
       scrollbars=no,
       status=no
     `
+    );
+  };
+
+
+  const handleNaverLogin = () => {
+    const naverURL =
+      `https://nid.naver.com/oauth2.0/authorize` +
+      `?response_type=code` +
+      `&client_id=${import.meta.env.VITE_NAVER_CLIENT_ID}` +
+      `&redirect_uri=${import.meta.env.VITE_NAVER_REDIRECT_URI}` +
+      `&state=${crypto.randomUUID()}`;
+
+    window.open(
+      naverURL,
+      'naverLogin',
+      'width=500,height=700'
+    );
+  };
+
+
+  const handleGoogleLogin = () => {
+    const googleURL =
+      `https://accounts.google.com/o/oauth2/v2/auth` +
+      `?client_id=${import.meta.env.VITE_GOOGLE_CLIENT_ID}` +
+      `&redirect_uri=${import.meta.env.VITE_GOOGLE_REDIRECT_URI}` +
+      `&response_type=code` +
+      `&scope=${encodeURIComponent('openid email profile')}` +
+      `&prompt=select_account`;
+
+    window.open(
+      googleURL,
+      'googleLogin',
+      'width=500,height=700'
     );
   };
 
@@ -376,24 +414,45 @@ const LoginPage = () => {
               카카오
             </button>
 
-
             <button
               type="button"
-              className="h-[44px] sm:h-[46px] rounded-xl border border-[#e7e2f7] bg-white hover:bg-[#faf8ff] transition-colors flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-[600] text-[#333]"
+              onClick={handleNaverLogin}
+              className="h-[44px] sm:h-[46px] rounded-xl bg-[#03C75A] hover:brightness-95 transition-all flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-[700] text-white"
             >
-              <span className="text-[#03C75A] text-lg sm:text-xl font-[800]">
+              <span className="text-[20px] font-black leading-none">
                 N
               </span>
+
               네이버
             </button>
 
             <button
               type="button"
-              className="h-[44px] sm:h-[46px] rounded-xl border border-[#e7e2f7] bg-white hover:bg-[#faf8ff] transition-colors flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-[600] text-[#333]"
+              onClick={handleGoogleLogin}
+              className="h-[44px] sm:h-[46px] rounded-xl bg-white border border-gray-200 hover:brightness-95 transition-all flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-[700] text-gray-700"
             >
-              <span className="text-base sm:text-lg font-[700]">
-                G
-              </span>
+              <svg
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                />
+              </svg>
+
               구글
             </button>
 
