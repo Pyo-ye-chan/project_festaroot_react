@@ -10,36 +10,70 @@ import {
 
 import { login } from '../../../api/authApi';
 import useAuthStore from '../../../store/useAuthStore';
+import useMemberStore from '../../../store/useMemberStore';
 
 const LoginPage = () => {
-
-  useEffect(() => {
-
-    const receiveMessage = (event) => {
-
-      if (event.data.type === 'KAKAO_LOGIN_SUCCESS') {
-
-        const { token, user } = event.data;
-
-        setAuthLogin(token, user);
-
-        navigate('/');
-
-      }
-
-    };
-
-    window.addEventListener('message', receiveMessage);
-
-    return () => {
-      window.removeEventListener('message', receiveMessage);
-    };
-
-  }, []);
-
   const navigate = useNavigate();
 
+  const {setSignupData} = useMemberStore();
+ 
   const { login: setAuthLogin } = useAuthStore();
+
+  useEffect(() => {
+  const handleKakaoMessage = (event) => {
+    if (event.origin !== window.location.origin) return;
+
+    const { type, data, message } = event.data;
+
+    if (type === 'KAKAO_LOGIN_FAIL') {
+      alert(message);
+      return;
+    }
+
+    if (type !== 'KAKAO_LOGIN_SUCCESS') return;
+
+    console.log('카카오 로그인 응답:', data);
+
+    // 신규 소셜 회원
+    if (data.isNewUser === true) {
+      setSignupData({
+        social_provider: data.social_provider || 'KAKAO',
+        social_id: data.social_id,
+        email: data.email || '',
+        nickname: data.nickname || '',
+        name: data.name || '',
+        profile_image_url: data.profile_image_url || ''
+      });
+
+      navigate('/signup/social');
+      return;
+    }
+
+    // 기존 회원 로그인
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+
+      setAuthLogin(data.token, {
+        member_id: data.member_id,
+        nickname: data.nickname,
+        email: data.email,
+        social_provider: data.social_provider
+      });
+
+      navigate('/');
+      return;
+    }
+
+    alert('카카오 로그인 응답에 토큰이 없습니다.');
+  };
+
+  window.addEventListener('message', handleKakaoMessage);
+
+  return () => {
+    window.removeEventListener('message', handleKakaoMessage);
+  };
+}, [navigate, setSignupData, setAuthLogin]); 
+
 
   const primaryPurple = '#5b21b6';
 

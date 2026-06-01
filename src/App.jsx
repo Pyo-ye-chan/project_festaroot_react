@@ -20,6 +20,7 @@ import ChatListPage from './features/chat/ChatListPage'
 import FloatingChat from './features/chat/FloatingChat'
 import useChatStore from './store/useChatStore'
 import KakaoCallbackPage from './features/auth/pages/KakaoCallbackPage'
+import SocialSignupPage from './features/auth/pages/SolcialSignupPage'
 
 function App() {
 
@@ -44,7 +45,9 @@ function App() {
         </Route>
 
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/oauth/kakao/callback" element={<KakaoCallbackPage/>} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/signup/social" element={<SocialSignupPage />} />
         <Route path="/signup/preferences" element={<SignupPreferencesPage />} />
         <Route path="oauth/kakao/callback" element={<KakaoCallbackPage />} />
         <Route path="/find-account" element={<FindAccountPage />} />
