@@ -24,6 +24,8 @@ import LoadingSpinner from './components/LoadingSpinner'
 import useLoadingStore from './store/useLoadingStore'
 import KakaoCallbackPage from './features/auth/pages/KakaoCallbackPage'
 import SocialSignupPage from './features/auth/pages/SolcialSignupPage'
+import NaverCallbackPage from './features/auth/pages/NaverCallbackPage'
+import GoogleCallbackPage from './features/auth/pages/GoogleCallbackPage'
 
 function App() {
   const { isFloating } = useChatStore(); // 채팅방 띄우기
@@ -49,6 +51,8 @@ function App() {
 
         <Route path="/login" element={<LoginPage />} />
         <Route path="/oauth/kakao/callback" element={<KakaoCallbackPage/>} />
+        <Route path="/oauth/naver/callback" element={<NaverCallbackPage/>} />
+        <Route path="/oauth/google/callback" element={<GoogleCallbackPage/>} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/signup/social" element={<SocialSignupPage />} />
         <Route path="/signup/preferences" element={<SignupPreferencesPage />} />
