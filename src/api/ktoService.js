@@ -31,6 +31,22 @@ const ktoService = {
       return [];
     }
   },
+
+  /**
+   * 특정 시/도에 해당하는 시/군/구 목록을 백엔드에서 가져옵니다.
+   * @param {string} sidoName 시/도 이름 (예: '서울')
+   */
+  getSigunguBySidoName: async (sidoName) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/locations/sigungu`, {
+        params: { sidoName },
+      });
+      return response.data || [];
+    } catch (error) {
+      console.error(`Error fetching sigungu for ${sidoName}:`, error);
+      return [];
+    }
+  }
 };
 
 export default ktoService;

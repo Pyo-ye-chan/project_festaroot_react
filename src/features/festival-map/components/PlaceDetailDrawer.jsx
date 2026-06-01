@@ -106,7 +106,7 @@ const TourDetailSection = ({ data }) => (
       </div>
       <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
         <span className="text-[11px] text-slate-400 font-bold block mb-1">반려동물</span>
-        <p className="text-sm text-slate-700 font-medium">{data?.chkpet || '동반 불가'}</p>
+        <p className="text-sm text-slate-700 font-medium">{data?.chkpet || '정보 없음'}</p>
       </div>
       <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
         <span className="text-[11px] text-slate-400 font-bold block mb-1">유모차 대여</span>
