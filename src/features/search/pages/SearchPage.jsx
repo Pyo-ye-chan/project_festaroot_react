@@ -53,57 +53,64 @@ const SearchPage = () => {
   const sortOptions = ['인기순', '최신순', '조회순', '찜 많은 순'];
   const regions = ['전체', '서울', '경기', '인천', '강원', '충북', '충남', '대전', '세종', '경북', '경남', '대구', '울산', '부산', '전북', '전남', '광주', '제주'];
 
-  // 정렬 기준 바뀔 때마다 백엔드 호출
+  /**
+   * 🔥 [핵심 수정] 백엔드 데이터 요청 함수를 외부로 분리했습니다.
+   * 이제 '검색하기' 버튼을 누르거나 정렬을 바꿀 때 이 함수가 실행됩니다.
+   */
+  const fetchAllFestivals = async (customParams = {}) => {
+    try {
+      setIsDataLoading(true);
+
+      // 정렬 조건 매핑
+      let sortParam = 'like_count';
+      if (sortBy === '최신순') sortParam = 'event_start_date';
+      if (sortBy === '조회순') sortParam = 'view_count';
+      if (sortBy === '찜 많은 순') sortParam = 'like_count';
+
+      // 💡 백엔드로 보낼 파라미터 주머니(객체)를 만듭니다.
+      const params = {
+        sort: sortParam,
+        keyword: searchQuery, // 축제명 검색어
+        region: filterRegion === '전체' ? '' : filterRegion, // 지역 ('전체'일 때는 빈값 전송)
+        startDate: startDate.replace(/-/g, ''), // 백엔드 양식에 맞게 하이픈(-) 제거 (예: 20260602)
+        endDate: endDate.replace(/-/g, ''),
+        ...customParams // 초기화 시 빈 값을 강제로 넘기기 위한 용도
+      };
+
+      // 💡 Axios 요청 보낼 때 매개변수로 params를 함께 실어 보냅니다.
+      const response = await festivalService.getFestivals(params);
+      const data = response?.data || response;
+      setFestivals(Array.isArray(data) ? data : []);
+
+    } catch (error) {
+      console.error("축제 데이터를 가져오는데 실패했습니다.", error);
+      setFestivals([]);
+    } finally {
+      setIsDataLoading(false);
+    }
+  };
+
+  // 1. 정렬 기준(sortBy)이 바뀔 때 혹은 페이지 첫 로드 시 백엔드 호출
   useEffect(() => {
-    const fetchAllFestivals = async () => {
-      try {
-        setIsDataLoading(true);
-
-        let sortParam = 'like_count';
-        if (sortBy === '최신순') sortParam = 'event_start_date';
-        if (sortBy === '조회순') sortParam = 'view_count';
-        if (sortBy === '찜 많은 순') sortParam = 'like_count';
-
-        const response = await festivalService.getFestivals({ sort: sortParam });
-        const data = response?.data || response;
-        setFestivals(Array.isArray(data) ? data : []);
-
-      } catch (error) {
-        console.error("축제 데이터를 가져오는데 실패했습니다.", error);
-        setFestivals([]);
-      } finally {
-        setIsDataLoading(false);
-      }
-    };
-
     fetchAllFestivals();
   }, [sortBy]);
 
-  // 프론트엔드 실시간 필터링 시스템
-  const filteredFestivals = festivals.filter(fest => {
-    if (!fest.event_start_date || !fest.event_end_date) return false;
+  // 2. 검색 조건 초기화 함수
+  const handleReset = () => {
+    setSearchQuery('');
+    setFilterRegion('전체');
+    setStartDate('');
+    setEndDate('');
+    setSortBy('인기순');
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const endDateObj = new Date(
-      fest.event_end_date.substring(0, 4),
-      parseInt(fest.event_end_date.substring(4, 6)) - 1,
-      fest.event_end_date.substring(6, 8)
-    );
-
-    if (today > endDateObj) return false;
-
-    const matchesRegion = filterRegion === '전체' || (fest.addr1 && fest.addr1.includes(filterRegion));
-    const matchesSearch = !searchQuery || (fest.title && fest.title.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    const pureStart = startDate.replace(/-/g, '');
-    const pureEnd = endDate.replace(/-/g, '');
-    const matchesDate = (!pureStart || fest.event_start_date >= pureStart) &&
-      (!pureEnd || fest.event_end_date <= pureEnd);
-
-    return matchesRegion && matchesSearch && matchesDate;
-  });
+    // State 변경은 비동기이므로, 안전하게 빈 값을 직접 넣어 즉시 서버에 초기 상태를 요청합니다.
+    fetchAllFestivals({
+      keyword: '',
+      region: '',
+      startDate: '',
+      endDate: ''
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 font-['Pretendard'] pb-20">
@@ -196,19 +203,16 @@ const SearchPage = () => {
                 </div>
               </div>
 
-              <button className="w-full bg-purple-600 text-white font-black py-4 rounded-2xl hover:bg-purple-700 transition-all shadow-lg flex items-center justify-center gap-2 group active:scale-[0.98]">
+              <button
+                onClick={() => fetchAllFestivals()}
+                className="w-full bg-purple-600 text-white font-black py-4 rounded-2xl hover:bg-purple-700 transition-all shadow-lg flex items-center justify-center gap-2 group active:scale-[0.98]"
+              >
                 <Search className="w-4 h-4" />
                 검색하기
               </button>
 
               <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setFilterRegion('전체');
-                  setStartDate('');
-                  setEndDate('');
-                  setSortBy('인기순');
-                }}
+                onClick={handleReset}
                 className="w-full py-3 text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors"
               >
                 검색 조건 초기화
@@ -219,11 +223,10 @@ const SearchPage = () => {
           {/* Main Content Area */}
           <main className="flex-grow min-w-0">
             {/* Top Toolbar */}
-            {/* 💡 sticky 속성을 지워 툴바와 카드 목록 전체가 스크롤을 따라 자연스럽게 위로 올라가도록 수정했습니다. */}
             <div className="flex items-center justify-between mb-8 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
               <div>
                 <p className="text-sm font-bold text-gray-500 ml-2">
-                  총 <span className="text-purple-600 font-black">{filteredFestivals.length}</span>개의 결과
+                  총 <span className="text-purple-600 font-black">{festivals.length}</span>개의 결과
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -270,10 +273,10 @@ const SearchPage = () => {
               <div className="flex justify-center items-center py-40">
                 <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
               </div>
-            ) : filteredFestivals.length > 0 ? (
+            ) : festivals.length > 0 ? (
               viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredFestivals.map(fest => (
+                  {festivals.map(fest => (
                     <Link to={`/festival/${fest.content_id}`} key={fest.content_id} className="group bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
                       <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                         <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
@@ -312,7 +315,7 @@ const SearchPage = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filteredFestivals.map(fest => (
+                  {festivals.map(fest => (
                     <Link to={`/festival/${fest.content_id}`} key={fest.content_id} className="group flex bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
                       <div className="w-48 h-48 shrink-0 overflow-hidden bg-gray-100">
                         <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
