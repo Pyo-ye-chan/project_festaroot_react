@@ -47,40 +47,40 @@ const SearchPage = () => {
   const [sortBy, setSortBy] = useState('인기순');
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isRegionOpen, setIsRegionOpen] = useState(false);
+  const [isSigunguOpen, setIsSigunguOpen] = useState(false); // 시군구 드롭다운 상태
 
   // 백엔드 데이터 상태 관리
   const [festivals, setFestivals] = useState([]);
   const [isDataLoading, setIsDataLoading] = useState(false);
 
+  // API로 받아올 시도/시군구 리스트 관리
+  const [sidoList, setSidoList] = useState(['전체']);
+  const [sigunguList, setSigunguList] = useState(['전체']);
+
   const sortOptions = ['인기순', '최신순', '조회순', '찜 많은 순'];
-  const regions = ['전체', '서울', '경기', '인천', '강원', '충북', '충남', '대전', '세종', '경북', '경남', '대구', '울산', '부산', '전북', '전남', '광주', '제주'];
 
   /**
-   * 🔥 [핵심 수정] 백엔드 데이터 요청 함수를 외부로 분리했습니다.
-   * 이제 '검색하기' 버튼을 누르거나 정렬을 바꿀 때 이 함수가 실행됩니다.
+   * 축제 데이터 요청 함수
    */
   const fetchAllFestivals = async (customParams = {}) => {
     try {
       setIsDataLoading(true);
 
-      // 정렬 조건 매핑
       let sortParam = 'like_count';
       if (sortBy === '최신순') sortParam = 'event_start_date';
       if (sortBy === '조회순') sortParam = 'view_count';
       if (sortBy === '찜 많은 순') sortParam = 'like_count';
 
-      // 백엔드로 보낼 파라미터 주머니(객체)
       const params = {
         sort: sortParam,
-        title: searchQuery, // 축제명 검색어
-        event_start_date: startDate.replace(/-/g, ''), // 백엔드 양식에 맞게 하이픈(-) 제거 (예: 20260602)
+        title: searchQuery,
+        event_start_date: startDate.replace(/-/g, ''),
         event_end_date: endDate.replace(/-/g, ''),
-        region_name: filterRegion === '전체' ? '' : filterRegion, // 지역 ('전체'일 때는 빈값 전송)
-        // sigungu_name: filterSigungu === '전체' ? '' : filterSigungu, // 시군구 ('전체'일 때는 빈값 전송)
-        ...customParams // 초기화 시 빈 값을 강제로 넘기기 위한 용도
+        region_name: filterRegion === '전체' ? '' : filterRegion,
+        sigungu_name: filterSigungu === '전체' ? '' : filterSigungu,
+        ...customParams
       };
 
-      // Axios 요청 보낼 때 매개변수로 params 담기
       const response = await festivalService.getFestivals(params);
       const data = response?.data || response;
       setFestivals(Array.isArray(data) ? data : []);
@@ -93,30 +93,69 @@ const SearchPage = () => {
     }
   };
 
-  // 1. 정렬 기준(sortBy)이 바뀔 때 혹은 페이지 첫 로드 시 백엔드 호출
+  // 1. 컴포넌트 마운트 시 '시도 목록' 로드
   useEffect(() => {
-    const region = RegionService.regionList();// 시도 목록 가져오는 axios 호출
-    console.log(region);
+    const fetchSidoData = async () => {
+      try {
+        const response = await RegionService.regionList();
+        const data = response?.data || response;
+        if (Array.isArray(data)) {
+          setSidoList(['전체', ...data]);
+        }
+      } catch (error) {
+        console.error("시도 목록을 불러오는데 실패했습니다.", error);
+      }
+    };
+    fetchSidoData();
+  }, []);
 
-    const sigungu = RegionService.sigunguList(region.data.sigungu_name);
+  // 2. 선택된 시도(filterRegion)가 변경될 때마다 '시군구 목록' 로드
+  useEffect(() => {
+    const fetchSigunguData = async () => {
+      if (filterRegion === '전체') {
+        setSigunguList(['전체']);
+        setFilterSigungu('전체');
+        return;
+      }
 
-    fetchAllFestivals(); // festival 목록 메서드 호출
+      try {
+        const response = await RegionService.sigunguList(filterRegion);
+        const data = response?.data || response;
+        if (Array.isArray(data)) {
+          setSigunguList(['전체', ...data]);
+        } else {
+          setSigunguList(['전체']);
+        }
+      } catch (error) {
+        console.error("시군구 목록을 불러오는데 실패했습니다.", error);
+        setSigunguList(['전체']);
+      }
+      setFilterSigungu('전체'); // 시도가 바뀌면 시군구 선택은 '전체'로 초기화
+    };
+
+    fetchSigunguData();
+  }, [filterRegion]);
+
+  // 3. 정렬 기준(sortBy)이 바뀔 때 축제 목록 재요청
+  useEffect(() => {
+    fetchAllFestivals();
   }, [sortBy]);
 
-  // 2. 검색 조건 초기화 함수
+  // 검색 조건 초기화 함수
   const handleReset = () => {
     setSearchQuery('');
     setFilterRegion('전체');
+    setFilterSigungu('전체');
     setStartDate('');
     setEndDate('');
     setSortBy('인기순');
 
-    // State 변경은 비동기이므로, 안전하게 빈 값을 직접 넣어 즉시 서버에 초기 상태를 요청합니다.
     fetchAllFestivals({
-      keyword: '',
-      region: '',
-      startDate: '',
-      endDate: ''
+      title: '',
+      region_name: '',
+      sigungu_name: '',
+      event_start_date: '',
+      event_end_date: ''
     });
   };
 
@@ -180,9 +219,9 @@ const SearchPage = () => {
                 </div>
               </div>
 
-              {/* Region Select */}
+              {/* Region (시도) Select */}
               <div className="space-y-3 pt-4 border-t border-gray-50">
-                <p className="text-xs font-black text-gray-400 uppercase tracking-wider">지역 선택</p>
+                <p className="text-xs font-black text-gray-400 uppercase tracking-wider">지역 선택 (시/도)</p>
                 <div className="relative">
                   <button
                     onClick={() => setIsRegionOpen(!isRegionOpen)}
@@ -193,8 +232,8 @@ const SearchPage = () => {
                   </button>
 
                   {isRegionOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 max-h-35 overflow-y-auto grid grid-cols-2 gap-1 p-2">
-                      {regions.map(r => (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto grid grid-cols-2 gap-1 p-2">
+                      {sidoList.map(r => (
                         <button
                           key={r}
                           onClick={() => {
@@ -210,6 +249,39 @@ const SearchPage = () => {
                   )}
                 </div>
               </div>
+
+              {/* 🔥 Sigungu (시군구) Select 추가 */}
+              {filterRegion !== '전체' && (
+                <div className="space-y-3 pt-4 border-t border-gray-50">
+                  <p className="text-xs font-black text-gray-400 uppercase tracking-wider">상세 지역 선택 (시/군/구)</p>
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsSigunguOpen(!isSigunguOpen)}
+                      className="w-full flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl py-3 px-4 text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all outline-none"
+                    >
+                      <span>{filterSigungu}</span>
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isSigunguOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isSigunguOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto grid grid-cols-2 gap-1 p-2">
+                        {sigunguList.map(s => (
+                          <button
+                            key={s}
+                            onClick={() => {
+                              setFilterSigungu(s);
+                              setIsSigunguOpen(false);
+                            }}
+                            className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterSigungu === s ? 'bg-purple-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={() => fetchAllFestivals()}
