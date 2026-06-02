@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Calendar, MapPin, Star, Heart, SlidersHorizontal, ChevronDown, LayoutGrid, List } from 'lucide-react';
 import festivalService from '../../../api/festivalService';
+import RegionService from '../../../api/regionService';
 
 // YYYYMMDD -> YYYY.MM.DD 변환기
 const formatDate = (dateStr) => {
@@ -40,6 +41,7 @@ const SearchPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [filterRegion, setFilterRegion] = useState('전체');
+  const [filterSigungu, setFilterSigungu] = useState('전체');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [sortBy, setSortBy] = useState('인기순');
@@ -67,17 +69,18 @@ const SearchPage = () => {
       if (sortBy === '조회순') sortParam = 'view_count';
       if (sortBy === '찜 많은 순') sortParam = 'like_count';
 
-      // 💡 백엔드로 보낼 파라미터 주머니(객체)를 만듭니다.
+      // 백엔드로 보낼 파라미터 주머니(객체)
       const params = {
         sort: sortParam,
-        keyword: searchQuery, // 축제명 검색어
-        region: filterRegion === '전체' ? '' : filterRegion, // 지역 ('전체'일 때는 빈값 전송)
-        startDate: startDate.replace(/-/g, ''), // 백엔드 양식에 맞게 하이픈(-) 제거 (예: 20260602)
-        endDate: endDate.replace(/-/g, ''),
+        title: searchQuery, // 축제명 검색어
+        event_start_date: startDate.replace(/-/g, ''), // 백엔드 양식에 맞게 하이픈(-) 제거 (예: 20260602)
+        event_end_date: endDate.replace(/-/g, ''),
+        region_name: filterRegion === '전체' ? '' : filterRegion, // 지역 ('전체'일 때는 빈값 전송)
+        // sigungu_name: filterSigungu === '전체' ? '' : filterSigungu, // 시군구 ('전체'일 때는 빈값 전송)
         ...customParams // 초기화 시 빈 값을 강제로 넘기기 위한 용도
       };
 
-      // 💡 Axios 요청 보낼 때 매개변수로 params를 함께 실어 보냅니다.
+      // Axios 요청 보낼 때 매개변수로 params 담기
       const response = await festivalService.getFestivals(params);
       const data = response?.data || response;
       setFestivals(Array.isArray(data) ? data : []);
@@ -92,7 +95,12 @@ const SearchPage = () => {
 
   // 1. 정렬 기준(sortBy)이 바뀔 때 혹은 페이지 첫 로드 시 백엔드 호출
   useEffect(() => {
-    fetchAllFestivals();
+    const region = RegionService.regionList();// 시도 목록 가져오는 axios 호출
+    console.log(region);
+
+    const sigungu = RegionService.sigunguList(region.data.sigungu_name);
+
+    fetchAllFestivals(); // festival 목록 메서드 호출
   }, [sortBy]);
 
   // 2. 검색 조건 초기화 함수
