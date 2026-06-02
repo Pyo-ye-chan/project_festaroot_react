@@ -23,6 +23,7 @@ import {
   Send
 } from 'lucide-react';
 import { getFestivalDetail } from '../../../api/FestivalApi';
+import festivalService from '../../../api/festivalService';
 
 
 const FestivalDetailPage = () => {
@@ -41,7 +42,14 @@ const FestivalDetailPage = () => {
     { id: 2, user: '루키', text: '지금 사람 많이 붐비나요?', time: '오후 2:05' }
   ]);
 
+
+  const [nearbyTravel, setNearbyTravel] = useState([]);
+  const [nearbyFood, setNearbyFood] = useState([]);
+  const [nearbyEvents, setNearbyEvents] = useState([]);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+
   const tabs = ['소개', '주변 정보', '오시는 길', '후기'];
+
 
   useEffect(() => {
     const fetchFestival = async () => {
@@ -58,6 +66,9 @@ const FestivalDetailPage = () => {
 
     fetchFestival();
   }, [id]);
+
+
+
 
   const DEFAULT_IMAGE = festival?.first_image || festival?.first_image2 || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=2070";
 
@@ -136,10 +147,62 @@ const FestivalDetailPage = () => {
   const location = `${festival.addr1 || ''} ${festival.addr2 || ''}`.trim();
 
   const reviews = festival.reviews || [];
-  const nearbyTravel = festival.nearbyTravel || [];
-  const nearbyFood = festival.nearbyFood || [];
-  const nearbyEvents = festival.nearbyEvents || [];
 
+ 
+
+const NearbyCardList = ({ items }) => {
+  if (!items || items.length === 0) {
+    return (
+      <p className="text-gray-400 font-bold">
+        표시할 주변 정보가 없습니다.
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {items.map((item) => {
+        const image =
+          item.first_image ||
+          item.first_image2 ||
+          'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=800';
+
+        const address = `${item.addr1 || ''} ${item.addr2 || ''}`.trim();
+
+        return (
+          <div
+            key={item.content_id}
+            className="bg-gray-50 rounded-3xl overflow-hidden border border-gray-100 hover:shadow-md transition-all"
+          >
+            <img
+              src={image}
+              alt={item.title}
+              className="w-full h-40 object-cover"
+            />
+
+            <div className="p-5">
+              <h4 className="font-black text-gray-900 text-lg mb-2 line-clamp-1">
+                {item.title || '이름 없음'}
+              </h4>
+
+              <p className="text-sm text-gray-500 font-bold line-clamp-2 flex items-start gap-1">
+                <MapPin size={16} className="text-purple-500 mt-0.5 shrink-0" />
+                {address || '주소 정보 없음'}
+              </p>
+
+              {item.tel && (
+                <p className="text-sm text-gray-500 font-bold mt-2 flex items-center gap-1">
+                  <Phone size={16} className="text-purple-500 shrink-0" />
+                  {item.tel}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
   return (
     <div className="bg-gray-50/30 min-h-screen pb-20 font-['Pretendard']">
       <section className="relative h-[400px] md:h-[500px]">
@@ -216,7 +279,7 @@ const FestivalDetailPage = () => {
                 </div>
               </div>
 
-              <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl">
+              <div className="md:col-span-2 flex items-start gap-4 p-4 bg-gray-50 rounded-2xl">
                 <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-purple-600 shadow-sm">
                   <Globe size={20} />
                 </div>
@@ -237,12 +300,7 @@ const FestivalDetailPage = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <button className="flex-1 h-14 bg-purple-600 text-white font-black rounded-2xl shadow-lg shadow-purple-200 flex items-center justify-center gap-2 hover:bg-purple-700 transition-all active:scale-95">
-                  <Navigation size={20} />
-                  길찾기
-                </button>
-              </div>
+
             </div>
           </div>
 
@@ -293,29 +351,37 @@ const FestivalDetailPage = () => {
 
             {activeTab === '주변 정보' && (
               <div className="space-y-12">
-                <section>
-                  <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
-                    <Tent size={24} className="text-green-500" />
-                    주변 여행지
-                  </h3>
-                  <p className="text-gray-400 font-bold">주변 여행지 API 연동 예정</p>
-                </section>
+                {nearbyLoading ? (
+                  <p className="text-gray-400 font-bold">
+                    주변 정보를 불러오는 중...
+                  </p>
+                ) : (
+                  <>
+                    <section>
+                      <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
+                        <Tent size={24} className="text-green-500" />
+                        주변 여행지
+                      </h3>
+                      <NearbyCardList items={nearbyTravel} />
+                    </section>
 
-                <section>
-                  <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
-                    <Utensils size={24} className="text-orange-500" />
-                    주변 맛집
-                  </h3>
-                  <p className="text-gray-400 font-bold">주변 맛집 API 연동 예정</p>
-                </section>
+                    <section>
+                      <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
+                        <Utensils size={24} className="text-orange-500" />
+                        주변 맛집
+                      </h3>
+                      <NearbyCardList items={nearbyFood} />
+                    </section>
 
-                <section>
-                  <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
-                    <Music size={24} className="text-blue-500" />
-                    주변 공연/행사
-                  </h3>
-                  <p className="text-gray-400 font-bold">주변 행사 API 연동 예정</p>
-                </section>
+                    <section>
+                      <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
+                        <Music size={24} className="text-blue-500" />
+                        주변 공연/행사
+                      </h3>
+                      <NearbyCardList items={nearbyEvents} />
+                    </section>
+                  </>
+                )}
               </div>
             )}
 
@@ -335,9 +401,7 @@ const FestivalDetailPage = () => {
                     <MapPin size={18} className="text-purple-600" />
                     {location || '주소 정보 없음'}
                   </p>
-                  <p className="text-sm text-gray-500 font-medium">
-                    위도: {festival.map_y || '-'} / 경도: {festival.map_x || '-'}
-                  </p>
+
                 </div>
               </div>
             )}
