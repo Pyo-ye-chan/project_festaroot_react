@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { RotateCcw, X, Search } from 'lucide-react';
 import useMapStore from '../../../store/useMapStore';
 import FestivalSearchModal from './FestivalSearchModal';
+import {useNavigate} from 'react-router-dom'
+
 
 function SidebarFilter() {
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   // Zustand store에서 상태와 액션 가져오기
   const { 
@@ -24,7 +27,7 @@ function SidebarFilter() {
     }
     fetchNearbyPlaces();
   };
-
+  const navi = useNavigate();
   return (
     <div className="flex flex-col h-full px-5 py-8 bg-slate-50 overflow-y-auto scrollbar-hide">
       {/* 타이틀 영역 */}
@@ -55,7 +58,9 @@ function SidebarFilter() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="flex-1 py-1.5 bg-white border border-[#6B46FE] rounded-lg text-[#6B46FE] text-[11px] font-semibold hover:bg-purple-50 transition-colors">
+              <button 
+              onClick={() => navi(`/festival/${selectedFestival.content_id}`)}
+              className="flex-1 py-1.5 bg-white border border-[#6B46FE] rounded-lg text-[#6B46FE] text-[11px] font-semibold hover:bg-purple-50 transition-colors">
                 축제 상세
               </button>
               <button 
