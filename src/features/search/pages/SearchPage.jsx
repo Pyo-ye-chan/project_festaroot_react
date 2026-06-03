@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Search, Calendar, MapPin, Star, Heart, SlidersHorizontal, 
-  ChevronDown, LayoutGrid, List, ChevronLeft, ChevronRight 
+  ChevronDown, LayoutGrid, List, ChevronLeft, ChevronRight, Eye 
 } from 'lucide-react';
 import festivalService from '../../../api/festivalService';
 import RegionService from '../../../api/regionService';
@@ -99,7 +99,7 @@ const SearchPage = () => {
         sigungu_code: filterSigungu.sigungu_code,
         page: currentPage,
         size: ITEMS_PER_PAGE,
-        ongoingOnly: showOngoingOnly, // 리액트의 boolean 상태값을 그대로 매핑
+        ongoingOnly: showOngoingOnly,
         ...customParams
       };
 
@@ -169,7 +169,7 @@ const SearchPage = () => {
     fetchAllFestivals();
   }, [sortBy, currentPage, showOngoingOnly]);
 
-// 검색 조건 초기화 함수
+  // 검색 조건 초기화 함수
   const handleReset = () => {
     setSearchQuery('');
     setFilterRegion({ region_code: '', region_name: '전체' });
@@ -226,7 +226,6 @@ const SearchPage = () => {
 
               {/* Keyword Search */}
               <div className="space-y-3">
-                {/* 💡 [위치 수정] '축제 소개글 포함' 스위치를 축제명 타이틀 옆라인으로 이동 */}
                 <div className="flex items-center justify-between px-0.5">
                   <p className="text-xs font-black text-gray-400 uppercase tracking-wider">축제명</p>
                   <div className="flex items-center gap-2">
@@ -255,22 +254,22 @@ const SearchPage = () => {
                 </div>
               </div>
 
-              {/* Date Filter */}
+              {/* Date Filter (한 줄로 수정) */}
               <div className="space-y-3 pt-4 border-t border-gray-50">
                 <p className="text-xs font-black text-gray-400 uppercase tracking-wider">기간 설정</p>
-                <div className="space-y-2">
+                <div className="flex items-center gap-2">
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
-                    className="w-full bg-gray-50 border-gray-100 rounded-xl py-2.5 px-4 text-xs font-bold text-gray-600 border outline-none focus:border-[#5821B6]/40"
+                    className="w-full bg-gray-50 border-gray-100 rounded-xl py-2 px-3 text-[11px] font-bold text-gray-600 border outline-none focus:border-[#5821B6]/40"
                   />
-                  <div className="flex justify-center text-gray-300 font-bold text-xs">~</div>
+                  <span className="text-gray-300 font-bold text-xs">~</span>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
-                    className="w-full bg-gray-50 border-gray-100 rounded-xl py-2.5 px-4 text-xs font-bold text-gray-600 border outline-none focus:border-[#5821B6]/40"
+                    className="w-full bg-gray-50 border-gray-100 rounded-xl py-2 px-3 text-[11px] font-bold text-gray-600 border outline-none focus:border-[#5821B6]/40"
                   />
                 </div>
               </div>
@@ -366,7 +365,6 @@ const SearchPage = () => {
                   총 <span className="text-[#5821B6] font-black">{pageInfo.totalCount}</span>개의 결과
                 </p>
                 
-                {/* 💡 [위치 및 순서 수정] 텍스트가 앞에 오고 토글이 뒤로 가도록 변경 */}
                 <label className="flex items-center gap-3 cursor-pointer select-none border-l border-gray-100 pl-6">
                   <input
                     type="checkbox"
@@ -415,8 +413,8 @@ const SearchPage = () => {
                           }}
                           className={`w-full px-4 py-2.5 text-left text-xs font-bold ${sortBy === option ? 'bg-purple-50 text-[#5821B6]' : 'text-gray-600 hover:bg-gray-50'}`}
                         >
-                          {option
-                        }</button>
+                          {option}
+                        </button>
                       ))}
                     </div>
                   )}
@@ -438,7 +436,6 @@ const SearchPage = () => {
                         <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                           <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                           <div className="absolute top-4 left-4 flex gap-2">
-                            {/* 💡 [컬러 수정] '진행중' 상태일 때 에너제틱한 Festival Yellow 적용 */}
                             <span className={`px-3 py-1.5 rounded-full text-[10px] font-black shadow-sm ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-[#FFD23F] text-gray-900' : 'bg-white text-gray-900'}`}>
                               {getDDay(fest.event_start_date, fest.event_end_date)}
                             </span>
@@ -458,10 +455,15 @@ const SearchPage = () => {
                             </p>
                           </div>
                           <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-50">
-                            <div className="flex items-center gap-1.5">
-                              {/* 💡 [컬러 수정] 브랜딩 노란색 별점 아이콘 */}
-                              <Star className="w-3.5 h-3.5 text-[#FFD23F] fill-current" />
-                              <span className="text-xs font-black text-gray-700">{fest.rating_avg ? fest.rating_avg.toFixed(1) : '0.0'}</span>
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1.5">
+                                <Star className="w-3.5 h-3.5 text-[#FFD23F] fill-current" />
+                                <span className="text-xs font-black text-gray-700">{fest.rating_avg ? fest.rating_avg.toFixed(1) : '0.0'}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-gray-400">
+                                <Eye className="w-3.5 h-3.5" />
+                                <span className="text-[11px] font-black text-gray-600">{fest.view_count || 0}</span>
+                              </div>
                             </div>
                             <div className="flex items-center gap-1.5 text-rose-500 font-black">
                               <Heart className="w-3.5 h-3.5 fill-current" />
@@ -483,7 +485,6 @@ const SearchPage = () => {
                           <div>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex gap-2">
-                                {/* 💡 [컬러 수정] 리스트 뷰 '진행중' 노란색 배지 매핑 */}
                                 <span className={`px-2 py-1 rounded-lg text-[9px] font-black ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-[#FFD23F] text-gray-900' : 'bg-gray-50 text-gray-500'}`}>
                                   {getDDay(fest.event_start_date, fest.event_end_date)}
                                 </span>
@@ -505,6 +506,10 @@ const SearchPage = () => {
                               <div className="flex items-center gap-1.5">
                                 <Star className="w-4 h-4 text-[#FFD23F] fill-current" />
                                 <span className="text-sm font-black text-gray-700">{fest.rating_avg ? fest.rating_avg.toFixed(1) : '0.0'}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-gray-500">
+                                <Eye className="w-4 h-4" />
+                                <span className="text-sm font-black">{fest.view_count || 0}</span>
                               </div>
                               <div className="flex items-center gap-1.5 text-rose-500 font-black">
                                 <Heart className="w-4 h-4 fill-current" />
