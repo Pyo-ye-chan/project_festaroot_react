@@ -40,28 +40,26 @@ const getDDay = (startDateStr, endDateStr) => {
 const SearchPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
-  const [filterRegion, setFilterRegion] = useState('전체');
-  const [filterSigungu, setFilterSigungu] = useState('전체');
+  const [filterRegion, setFilterRegion] = useState({ region_code: '', region_name: '전체' });
+  const [filterSigungu, setFilterSigungu] = useState({ sigungu_code: '', sigungu_name: '전체' });
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [sortBy, setSortBy] = useState('인기순');
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isRegionOpen, setIsRegionOpen] = useState(false);
-  const [isSigunguOpen, setIsSigunguOpen] = useState(false); // 시군구 드롭다운 상태
+  const [isSigunguOpen, setIsSigunguOpen] = useState(false);
 
   // 백엔드 데이터 상태 관리
   const [festivals, setFestivals] = useState([]);
   const [isDataLoading, setIsDataLoading] = useState(false);
 
-  // API로 받아올 시도/시군구 리스트 관리
-  const [sidoList, setSidoList] = useState(['전체']);
-  const [sigunguList, setSigunguList] = useState(['전체']);
+  // 초기 배열을 객체 형태로 포맷팅
+  const [sidoList, setSidoList] = useState([{ region_code: '', region_name: '전체' }]);
+  const [sigunguList, setSigunguList] = useState([{ sigungu_code: '', sigungu_name: '전체' }]);
 
   const sortOptions = ['인기순', '최신순', '조회순', '찜 많은 순'];
 
-  /**
-   * 축제 데이터 요청 함수
-   */
+  /* 축제 데이터 요청 함수 */
   const fetchAllFestivals = async (customParams = {}) => {
     try {
       setIsDataLoading(true);
@@ -71,13 +69,14 @@ const SearchPage = () => {
       if (sortBy === '조회순') sortParam = 'view_count';
       if (sortBy === '찜 많은 순') sortParam = 'like_count';
 
+      // 백엔드 FestivalSearchDTO 변수명 규격과 매핑 일치화
       const params = {
         sort: sortParam,
-        title: searchQuery,
+        keyword: searchQuery,
         event_start_date: startDate.replace(/-/g, ''),
         event_end_date: endDate.replace(/-/g, ''),
-        region_name: filterRegion === '전체' ? '' : filterRegion,
-        sigungu_name: filterSigungu === '전체' ? '' : filterSigungu,
+        region_code: filterRegion.region_code,
+        sigungu_code: filterSigungu.sigungu_code,
         ...customParams
       };
 
@@ -99,8 +98,11 @@ const SearchPage = () => {
       try {
         const response = await RegionService.regionList();
         const data = response?.data || response;
+        console.log("시도 데이터 원본 확인:", data); // 원본 객체의 키값이 region_code 인지 regionCode 인지 확인!
+
         if (Array.isArray(data)) {
-          setSidoList(['전체', ...data]);
+          // 기존 전체 데이터 배열 앞에 '전체' 기본 객체 삽입
+          setSidoList([{ region_code: '', region_name: '전체' }, ...data]);
         }
       } catch (error) {
         console.error("시도 목록을 불러오는데 실패했습니다.", error);
@@ -112,25 +114,27 @@ const SearchPage = () => {
   // 2. 선택된 시도(filterRegion)가 변경될 때마다 '시군구 목록' 로드
   useEffect(() => {
     const fetchSigunguData = async () => {
-      if (filterRegion === '전체') {
-        setSigunguList(['전체']);
-        setFilterSigungu('전체');
+      // 코드가 비어있으면(=전체) 시군구 초기화 후 리턴
+      if (!filterRegion.region_code) {
+        setSigunguList([{ sigungu_code: '', sigungu_name: '전체' }]);
+        setFilterSigungu({ sigungu_code: '', sigungu_name: '전체' });
         return;
       }
 
       try {
-        const response = await RegionService.sigunguList(filterRegion);
+        // 이제 백엔드에 시도 '코드'를 파라미터로 넘김
+        const response = await RegionService.sigunguList(filterRegion.region_code);
         const data = response?.data || response;
         if (Array.isArray(data)) {
-          setSigunguList(['전체', ...data]);
+          setSigunguList([{ sigungu_code: '', sigungu_name: '전체' }, ...data]);
         } else {
-          setSigunguList(['전체']);
+          setSigunguList([{ sigungu_code: '', sigungu_name: '전체' }]);
         }
       } catch (error) {
         console.error("시군구 목록을 불러오는데 실패했습니다.", error);
-        setSigunguList(['전체']);
+        setSigunguList([{ sigungu_code: '', sigungu_name: '전체' }]);
       }
-      setFilterSigungu('전체'); // 시도가 바뀌면 시군구 선택은 '전체'로 초기화
+      setFilterSigungu({ sigungu_code: '', sigungu_name: '전체' });
     };
 
     fetchSigunguData();
@@ -144,16 +148,17 @@ const SearchPage = () => {
   // 검색 조건 초기화 함수
   const handleReset = () => {
     setSearchQuery('');
-    setFilterRegion('전체');
-    setFilterSigungu('전체');
+    setFilterRegion({ region_code: '', region_name: '전체' });
+    setFilterSigungu({ sigungu_code: '', sigungu_name: '전체' });
     setStartDate('');
     setEndDate('');
     setSortBy('인기순');
 
+    // 초기화 파라미터 키값
     fetchAllFestivals({
-      title: '',
-      region_name: '',
-      sigungu_name: '',
+      keyword: '',
+      region_code: '',
+      sigungu_code: '',
       event_start_date: '',
       event_end_date: ''
     });
@@ -227,7 +232,8 @@ const SearchPage = () => {
                     onClick={() => setIsRegionOpen(!isRegionOpen)}
                     className="w-full flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl py-3 px-4 text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all outline-none"
                   >
-                    <span>{filterRegion}</span>
+                    {/* 💡 변경: 객체의 이름을 렌더링 */}
+                    <span>{filterRegion.region_name}</span>
                     <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isRegionOpen ? 'rotate-180' : ''}`} />
                   </button>
 
@@ -235,14 +241,14 @@ const SearchPage = () => {
                     <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto grid grid-cols-2 gap-1 p-2">
                       {sidoList.map(r => (
                         <button
-                          key={r}
+                          key={r.region_code || 'all'} // 고유 코드를 key로 사용
                           onClick={() => {
-                            setFilterRegion(r);
+                            setFilterRegion(r); // 클릭 시 객체 통째로 세팅
                             setIsRegionOpen(false);
                           }}
-                          className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterRegion === r ? 'bg-purple-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+                          className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterRegion.region_code === r.region_code ? 'bg-purple-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
                         >
-                          {r}
+                          {r.region_name}
                         </button>
                       ))}
                     </div>
@@ -250,8 +256,9 @@ const SearchPage = () => {
                 </div>
               </div>
 
-              {/* 🔥 Sigungu (시군구) Select 추가 */}
-              {filterRegion !== '전체' && (
+              {/* Sigungu (시군구) Select */}
+              {/* 시도가 '전체'가 아닐 때만 노출되도록 조건 변경 (코드가 존재할 때) */}
+              {filterRegion.region_code && (
                 <div className="space-y-3 pt-4 border-t border-gray-50">
                   <p className="text-xs font-black text-gray-400 uppercase tracking-wider">상세 지역 선택 (시/군/구)</p>
                   <div className="relative">
@@ -259,7 +266,8 @@ const SearchPage = () => {
                       onClick={() => setIsSigunguOpen(!isSigunguOpen)}
                       className="w-full flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl py-3 px-4 text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all outline-none"
                     >
-                      <span>{filterSigungu}</span>
+                      {/* 객체의 이름을 렌더링 */}
+                      <span>{filterSigungu.sigungu_name}</span>
                       <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isSigunguOpen ? 'rotate-180' : ''}`} />
                     </button>
 
@@ -267,14 +275,14 @@ const SearchPage = () => {
                       <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto grid grid-cols-2 gap-1 p-2">
                         {sigunguList.map(s => (
                           <button
-                            key={s}
+                            key={s.sigungu_code || 'all'} // 고유 코드를 key로 사용
                             onClick={() => {
-                              setFilterSigungu(s);
+                              setFilterSigungu(s); // 객체 세팅
                               setIsSigunguOpen(false);
                             }}
-                            className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterSigungu === s ? 'bg-purple-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+                            className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterSigungu.sigungu_code === s.sigungu_code ? 'bg-purple-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
                           >
-                            {s}
+                            {s.sigungu_name}
                           </button>
                         ))}
                       </div>

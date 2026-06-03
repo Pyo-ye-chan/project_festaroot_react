@@ -9,7 +9,7 @@ const RegionService = {
     },
 
     sigunguList: async (region_code) => {
-        const sigungu = await maxios.get(`/api/festivals/sigungu`, { params: region_code });
+        const sigungu = await maxios.get(`/api/festivals/sigungu`, { params: { region_code } });
         return sigungu.data;
     }
 
