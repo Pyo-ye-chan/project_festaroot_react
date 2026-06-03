@@ -254,7 +254,7 @@ const SearchPage = () => {
                 </div>
               </div>
 
-              {/* Date Filter (한 줄로 수정) */}
+              {/* Date Filter */}
               <div className="space-y-3 pt-4 border-t border-gray-50">
                 <p className="text-xs font-black text-gray-400 uppercase tracking-wider">기간 설정</p>
                 <div className="flex items-center gap-2">
@@ -436,7 +436,7 @@ const SearchPage = () => {
                         <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                           <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                           <div className="absolute top-4 left-4 flex gap-2">
-                            <span className={`px-3 py-1.5 rounded-full text-[10px] font-black shadow-sm ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-[#FFD23F] text-gray-900' : 'bg-white text-gray-900'}`}>
+                            <span className={`px-3 py-1.5 rounded-full text-[10px] font-black shadow-sm ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-green-500 text-white' : 'bg-white text-gray-900'}`}>
                               {getDDay(fest.event_start_date, fest.event_end_date)}
                             </span>
                           </div>
@@ -485,7 +485,7 @@ const SearchPage = () => {
                           <div>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex gap-2">
-                                <span className={`px-2 py-1 rounded-lg text-[9px] font-black ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-[#FFD23F] text-gray-900' : 'bg-gray-50 text-gray-500'}`}>
+                                <span className={`px-2 py-1 rounded-lg text-[9px] font-black ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-green-500 text-white' : 'bg-gray-50 text-gray-500'}`}>
                                   {getDDay(fest.event_start_date, fest.event_end_date)}
                                 </span>
                               </div>
@@ -523,15 +523,19 @@ const SearchPage = () => {
                   </div>
                 )}
 
-                {/* 페이지네이션 블록 UI */}
-                <div className="flex items-center justify-center gap-2 mt-12 select-none">
-                  <button
-                    onClick={() => setCurrentPage(pageInfo.startPage - 1)}
-                    disabled={!pageInfo.existPrev}
-                    className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:hover:bg-white transition-all"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
+                {/* 페이지네이션 블록 UI (조건부 렌더링 반영) */}
+                <div className="flex items-center justify-center gap-2 mt-12 select-none h-9">
+                  {/* 이전 블록 화살표: 존재할 때만 표시 */}
+                  {pageInfo.existPrev ? (
+                    <button
+                      onClick={() => setCurrentPage(pageInfo.startPage - 1)}
+                      className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <div className="w-9" /> /* 화살표가 없어도 숫자들이 고정 위치를 유지하도록 공간 확보 */
+                  )}
 
                   {Array.from(
                     { length: pageInfo.endPage - pageInfo.startPage + 1 }, 
@@ -550,13 +554,17 @@ const SearchPage = () => {
                     </button>
                   ))}
 
-                  <button
-                    onClick={() => setCurrentPage(pageInfo.endPage + 1)}
-                    disabled={!pageInfo.existNext}
-                    className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:hover:bg-white transition-all"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                  {/* 다음 블록 화살표: 존재할 때만 표시 */}
+                  {pageInfo.existNext ? (
+                    <button
+                      onClick={() => setCurrentPage(pageInfo.endPage + 1)}
+                      className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <div className="w-9" /> /* 화살표가 없어도 숫자들이 고정 위치를 유지하도록 공간 확보 */
+                  )}
                 </div>
               </>
             ) : (
