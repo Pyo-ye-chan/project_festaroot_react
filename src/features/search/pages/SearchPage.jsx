@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Search, Calendar, MapPin, Star, Heart, SlidersHorizontal, 
-  ChevronDown, LayoutGrid, List, ChevronLeft, ChevronRight, Eye 
+  ChevronDown, LayoutGrid, List, ChevronLeft, ChevronRight, 
+  ChevronsLeft, ChevronsRight, Eye 
 } from 'lucide-react';
 import festivalService from '../../../api/festivalService';
 import RegionService from '../../../api/regionService';
@@ -65,7 +66,7 @@ const SearchPage = () => {
     startPage: 1,
     endPage: 1,
     existPrev: false,
-    existNext: false,
+    textNext: false,
     totalCount: 0 
   });
 
@@ -78,6 +79,9 @@ const SearchPage = () => {
   const [sigunguList, setSigunguList] = useState([{ sigungu_code: '', sigungu_name: '전체' }]);
 
   const sortOptions = ['인기순', '최신순', '조회순', '찜 많은 순'];
+
+  // 총 페이지 수 계산 (전체 개수 / 페이지당 보여줄 개수)
+  const totalPages = Math.ceil(pageInfo.totalCount / ITEMS_PER_PAGE) || 1;
 
   /* 축제 데이터 요청 함수 */
   const fetchAllFestivals = async (customParams = {}) => {
@@ -523,20 +527,32 @@ const SearchPage = () => {
                   </div>
                 )}
 
-                {/* 페이지네이션 블록 UI (조건부 렌더링 반영) */}
-                <div className="flex items-center justify-center gap-2 mt-12 select-none h-9">
-                  {/* 이전 블록 화살표: 존재할 때만 표시 */}
-                  {pageInfo.existPrev ? (
+                {/* 개선된 페이지네이션 블록 UI */}
+                <div className="flex items-center justify-center gap-2 mt-12 select-none">
+                  
+                  {/* 맨 처음으로 가기 (<<) : 현재 1페이지가 아닐 때만 렌더링 */}
+                  {currentPage > 1 && (
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all active:scale-95"
+                      title="맨 처음 페이지로"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  {/* 이전 블록 화살표 (<) : 현재 첫 숫자가 1보다 큰 경우(즉, 2번째 블록 이상)에만 렌더링 */}
+                  {pageInfo.startPage > 1 && (
                     <button
                       onClick={() => setCurrentPage(pageInfo.startPage - 1)}
-                      className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all"
+                      className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all active:scale-95"
+                      title="이전 블록으로"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                  ) : (
-                    <div className="w-9" /> /* 화살표가 없어도 숫자들이 고정 위치를 유지하도록 공간 확보 */
                   )}
 
+                  {/* 페이지 숫자 목록 */}
                   {Array.from(
                     { length: pageInfo.endPage - pageInfo.startPage + 1 }, 
                     (_, i) => pageInfo.startPage + i
@@ -554,17 +570,28 @@ const SearchPage = () => {
                     </button>
                   ))}
 
-                  {/* 다음 블록 화살표: 존재할 때만 표시 */}
-                  {pageInfo.existNext ? (
+                  {/* 다음 블록 화살표 (>) : 현재 블록 끝 번호가 전체 페이지 수보다 작을 때만 렌더링 */}
+                  {pageInfo.endPage < totalPages && (
                     <button
                       onClick={() => setCurrentPage(pageInfo.endPage + 1)}
-                      className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all"
+                      className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all active:scale-95"
+                      title="다음 블록으로"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
-                  ) : (
-                    <div className="w-9" /> /* 화살표가 없어도 숫자들이 고정 위치를 유지하도록 공간 확보 */
                   )}
+
+                  {/* 맨 끝으로 가기 (>>) : 현재 마지막 페이지가 아닐 때만 렌더링 */}
+                  {currentPage < totalPages && (
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all active:scale-95"
+                      title="맨 마지막 페이지로"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
+                  )}
+
                 </div>
               </>
             ) : (
