@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Calendar, MapPin, Star, Heart, SlidersHorizontal, ChevronDown, LayoutGrid, List } from 'lucide-react';
+import { 
+  Search, Calendar, MapPin, Star, Heart, SlidersHorizontal, 
+  ChevronDown, LayoutGrid, List, ChevronLeft, ChevronRight 
+} from 'lucide-react';
 import festivalService from '../../../api/festivalService';
 import RegionService from '../../../api/regionService';
 
@@ -49,6 +52,23 @@ const SearchPage = () => {
   const [isRegionOpen, setIsRegionOpen] = useState(false);
   const [isSigunguOpen, setIsSigunguOpen] = useState(false);
 
+  // 토글 스위치 상태 관리
+  const [searchScope, setSearchScope] = useState('title'); 
+  const [showOngoingOnly, setShowOngoingOnly] = useState(false); 
+
+  // 페이징 처리 상태 관리
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 9; 
+
+  // 백엔드에서 받아올 페이징 블록 정보 상태
+  const [pageInfo, setPageInfo] = useState({
+    startPage: 1,
+    endPage: 1,
+    existPrev: false,
+    existNext: false,
+    totalCount: 0 
+  });
+
   // 백엔드 데이터 상태 관리
   const [festivals, setFestivals] = useState([]);
   const [isDataLoading, setIsDataLoading] = useState(false);
@@ -69,20 +89,27 @@ const SearchPage = () => {
       if (sortBy === '조회순') sortParam = 'view_count';
       if (sortBy === '찜 많은 순') sortParam = 'like_count';
 
-      // 백엔드 FestivalSearchDTO 변수명 규격과 매핑 일치화
       const params = {
         sort: sortParam,
         keyword: searchQuery,
+        searchScope: searchScope, 
         event_start_date: startDate.replace(/-/g, ''),
         event_end_date: endDate.replace(/-/g, ''),
         region_code: filterRegion.region_code,
         sigungu_code: filterSigungu.sigungu_code,
+        page: currentPage,
+        size: ITEMS_PER_PAGE,
+        ongoingOnly: showOngoingOnly, // 리액트의 boolean 상태값을 그대로 매핑
         ...customParams
       };
 
       const response = await festivalService.getFestivals(params);
       const data = response?.data || response;
-      setFestivals(Array.isArray(data) ? data : []);
+      
+      setFestivals(Array.isArray(data.list) ? data.list : []);
+      if (data.pageInfo) {
+        setPageInfo(data.pageInfo);
+      }
 
     } catch (error) {
       console.error("축제 데이터를 가져오는데 실패했습니다.", error);
@@ -92,16 +119,14 @@ const SearchPage = () => {
     }
   };
 
-  // 1. 컴포넌트 마운트 시 '시도 목록' 로드
+  // 컴포넌트 마운트 시 '시도 목록' 로드
   useEffect(() => {
     const fetchSidoData = async () => {
       try {
         const response = await RegionService.regionList();
         const data = response?.data || response;
-        console.log("시도 데이터 원본 확인:", data); // 원본 객체의 키값이 region_code 인지 regionCode 인지 확인!
 
         if (Array.isArray(data)) {
-          // 기존 전체 데이터 배열 앞에 '전체' 기본 객체 삽입
           setSidoList([{ region_code: '', region_name: '전체' }, ...data]);
         }
       } catch (error) {
@@ -111,10 +136,9 @@ const SearchPage = () => {
     fetchSidoData();
   }, []);
 
-  // 2. 선택된 시도(filterRegion)가 변경될 때마다 '시군구 목록' 로드
+  // 선택된 시도가 변경될 때마다 '시군구 목록' 로드
   useEffect(() => {
     const fetchSigunguData = async () => {
-      // 코드가 비어있으면(=전체) 시군구 초기화 후 리턴
       if (!filterRegion.region_code) {
         setSigunguList([{ sigungu_code: '', sigungu_name: '전체' }]);
         setFilterSigungu({ sigungu_code: '', sigungu_name: '전체' });
@@ -122,7 +146,6 @@ const SearchPage = () => {
       }
 
       try {
-        // 이제 백엔드에 시도 '코드'를 파라미터로 넘김
         const response = await RegionService.sigunguList(filterRegion.region_code);
         const data = response?.data || response;
         if (Array.isArray(data)) {
@@ -138,14 +161,15 @@ const SearchPage = () => {
     };
 
     fetchSigunguData();
+    setCurrentPage(1); 
   }, [filterRegion]);
 
-  // 3. 정렬 기준(sortBy)이 바뀔 때 축제 목록 재요청
+  // 통합 데이터 요청 Effect
   useEffect(() => {
     fetchAllFestivals();
-  }, [sortBy]);
+  }, [sortBy, currentPage, showOngoingOnly]);
 
-  // 검색 조건 초기화 함수
+// 검색 조건 초기화 함수
   const handleReset = () => {
     setSearchQuery('');
     setFilterRegion({ region_code: '', region_name: '전체' });
@@ -153,15 +177,25 @@ const SearchPage = () => {
     setStartDate('');
     setEndDate('');
     setSortBy('인기순');
+    setSearchScope('title'); 
+    setShowOngoingOnly(false);
+    setCurrentPage(1);
 
-    // 초기화 파라미터 키값
     fetchAllFestivals({
       keyword: '',
+      searchScope: 'title',
       region_code: '',
       sigungu_code: '',
       event_start_date: '',
-      event_end_date: ''
+      event_end_date: '',
+      page: 1,
+      ongoingOnly: false
     });
+  };
+
+  const handleSearchSubmit = () => {
+    setCurrentPage(1);
+    fetchAllFestivals({ page: 1 });
   };
 
   return (
@@ -171,7 +205,7 @@ const SearchPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-black text-gray-900 tracking-tight flex items-center gap-2">
             축제 찾기
-            <span className="text-purple-600 animate-pulse">🎡</span>
+            <span className="text-[#FFD23F] animate-pulse">🎡</span>
           </h1>
           <p className="text-gray-500 mt-3 font-bold text-sm">진행 중이거나 예정된 축제 정보를 실시간으로 확인해보세요.</p>
         </div>
@@ -185,21 +219,38 @@ const SearchPage = () => {
             <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                 <h3 className="font-black text-gray-900 flex items-center gap-2 text-sm">
-                  <SlidersHorizontal className="w-4 h-4 text-purple-600" />
+                  <SlidersHorizontal className="w-4 h-4 text-[#5821B6]" />
                   상세 검색 필터
                 </h3>
               </div>
 
               {/* Keyword Search */}
               <div className="space-y-3">
-                <p className="text-xs font-black text-gray-400 uppercase tracking-wider">축제명</p>
+                {/* 💡 [위치 수정] '축제 소개글 포함' 스위치를 축제명 타이틀 옆라인으로 이동 */}
+                <div className="flex items-center justify-between px-0.5">
+                  <p className="text-xs font-black text-gray-400 uppercase tracking-wider">축제명</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-gray-400">소개글 포함</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchScope(prev => prev === 'title' ? 'all' : 'title');
+                        setCurrentPage(1);
+                      }}
+                      className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 focus:outline-none ${searchScope === 'all' ? 'bg-[#5821B6]' : 'bg-gray-200'}`}
+                    >
+                      <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform duration-300 ${searchScope === 'all' ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+                </div>
+                
                 <div className="relative">
                   <input
                     type="text"
                     placeholder="검색어를 입력하세요..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-gray-50 border-gray-100 rounded-2xl py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-purple-600/20 transition-all border"
+                    className="w-full bg-gray-50 border-gray-100 rounded-2xl py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-[#5821B6]/20 transition-all border"
                   />
                 </div>
               </div>
@@ -211,15 +262,15 @@ const SearchPage = () => {
                   <input
                     type="date"
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-gray-50 border-gray-100 rounded-xl py-2.5 px-4 text-xs font-bold text-gray-600 border outline-none"
+                    onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+                    className="w-full bg-gray-50 border-gray-100 rounded-xl py-2.5 px-4 text-xs font-bold text-gray-600 border outline-none focus:border-[#5821B6]/40"
                   />
                   <div className="flex justify-center text-gray-300 font-bold text-xs">~</div>
                   <input
                     type="date"
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-gray-50 border-gray-100 rounded-xl py-2.5 px-4 text-xs font-bold text-gray-600 border outline-none"
+                    onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+                    className="w-full bg-gray-50 border-gray-100 rounded-xl py-2.5 px-4 text-xs font-bold text-gray-600 border outline-none focus:border-[#5821B6]/40"
                   />
                 </div>
               </div>
@@ -232,7 +283,6 @@ const SearchPage = () => {
                     onClick={() => setIsRegionOpen(!isRegionOpen)}
                     className="w-full flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl py-3 px-4 text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all outline-none"
                   >
-                    {/* 💡 변경: 객체의 이름을 렌더링 */}
                     <span>{filterRegion.region_name}</span>
                     <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isRegionOpen ? 'rotate-180' : ''}`} />
                   </button>
@@ -241,12 +291,12 @@ const SearchPage = () => {
                     <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto grid grid-cols-2 gap-1 p-2">
                       {sidoList.map(r => (
                         <button
-                          key={r.region_code || 'all'} // 고유 코드를 key로 사용
+                          key={r.region_code || 'all'}
                           onClick={() => {
-                            setFilterRegion(r); // 클릭 시 객체 통째로 세팅
+                            setFilterRegion(r);
                             setIsRegionOpen(false);
                           }}
-                          className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterRegion.region_code === r.region_code ? 'bg-purple-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+                          className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterRegion.region_code === r.region_code ? 'bg-[#5821B6] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
                         >
                           {r.region_name}
                         </button>
@@ -257,7 +307,6 @@ const SearchPage = () => {
               </div>
 
               {/* Sigungu (시군구) Select */}
-              {/* 시도가 '전체'가 아닐 때만 노출되도록 조건 변경 (코드가 존재할 때) */}
               {filterRegion.region_code && (
                 <div className="space-y-3 pt-4 border-t border-gray-50">
                   <p className="text-xs font-black text-gray-400 uppercase tracking-wider">상세 지역 선택 (시/군/구)</p>
@@ -266,7 +315,6 @@ const SearchPage = () => {
                       onClick={() => setIsSigunguOpen(!isSigunguOpen)}
                       className="w-full flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl py-3 px-4 text-sm font-bold text-gray-700 hover:bg-gray-100 transition-all outline-none"
                     >
-                      {/* 객체의 이름을 렌더링 */}
                       <span>{filterSigungu.sigungu_name}</span>
                       <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isSigunguOpen ? 'rotate-180' : ''}`} />
                     </button>
@@ -275,12 +323,13 @@ const SearchPage = () => {
                       <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto grid grid-cols-2 gap-1 p-2">
                         {sigunguList.map(s => (
                           <button
-                            key={s.sigungu_code || 'all'} // 고유 코드를 key로 사용
+                            key={s.sigungu_code || 'all'}
                             onClick={() => {
-                              setFilterSigungu(s); // 객체 세팅
+                              setFilterSigungu(s);
                               setIsSigunguOpen(false);
+                              setCurrentPage(1);
                             }}
-                            className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterSigungu.sigungu_code === s.sigungu_code ? 'bg-purple-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+                            className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterSigungu.sigungu_code === s.sigungu_code ? 'bg-[#5821B6] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
                           >
                             {s.sigungu_name}
                           </button>
@@ -292,8 +341,8 @@ const SearchPage = () => {
               )}
 
               <button
-                onClick={() => fetchAllFestivals()}
-                className="w-full bg-purple-600 text-white font-black py-4 rounded-2xl hover:bg-purple-700 transition-all shadow-lg flex items-center justify-center gap-2 group active:scale-[0.98]"
+                onClick={handleSearchSubmit}
+                className="w-full bg-[#5821B6] text-white font-black py-4 rounded-2xl hover:bg-[#451793] transition-all shadow-lg shadow-purple-900/10 flex items-center justify-center gap-2 group active:scale-[0.98]"
               >
                 <Search className="w-4 h-4" />
                 검색하기
@@ -312,17 +361,35 @@ const SearchPage = () => {
           <main className="flex-grow min-w-0">
             {/* Top Toolbar */}
             <div className="flex items-center justify-between mb-8 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-              <div>
+              <div className="flex items-center gap-6">
                 <p className="text-sm font-bold text-gray-500 ml-2">
-                  총 <span className="text-purple-600 font-black">{festivals.length}</span>개의 결과
+                  총 <span className="text-[#5821B6] font-black">{pageInfo.totalCount}</span>개의 결과
                 </p>
+                
+                {/* 💡 [위치 및 순서 수정] 텍스트가 앞에 오고 토글이 뒤로 가도록 변경 */}
+                <label className="flex items-center gap-3 cursor-pointer select-none border-l border-gray-100 pl-6">
+                  <input
+                    type="checkbox"
+                    checked={showOngoingOnly}
+                    onChange={(e) => {
+                      setShowOngoingOnly(e.target.checked);
+                      setCurrentPage(1); 
+                    }}
+                    className="sr-only"
+                  />
+                  <span className="text-xs font-black text-gray-600">진행 및 예정 축제만 보기</span>
+                  <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 ${showOngoingOnly ? 'bg-[#5821B6]' : 'bg-gray-200'}`}>
+                    <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform duration-300 ${showOngoingOnly ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </label>
               </div>
+              
               <div className="flex items-center gap-3">
                 <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-100">
-                  <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-400'}`}>
+                  <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg ${viewMode === 'grid' ? 'bg-white text-[#5821B6] shadow-sm' : 'text-gray-400'}`}>
                     <LayoutGrid className="w-4 h-4" />
                   </button>
-                  <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-400'}`}>
+                  <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-white text-[#5821B6] shadow-sm' : 'text-gray-400'}`}>
                     <List className="w-4 h-4" />
                   </button>
                 </div>
@@ -344,11 +411,12 @@ const SearchPage = () => {
                           onClick={() => {
                             setSortBy(option);
                             setIsSortOpen(false);
+                            setCurrentPage(1); 
                           }}
-                          className={`w-full px-4 py-2.5 text-left text-xs font-bold ${sortBy === option ? 'bg-purple-50 text-purple-600' : 'text-gray-600 hover:bg-gray-50'}`}
+                          className={`w-full px-4 py-2.5 text-left text-xs font-bold ${sortBy === option ? 'bg-purple-50 text-[#5821B6]' : 'text-gray-600 hover:bg-gray-50'}`}
                         >
-                          {option}
-                        </button>
+                          {option
+                        }</button>
                       ))}
                     </div>
                   )}
@@ -359,92 +427,133 @@ const SearchPage = () => {
             {/* Content Display */}
             {isDataLoading ? (
               <div className="flex justify-center items-center py-40">
-                <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-10 h-10 border-4 border-[#5821B6] border-t-transparent rounded-full animate-spin"></div>
               </div>
-            ) : festivals.length > 0 ? (
-              viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {festivals.map(fest => (
-                    <Link to={`/festival/${fest.content_id}`} key={fest.content_id} className="group bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
-                      <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
-                        <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                        <div className="absolute top-4 left-4 flex gap-2">
-                          <span className={`px-3 py-1.5 rounded-full text-[10px] font-black shadow-sm ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-purple-600 text-white' : 'bg-white text-gray-900'}`}>
-                            {getDDay(fest.event_start_date, fest.event_end_date)}
-                          </span>
-                        </div>
-                        <button className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-rose-500 transition-all">
-                          <Heart className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="p-6">
-                        <h4 className="text-lg font-black text-gray-900 group-hover:text-purple-600 transition-colors line-clamp-1">{fest.title}</h4>
-                        <div className="mt-4 space-y-2">
-                          <p className="text-[11px] text-gray-500 font-bold flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 text-purple-400" /> {fest.addr1 || '상세 주소 정보 없음'}
-                          </p>
-                          <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-gray-400" /> {formatDate(fest.event_start_date)} ~ {formatDate(fest.event_end_date)}
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-50">
-                          <div className="flex items-center gap-1.5">
-                            <Star className="w-3.5 h-3.5 text-yellow-400 fill-current" />
-                            <span className="text-xs font-black text-gray-700">{fest.rating_avg ? fest.rating_avg.toFixed(1) : '0.0'}</span>
+            ) : festivals.length > 0 ? ( 
+              <>
+                {viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {festivals.map(fest => ( 
+                      <Link to={`/festival/${fest.content_id}`} key={fest.content_id} className="group bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
+                        <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
+                          <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                          <div className="absolute top-4 left-4 flex gap-2">
+                            {/* 💡 [컬러 수정] '진행중' 상태일 때 에너제틱한 Festival Yellow 적용 */}
+                            <span className={`px-3 py-1.5 rounded-full text-[10px] font-black shadow-sm ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-[#FFD23F] text-gray-900' : 'bg-white text-gray-900'}`}>
+                              {getDDay(fest.event_start_date, fest.event_end_date)}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-1.5 text-rose-500 font-black">
-                            <Heart className="w-3.5 h-3.5 fill-current" />
-                            <span className="text-[11px]">{fest.like_count || 0}</span>
-                          </div>
+                          <button className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-rose-500 transition-all">
+                            <Heart className="w-4 h-4" />
+                          </button>
                         </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {festivals.map(fest => (
-                    <Link to={`/festival/${fest.content_id}`} key={fest.content_id} className="group flex bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
-                      <div className="w-48 h-48 shrink-0 overflow-hidden bg-gray-100">
-                        <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                      </div>
-                      <div className="flex-grow p-6 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex gap-2">
-                              <span className={`px-2 py-1 rounded-lg text-[9px] font-black ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-purple-50 text-purple-600' : 'bg-gray-50 text-gray-500'}`}>
-                                {getDDay(fest.event_start_date, fest.event_end_date)}
-                              </span>
-                            </div>
-                            <button className="text-gray-300 hover:text-rose-500"><Heart className="w-5 h-5" /></button>
-                          </div>
-                          <h4 className="text-xl font-black text-gray-900 group-hover:text-purple-600 transition-colors">{fest.title}</h4>
-                          <div className="mt-3 flex gap-4">
-                            <p className="text-xs text-gray-500 font-bold flex items-center gap-1.5">
-                              <MapPin className="w-3.5 h-3.5 text-purple-400" /> {fest.addr1}
+                        <div className="p-6">
+                          <h4 className="text-lg font-black text-gray-900 group-hover:text-[#5821B6] transition-colors line-clamp-1">{fest.title}</h4>
+                          <div className="mt-4 space-y-2">
+                            <p className="text-[11px] text-gray-500 font-bold flex items-center gap-1.5">
+                              <MapPin className="w-3.5 h-3.5 text-purple-400" /> {fest.addr1 || '상세 주소 정보 없음'}
                             </p>
-                            <p className="text-xs text-gray-400 font-bold flex items-center gap-1.5">
+                            <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1.5">
                               <Calendar className="w-3.5 h-3.5 text-gray-400" /> {formatDate(fest.event_start_date)} ~ {formatDate(fest.event_end_date)}
                             </p>
                           </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                          <div className="flex gap-4">
+                          <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-50">
                             <div className="flex items-center gap-1.5">
-                              <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                              <span className="text-sm font-black text-gray-700">{fest.rating_avg ? fest.rating_avg.toFixed(1) : '0.0'}</span>
+                              {/* 💡 [컬러 수정] 브랜딩 노란색 별점 아이콘 */}
+                              <Star className="w-3.5 h-3.5 text-[#FFD23F] fill-current" />
+                              <span className="text-xs font-black text-gray-700">{fest.rating_avg ? fest.rating_avg.toFixed(1) : '0.0'}</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-rose-500 font-black">
-                              <Heart className="w-4 h-4 fill-current" />
-                              <span className="text-xs">{fest.like_count || 0}</span>
+                              <Heart className="w-3.5 h-3.5 fill-current" />
+                              <span className="text-[11px]">{fest.like_count || 0}</span>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {festivals.map(fest => ( 
+                      <Link to={`/festival/${fest.content_id}`} key={fest.content_id} className="group flex bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
+                        <div className="w-48 h-48 shrink-0 overflow-hidden bg-gray-100">
+                          <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                        </div>
+                        <div className="flex-grow p-6 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex gap-2">
+                                {/* 💡 [컬러 수정] 리스트 뷰 '진행중' 노란색 배지 매핑 */}
+                                <span className={`px-2 py-1 rounded-lg text-[9px] font-black ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-[#FFD23F] text-gray-900' : 'bg-gray-50 text-gray-500'}`}>
+                                  {getDDay(fest.event_start_date, fest.event_end_date)}
+                                </span>
+                              </div>
+                              <button className="text-gray-300 hover:text-rose-500"><Heart className="w-5 h-5" /></button>
+                            </div>
+                            <h4 className="text-xl font-black text-gray-900 group-hover:text-[#5821B6] transition-colors">{fest.title}</h4>
+                            <div className="mt-3 flex gap-4">
+                              <p className="text-xs text-gray-500 font-bold flex items-center gap-1.5">
+                                <MapPin className="w-3.5 h-3.5 text-purple-400" /> {fest.addr1}
+                              </p>
+                              <p className="text-xs text-gray-400 font-bold flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-gray-400" /> {formatDate(fest.event_start_date)} ~ {formatDate(fest.event_end_date)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                            <div className="flex gap-4">
+                              <div className="flex items-center gap-1.5">
+                                <Star className="w-4 h-4 text-[#FFD23F] fill-current" />
+                                <span className="text-sm font-black text-gray-700">{fest.rating_avg ? fest.rating_avg.toFixed(1) : '0.0'}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-rose-500 font-black">
+                                <Heart className="w-4 h-4 fill-current" />
+                                <span className="text-xs">{fest.like_count || 0}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
+                {/* 페이지네이션 블록 UI */}
+                <div className="flex items-center justify-center gap-2 mt-12 select-none">
+                  <button
+                    onClick={() => setCurrentPage(pageInfo.startPage - 1)}
+                    disabled={!pageInfo.existPrev}
+                    className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:hover:bg-white transition-all"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  {Array.from(
+                    { length: pageInfo.endPage - pageInfo.startPage + 1 }, 
+                    (_, i) => pageInfo.startPage + i
+                  ).map(pageNumber => (
+                    <button
+                      key={pageNumber}
+                      onClick={() => setCurrentPage(pageNumber)}
+                      className={`w-9 h-9 rounded-xl font-bold text-xs transition-all ${
+                        currentPage === pageNumber
+                          ? 'bg-[#5821B6] text-white shadow-md shadow-purple-900/20'
+                          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
                   ))}
+
+                  <button
+                    onClick={() => setCurrentPage(pageInfo.endPage + 1)}
+                    disabled={!pageInfo.existNext}
+                    className="p-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:hover:bg-white transition-all"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
-              )
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm">
                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
