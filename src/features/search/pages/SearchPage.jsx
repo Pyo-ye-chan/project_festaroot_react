@@ -74,6 +74,9 @@ const SearchPage = () => {
   const [festivals, setFestivals] = useState([]);
   const [isDataLoading, setIsDataLoading] = useState(false);
 
+  // 개별 축제 찜(하트) 상태 관리 (Set을 활용한 ID 관리)
+  const [likedFestivals, setLikedFestivals] = useState(new Set());
+
   // 초기 배열을 객체 형태로 포맷팅
   const [sidoList, setSidoList] = useState([{ region_code: '', region_name: '전체' }]);
   const [sigunguList, setSigunguList] = useState([{ sigungu_code: '', sigungu_name: '전체' }]);
@@ -123,6 +126,22 @@ const SearchPage = () => {
     }
   };
 
+  // 하트 토글 핸들러 (이벤트 버블링 차단)
+  const handleLikeToggle = (e, contentId) => {
+    e.preventDefault();  // Link의 기본 이동 동작 방지
+    e.stopPropagation(); // 부모 Link로의 이벤트 전파 방지
+
+    setLikedFestivals((prev) => {
+      const next = new Set(prev);
+      if (next.has(contentId)) {
+        next.delete(contentId);
+      } else {
+        next.add(contentId);
+      }
+      return next;
+    });
+  };
+
   // 컴포넌트 마운트 시 '시도 목록' 로드
   useEffect(() => {
     const fetchSidoData = async () => {
@@ -153,7 +172,7 @@ const SearchPage = () => {
         const response = await RegionService.sigunguList(filterRegion.region_code);
         const data = response?.data || response;
         if (Array.isArray(data)) {
-          setSigunguList([{ sigungu_code: '', sigungu_name: '전체' }, ...data]);
+          setSidoList([{ region_code: '', region_name: '전체' }, ...data]);
         } else {
           setSigunguList([{ sigungu_code: '', sigungu_name: '전체' }]);
         }
@@ -444,8 +463,19 @@ const SearchPage = () => {
                               {getDDay(fest.event_start_date, fest.event_end_date)}
                             </span>
                           </div>
-                          <button className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-rose-500 transition-all">
-                            <Heart className="w-4 h-4" />
+                          
+                          {/* Grid 찜 버튼 (배경색 및 트랜지션 향상) */}
+                          <button 
+                            onClick={(e) => handleLikeToggle(e, fest.content_id)}
+                            className={`absolute top-4 right-4 w-10 h-10 backdrop-blur rounded-full flex items-center justify-center transition-all duration-300 ease-in-out active:scale-95 ${
+                              likedFestivals.has(fest.content_id) 
+                                ? 'bg-rose-50/90 text-rose-500 shadow-sm' 
+                                : 'bg-white/90 text-gray-400 hover:text-rose-500'
+                            }`}
+                          >
+                            <Heart className={`w-4 h-4 transition-all duration-300 ease-in-out ${
+                              likedFestivals.has(fest.content_id) ? 'fill-rose-500 scale-110' : 'fill-transparent'
+                            }`} />
                           </button>
                         </div>
                         <div className="p-6">
@@ -493,7 +523,18 @@ const SearchPage = () => {
                                   {getDDay(fest.event_start_date, fest.event_end_date)}
                                 </span>
                               </div>
-                              <button className="text-gray-300 hover:text-rose-500"><Heart className="w-5 h-5" /></button>
+                              
+                              {/* List 찜 버튼 (트랜지션 향상) */}
+                              <button 
+                                onClick={(e) => handleLikeToggle(e, fest.content_id)}
+                                className={`transition-all duration-300 ease-in-out active:scale-95 ${
+                                  likedFestivals.has(fest.content_id) ? 'text-rose-500' : 'text-gray-300 hover:text-rose-500'
+                                }`}
+                              >
+                                <Heart className={`w-5 h-5 transition-all duration-300 ease-in-out ${
+                                  likedFestivals.has(fest.content_id) ? 'fill-rose-500 scale-110' : 'fill-transparent'
+                                }`} />
+                              </button>
                             </div>
                             <h4 className="text-xl font-black text-gray-900 group-hover:text-[#5821B6] transition-colors">{fest.title}</h4>
                             <div className="mt-3 flex gap-4">
@@ -527,10 +568,8 @@ const SearchPage = () => {
                   </div>
                 )}
 
-                {/* 개선된 페이지네이션 블록 UI */}
+                {/* 페이지네이션 블록 UI */}
                 <div className="flex items-center justify-center gap-2 mt-12 select-none">
-                  
-                  {/* 맨 처음으로 가기 (<<) : 현재 1페이지가 아닐 때만 렌더링 */}
                   {currentPage > 1 && (
                     <button
                       onClick={() => setCurrentPage(1)}
@@ -541,7 +580,6 @@ const SearchPage = () => {
                     </button>
                   )}
 
-                  {/* 이전 블록 화살표 (<) : 현재 첫 숫자가 1보다 큰 경우(즉, 2번째 블록 이상)에만 렌더링 */}
                   {pageInfo.startPage > 1 && (
                     <button
                       onClick={() => setCurrentPage(pageInfo.startPage - 1)}
@@ -552,7 +590,6 @@ const SearchPage = () => {
                     </button>
                   )}
 
-                  {/* 페이지 숫자 목록 */}
                   {Array.from(
                     { length: pageInfo.endPage - pageInfo.startPage + 1 }, 
                     (_, i) => pageInfo.startPage + i
@@ -570,7 +607,6 @@ const SearchPage = () => {
                     </button>
                   ))}
 
-                  {/* 다음 블록 화살표 (>) : 현재 블록 끝 번호가 전체 페이지 수보다 작을 때만 렌더링 */}
                   {pageInfo.endPage < totalPages && (
                     <button
                       onClick={() => setCurrentPage(pageInfo.endPage + 1)}
@@ -581,7 +617,6 @@ const SearchPage = () => {
                     </button>
                   )}
 
-                  {/* 맨 끝으로 가기 (>>) : 현재 마지막 페이지가 아닐 때만 렌더링 */}
                   {currentPage < totalPages && (
                     <button
                       onClick={() => setCurrentPage(totalPages)}
@@ -591,7 +626,6 @@ const SearchPage = () => {
                       <ChevronsRight className="w-4 h-4" />
                     </button>
                   )}
-
                 </div>
               </>
             ) : (
