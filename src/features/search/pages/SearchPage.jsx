@@ -81,7 +81,7 @@ const SearchPage = () => {
   const [sidoList, setSidoList] = useState([{ region_code: '', region_name: '전체' }]);
   const [sigunguList, setSigunguList] = useState([{ sigungu_code: '', sigungu_name: '전체' }]);
 
-  const sortOptions = ['인기순', '최신순', '조회순', '찜 많은 순'];
+  const sortOptions = ['인기순', '일정순', '조회순'];
 
   // 총 페이지 수 계산 (전체 개수 / 페이지당 보여줄 개수)
   const totalPages = Math.ceil(pageInfo.totalCount / ITEMS_PER_PAGE) || 1;
@@ -91,10 +91,9 @@ const SearchPage = () => {
     try {
       setIsDataLoading(true);
 
-      let sortParam = 'like_count';
-      if (sortBy === '최신순') sortParam = 'event_start_date';
+      let sortParam = 'popular';
+      if (sortBy === '일정순') sortParam = 'event_start_date';
       if (sortBy === '조회순') sortParam = 'view_count';
-      if (sortBy === '찜 많은 순') sortParam = 'like_count';
 
       const params = {
         sort: sortParam,
@@ -464,7 +463,7 @@ const SearchPage = () => {
                             </span>
                           </div>
                           
-                          {/* Grid 찜 버튼 (배경색 및 트랜지션 향상) */}
+                          {/* Grid 찜 버튼 */}
                           <button 
                             onClick={(e) => handleLikeToggle(e, fest.content_id)}
                             className={`absolute top-4 right-4 w-10 h-10 backdrop-blur rounded-full flex items-center justify-center transition-all duration-300 ease-in-out active:scale-95 ${
@@ -524,7 +523,7 @@ const SearchPage = () => {
                                 </span>
                               </div>
                               
-                              {/* List 찜 버튼 (트랜지션 향상) */}
+                              {/* List 찜 버튼 */}
                               <button 
                                 onClick={(e) => handleLikeToggle(e, fest.content_id)}
                                 className={`transition-all duration-300 ease-in-out active:scale-95 ${
