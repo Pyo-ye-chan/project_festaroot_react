@@ -77,6 +77,16 @@ const festivalService = {
   // 축제 찾기 > 목록을 눌렀을 때, 조회수 1씩 증가
   increaseViewCount(contentId) {
     return maxios.put(`${BASE_PATH}/${contentId}/view-count`);
+  },
+
+  getMyFestivalLikedIds: async () => {
+    // 백엔드가 연결 안 됐을 때는 일단 성공한 것처럼 빈 배열을 주는 가짜 응답 반환
+    return {
+      data: {
+        success: true,
+        likedFestivalIds: [] // 나중에 테스트하고 싶다면 [1, 2, 3] 처럼 임의의 ID를 넣어봐도 돼!
+      }
+    };
   }
 
 };
