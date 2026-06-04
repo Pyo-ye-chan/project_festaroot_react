@@ -1,9 +1,12 @@
 import { MapPin, Phone, Tent, Utensils, Music } from 'lucide-react';
 
+
 const NearbyCardList = ({ items }) => {
   if (!items || items.length === 0) {
     return <p className="text-gray-400 font-bold">표시할 주변 정보가 없습니다.</p>;
   }
+
+  
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

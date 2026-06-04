@@ -28,6 +28,8 @@ import { getFestivalDetail, getFestivalImages } from '../../../api/FestivalApi';
 import useAuthStore from '../../../store/useAuthStore';
 import { saveActivityLog } from '../../../api/activityApi';
 
+import festivalService from '../../../api/festivalService';
+
 
 import FestivalMapTab from '../components/FestivalMapTab';
 import FestivalReviewTab from '../components/FestivalReviewTab';
@@ -102,6 +104,34 @@ const FestivalDetailPage = () => {
     fetchFestivalImages();
   }, [festival?.content_id]);
 
+  useEffect(() => {
+    if (!festival?.map_x || !festival?.map_y) return;
+
+    const fetchNearbyData = async () => {
+      try {
+        setNearbyLoading(true);
+
+        const [travel, food, events] = await Promise.all([
+          festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '12'),
+          festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '39'),
+          festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '15'),
+        ]);
+
+        setNearbyTravel(travel || []);
+        setNearbyFood(food || []);
+        setNearbyEvents(events || []);
+      } catch (error) {
+        console.error('주변 정보 조회 실패:', error);
+        setNearbyTravel([]);
+        setNearbyFood([]);
+        setNearbyEvents([]);
+      } finally {
+        setNearbyLoading(false);
+      }
+    };
+
+    fetchNearbyData();
+  }, [festival?.map_x, festival?.map_y]);
 
   const DEFAULT_IMAGE = festival?.first_image || festival?.first_image2 || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=2070";
 
@@ -138,7 +168,7 @@ const FestivalDetailPage = () => {
         return base + 'bg-gray-100 text-gray-500';
     }
   };
-  
+
 
   const handleSendMessage = (e) => {
     e.preventDefault();

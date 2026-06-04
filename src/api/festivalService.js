@@ -72,7 +72,24 @@ const festivalService = {
       console.error('Error sycing festivals', error);
       throw error; // 에러 메인으로 던지기
     }
+  },
+
+  getNearbyPlaces: async (lat, lng, radius = 5000, contentTypeId = '') => {
+  try {
+    const response = await maxios.get(`${BASE_PATH}/nearby`, {
+      params: {
+        lat,
+        lng,
+        radius,
+        contentTypeId,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching nearby places:', error);
+    throw error;
   }
+},
 
 };
 
