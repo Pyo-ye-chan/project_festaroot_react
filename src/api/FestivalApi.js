@@ -4,3 +4,8 @@ export const getFestivalDetail = async (contentId) => {
     const resonse =  await maxios.get(`/api/festivals/detail/${contentId}`); // 축제 상세 정보 API 호출 
     return resonse.data;
 };
+
+export const getFestivalImages = async (contentId) => {
+    const resonse =  await maxios.get(`/api/festivals/images/${contentId}`); // 축제 이미지 API 호출
+    return resonse.data;
+};
