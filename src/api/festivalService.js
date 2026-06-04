@@ -72,6 +72,11 @@ const festivalService = {
       console.error('Error sycing festivals', error);
       throw error; // 에러 메인으로 던지기
     }
+  },
+
+  // 축제 찾기 > 목록을 눌렀을 때, 조회수 1씩 증가
+  increaseViewCount(contentId) {
+    return maxios.put(`${BASE_PATH}/${contentId}/view-count`);
   }
 
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, Calendar, MapPin, Star, Heart, SlidersHorizontal, 
   ChevronDown, LayoutGrid, List, ChevronLeft, ChevronRight, 
@@ -42,6 +42,7 @@ const getDDay = (startDateStr, endDateStr) => {
 };
 
 const SearchPage = () => {
+  const navigate = useNavigate(); //
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [filterRegion, setFilterRegion] = useState({ region_code: '', region_name: '전체' });
@@ -91,9 +92,11 @@ const SearchPage = () => {
     try {
       setIsDataLoading(true);
 
-      let sortParam = 'popular';
+      // 🔥 마이바티스 매퍼 조건에 맞게 파라미터 매핑 변경
+      let sortParam = 'created_time';
+      if (sortBy === '인기순') sortParam = 'like_count';      // 인기순 -> 좋아요순 매핑
       if (sortBy === '일정순') sortParam = 'event_start_date';
-      if (sortBy === '조회순') sortParam = 'view_count';
+      if (sortBy === '조회순') sortParam = 'view_count';     // 조회순 -> 조회수 매핑
 
       const params = {
         sort: sortParam,
@@ -125,10 +128,23 @@ const SearchPage = () => {
     }
   };
 
+  // 🔥 축제 카드 클릭 핸들러 (조회수 업 시키고 상세페이지 이동)
+  const handleFestivalClick = async (contentId) => {
+    try {
+      // 상세 페이지로 가기 전 백엔드에 조회수 1 증가 요청
+      await festivalService.increaseViewCount(contentId);
+    } catch (error) {
+      console.error("조회수 업데이트에 실패했습니다.", error);
+    } finally {
+      // 성공 여부와 상관없이 상세 페이지 이동은 보장
+      navigate(`/festival/${contentId}`);
+    }
+  };
+
   // 하트 토글 핸들러 (이벤트 버블링 차단)
   const handleLikeToggle = (e, contentId) => {
-    e.preventDefault();  // Link의 기본 이동 동작 방지
-    e.stopPropagation(); // 부모 Link로의 이벤트 전파 방지
+    e.preventDefault();  // 부모 클릭 이벤트 방지
+    e.stopPropagation(); // 부모 div로의 이벤트 전파 방지
 
     setLikedFestivals((prev) => {
       const next = new Set(prev);
@@ -454,7 +470,12 @@ const SearchPage = () => {
                 {viewMode === 'grid' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {festivals.map(fest => ( 
-                      <Link to={`/festival/${fest.content_id}`} key={fest.content_id} className="group bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
+                      // 🔥 Link 태그를 div onClick 구조로 변경
+                      <div 
+                        onClick={() => handleFestivalClick(fest.content_id)} 
+                        key={fest.content_id} 
+                        className="cursor-pointer group bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500"
+                      >
                         <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                           <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                           <div className="absolute top-4 left-4 flex gap-2">
@@ -504,13 +525,18 @@ const SearchPage = () => {
                             </div>
                           </div>
                         </div>
-                      </Link>
+                      </div>
                     ))}
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {festivals.map(fest => ( 
-                      <Link to={`/festival/${fest.content_id}`} key={fest.content_id} className="group flex bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
+                      // 🔥 Link 태그를 div onClick 구조로 변경
+                      <div 
+                        onClick={() => handleFestivalClick(fest.content_id)} 
+                        key={fest.content_id} 
+                        className="cursor-pointer group flex bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500"
+                      >
                         <div className="w-48 h-48 shrink-0 overflow-hidden bg-gray-100">
                           <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                         </div>
@@ -562,7 +588,7 @@ const SearchPage = () => {
                             </div>
                           </div>
                         </div>
-                      </Link>
+                      </div>
                     ))}
                   </div>
                 )}
