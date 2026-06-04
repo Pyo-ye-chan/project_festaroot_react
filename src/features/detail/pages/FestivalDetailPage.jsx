@@ -23,10 +23,13 @@ import {
   Send
 } from 'lucide-react';
 import { getFestivalDetail } from '../../../api/FestivalApi';
+import useAuthStore from '../../../store/useAuthStore';
+import { saveActivityLog } from '../../../api/activityApi';
 
 
 const FestivalDetailPage = () => {
   const { id } = useParams();
+  const { isLoggedIn } = useAuthStore();
 
   const [festival, setFestival] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +52,14 @@ const FestivalDetailPage = () => {
         const data = await getFestivalDetail(id);
         setFestival(data);
         console.log('축제 상세 정보:', data);
+
+        // 상세 정보를 성공적으로 가져왔고 로그인 상태라면 조회 로그 저장
+        if (data && isLoggedIn) {
+          saveActivityLog({
+            type: 'VIEW',
+            festivalId: id
+          });
+        }
       } catch (error) {
         console.error('축제 상세 정보 불러오기 실패:', error);
       } finally {
@@ -57,7 +68,7 @@ const FestivalDetailPage = () => {
     };
 
     fetchFestival();
-  }, [id]);
+  }, [id, isLoggedIn]);
 
   const DEFAULT_IMAGE = festival?.first_image || festival?.first_image2 || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=2070";
 
