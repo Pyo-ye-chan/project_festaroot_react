@@ -74,19 +74,32 @@ const festivalService = {
     }
   },
 
-  // 축제 찾기 > 목록을 눌렀을 때, 조회수 1씩 증가
+  // 조회수 1씩 증가
   increaseViewCount(contentId) {
     return maxios.put(`${BASE_PATH}/${contentId}/view-count`);
   },
 
+  // 로그인한 유저의 찜 목록 조회
   getMyFestivalLikedIds: async () => {
-    // 백엔드가 연결 안 됐을 때는 일단 성공한 것처럼 빈 배열을 주는 가짜 응답 반환
-    return {
-      data: {
-        success: true,
-        likedFestivalIds: [] // 나중에 테스트하고 싶다면 [1, 2, 3] 처럼 임의의 ID를 넣어봐도 돼!
-      }
-    };
+    try {
+      const response = await maxios.get(`${BASE_PATH}/likeList`);
+      return response.data; // 백엔드가 준 { likedFestivalIds: [...] }를 리턴
+    } catch (error) {
+      console.error('Error fetching my liked festival IDs:', error);
+      throw error;
+    }
+  },
+
+  // 축제 찜하기 토글 추가
+  toggleFestivalLike: async (contentId) => {
+    try {
+      // 백엔드 @RequestBody Map 구조에 맞게 { contentId: 값 } 객체로 보냄
+      const response = await maxios.post(`${BASE_PATH}/likeToggle`, { contentId: Number(contentId) });
+      return response.data; // 백엔드가 준 { isLiked: true/false, message: "..." }를 리턴
+    } catch (error) {
+      console.error('Error toggling festival like:', error);
+      throw error;
+    }
   }
 
 };

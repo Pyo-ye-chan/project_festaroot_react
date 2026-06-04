@@ -62,7 +62,7 @@ const SearchPage = () => {
     resetFilters
   } = useFestivalFilterStore();
 
-  // 컴포넌트 로컬 UI 제어 상태 (휘발되어도 상관없는 팝업/드롭다운 여닫기)
+  // 컴포넌트 로컬 UI 제어 상태
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isRegionOpen, setIsRegionOpen] = useState(false);
   const [isSigunguOpen, setIsSigunguOpen] = useState(false);
@@ -115,7 +115,7 @@ const SearchPage = () => {
     }
   };
 
-  // 상세 페이지 이동 핸들러 (슬래시 누락 방지 완벽 반영)
+  // 상세 페이지 이동 핸들러 (슬래시 포함 체크 완료)
   const handleFestivalClick = async (contentId) => {
     try {
       await festivalService.increaseViewCount(contentId);
@@ -126,11 +126,38 @@ const SearchPage = () => {
     }
   };
 
-  // 하트 토글 핸들러
-  const handleLikeToggle = (e, contentId) => {
+  // 하트 토글 핸들러 (Zustand + 로컬 카운트 실시간 연동)
+  const handleLikeToggle = async (e, contentId) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // 현재 클릭 시점의 찜 여부 확인 (이벤트 핸들러 내 클로저 변수 활용)
+    const isCurrentlyLiked = likedFestivals.has(contentId);
+
+    // 1. Zustand 스토어 상태 변경
     toggleLike(contentId);
+
+    // 2. 화면에 표시되는 축제 리스트의 like_count를 실시간으로 +1 또는 -1 반영
+    setFestivals((prevFestivals) =>
+      prevFestivals.map((fest) => {
+        if (fest.content_id === contentId) {
+          return {
+            ...fest,
+            like_count: isCurrentlyLiked
+              ? Math.max(0, (fest.like_count || 0) - 1) // 음수 방지 예외 처리
+              : (fest.like_count || 0) + 1
+          };
+        }
+        return fest;
+      })
+    );
+
+    try {
+      await festivalService.toggleFestivalLike(contentId, { isLiked: !isCurrentlyLiked });
+    } catch (error) {
+      console.error("DB 찜 상태 동기화 실패 : ", error);
+    }
+
   };
 
   // 초기 시도 데이터 로드
@@ -386,6 +413,7 @@ const SearchPage = () => {
                               {getDDay(fest.event_start_date, fest.event_end_date)}
                             </span>
                           </div>
+                          {/* 하트 버튼 인터랙션 피드백 반영 */}
                           <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`absolute top-4 right-4 w-10 h-10 backdrop-blur rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 ${likedFestivals.has(fest.content_id) ? 'bg-rose-50/90 text-rose-500 shadow-sm' : 'bg-white/90 text-gray-400 hover:text-rose-500'}`}>
                             <Heart className={`w-4 h-4 transition-all duration-300 ${likedFestivals.has(fest.content_id) ? 'fill-rose-500 scale-110' : 'fill-transparent'}`} />
                           </button>
@@ -407,6 +435,7 @@ const SearchPage = () => {
                                 <span className="text-[11px] font-black text-gray-600">{fest.view_count || 0}</span>
                               </div>
                             </div>
+                            {/* 좋아요 카운트 동적 렌더링 */}
                             <div className="flex items-center gap-1.5 text-rose-500 font-black">
                               <Heart className="w-3.5 h-3.5 fill-current" /> <span className="text-[11px]">{fest.like_count || 0}</span>
                             </div>
@@ -428,6 +457,7 @@ const SearchPage = () => {
                               <span className={`px-2 py-1 rounded-lg text-[9px] font-black ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-green-500 text-white' : 'bg-gray-50 text-gray-500'}`}>
                                 {getDDay(fest.event_start_date, fest.event_end_date)}
                               </span>
+                              {/* 하트 버튼 인터랙션 피드백 반영 */}
                               <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`transition-all duration-300 active:scale-95 ${likedFestivals.has(fest.content_id) ? 'text-rose-500' : 'text-gray-300 hover:text-rose-500'}`}>
                                 <Heart className={`w-5 h-5 transition-all duration-300 ${likedFestivals.has(fest.content_id) ? 'fill-rose-500 scale-110' : 'fill-transparent'}`} />
                               </button>
@@ -447,8 +477,9 @@ const SearchPage = () => {
                               <div className="flex items-center gap-1.5 text-gray-500">
                                 <Eye className="w-4 h-4" /> <span className="text-sm font-black">{fest.view_count || 0}</span>
                               </div>
+                              {/* 좋아요 카운트 동적 렌더링 */}
                               <div className="flex items-center gap-1.5 text-rose-500 font-black">
-                                <Heart className="w-4 h-4 fill-current" /> <span className="text-xs">{fest.like_count || 0}</span>
+                                <Heart className="w-4 h-4 fill-current" /> <span className="text-sm">{fest.like_count || 0}</span>
                               </div>
                             </div>
                           </div>
