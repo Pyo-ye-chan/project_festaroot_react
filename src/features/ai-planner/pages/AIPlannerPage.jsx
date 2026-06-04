@@ -1,4 +1,6 @@
+import axios from 'axios';
 import React, { useState } from 'react';
+import { maxios } from '../../../api/axiosApi';
 
 const AIPlannerPage = () => {
   const [isRecommending, setIsRecommending] = useState(false);
@@ -6,33 +8,30 @@ const AIPlannerPage = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedFestival, setSelectedFestival] = useState(null);
   const [showItinerary, setShowItinerary] = useState(false);
+  const [recommendList, setRecommendList] = useState([]); // 서버 추천 데이터 저장
 
-  // Mock data for user context
+  // Mock data for user context (실제 연동 시 useMemberStore 등에서 가져오도록 확장 가능)
   const userContext = {
     profile: { age: '20대', gender: '남성' },
     interests: { regions: ['서울', '강원'], themes: ['전통문화', 'K-POP', '먹거리'] },
-    recentHistory: [
-      { id: 1, title: '서울 세계불꽃축제', type: '조회' },
-      { id: 2, title: '강릉 커피축제', type: '검색' }
-    ]
   };
 
-  const recommendations = [
-    { id: 101, title: '수원 화성 문화제', match: '관심테마(전통문화) 일치', img: 'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=500&q=80', desc: '유네스코 세계문화유산 수원화성을 배경으로 펼쳐지는 전통 축제' },
-    { id: 102, title: '강릉 경포 벚꽃축제', match: '관심지역(강원) 일치', img: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=500&q=80', desc: '경포호수를 둘러싼 벚꽃길에서 즐기는 낭만적인 봄 축제' }
-  ];
-
-  const handleRecommend = () => {
+  const handleRecommend = async () => {
     setIsRecommending(true);
     setShowRecommendations(false);
     setSelectedFestival(null);
     setShowItinerary(false);
     
-    // Simulate AI analysis & recommendation retrieval
-    setTimeout(() => {
-      setIsRecommending(false);
+    try {
+      const resp = await maxios.get('/ai/recommendations');
+      setRecommendList(resp.data || []);
       setShowRecommendations(true);
-    }, 1500);
+    } catch (error) {
+      console.error('AI 추천 로드 실패:', error);
+      alert('AI 추천 정보를 가져오는 데 실패했습니다.');
+    } finally {
+      setIsRecommending(false);
+    }
   };
 
   const handleSelectFestival = (festival) => {
@@ -40,7 +39,7 @@ const AIPlannerPage = () => {
     setIsGenerating(true);
     setShowItinerary(false);
     
-    // Simulate AI itinerary generation
+    // Simulate AI itinerary generation (추후 실제 일정 생성 API 연동 가능)
     setTimeout(() => {
       setIsGenerating(false);
       setShowItinerary(true);
@@ -102,7 +101,7 @@ const AIPlannerPage = () => {
 
               <div className="pt-6 border-t border-gray-50">
                 <p className="text-sm text-gray-400 font-medium leading-relaxed">
-                  사용자의 최근 활동을 기반으로 실시간 벡터 검색(RAG)을 수행합니다.
+                  사용자의 최근 활동 로그 및 프로필을 기반으로 실시간 벡터 검색(RAG)을 수행합니다.
                 </p>
               </div>
             </div>
@@ -136,36 +135,47 @@ const AIPlannerPage = () => {
                   </div>
                   <div className="text-center">
                     <p className="text-lg font-black text-gray-800">사용자 취향 분석 중...</p>
-                    <p className="text-sm text-gray-400">전국 축제 데이터를 리트리벌하고 있습니다.</p>
+                    <p className="text-sm text-gray-400">전국 축제 데이터에서 최적의 장소를 찾고 있습니다.</p>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {recommendations.map((item) => (
+                <div className="grid grid-cols-1 gap-6">
+                  {recommendList.map((item) => (
                     <div 
-                      key={item.id} 
+                      key={item.CONTENT_ID} 
                       onClick={() => handleSelectFestival(item)}
-                      className={`group cursor-pointer p-4 rounded-[28px] border-2 transition-all duration-300 ${
-                        selectedFestival?.id === item.id 
+                      className={`group cursor-pointer p-6 rounded-[32px] border-2 transition-all duration-300 ${
+                        selectedFestival?.CONTENT_ID === item.CONTENT_ID 
                         ? 'border-purple-600 bg-purple-50/30' 
                         : 'border-transparent bg-slate-50 hover:border-purple-200 hover:bg-white hover:shadow-lg'
                       }`}
                     >
-                      <div className="relative h-44 rounded-2xl overflow-hidden mb-4">
-                        <img src={item.img} alt={item.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg text-[10px] font-black text-purple-600 shadow-sm">
-                          {item.match}
-                        </div>
-                        {selectedFestival?.id === item.id && (
-                          <div className="absolute inset-0 bg-purple-600/20 flex items-center justify-center">
-                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg text-purple-600 text-xl font-bold">
-                              ✓
+                      <div className="flex flex-col md:flex-row gap-6">
+                        <div className="relative w-full md:w-48 h-48 shrink-0 rounded-2xl overflow-hidden">
+                          <img src={item.FIRST_IMAGE} alt={item.TITLE} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                          {selectedFestival?.CONTENT_ID === item.CONTENT_ID && (
+                            <div className="absolute inset-0 bg-purple-600/20 flex items-center justify-center">
+                              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg text-purple-600 text-xl font-bold">
+                                ✓
+                              </div>
                             </div>
+                          )}
+                        </div>
+                        <div className="flex-grow">
+                          <h4 className="text-xl font-black text-gray-800 group-hover:text-purple-600 transition-colors">{item.TITLE}</h4>
+                          <p className="text-xs text-gray-400 font-bold mt-2 flex items-center gap-1">📍 {item.ADDR1}</p>
+                          <p className="text-sm text-gray-500 font-medium mt-3 line-clamp-3">{item.OVERVIEW}</p>
+                          
+                          <div className="mt-4 p-4 bg-purple-50 rounded-2xl border border-purple-100">
+                            <p className="text-[11px] font-black text-purple-600 uppercase mb-1 flex items-center gap-1">
+                              ✨ AI의 추천 사유
+                            </p>
+                            <p className="text-xs text-purple-800 font-bold leading-relaxed">
+                              {item.recommendation_reason}
+                            </p>
                           </div>
-                        )}
+                        </div>
                       </div>
-                      <h4 className="text-lg font-black text-gray-800 group-hover:text-purple-600 transition-colors">{item.title}</h4>
-                      <p className="text-xs text-gray-500 font-medium mt-1 line-clamp-2">{item.desc}</p>
                     </div>
                   ))}
                 </div>
@@ -180,7 +190,7 @@ const AIPlannerPage = () => {
                 <div>
                   <h3 className="text-2xl font-black text-gray-800">STEP 2. 맞춤형 여행 코스</h3>
                   <p className="text-sm text-gray-500 font-medium mt-1">
-                    <span className="text-purple-600 font-bold">[{selectedFestival?.title}]</span> 기반의 최적 동선입니다.
+                    <span className="text-purple-600 font-bold">[{selectedFestival?.TITLE}]</span> 기반의 최적 동선입니다.
                   </p>
                 </div>
               </div>
@@ -199,9 +209,9 @@ const AIPlannerPage = () => {
               ) : (
                 <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent pt-4">
                   {[
-                    { time: '10:00 AM', title: `${selectedFestival?.title.split(' ')[0]} 도착`, desc: '주차 및 대중교통 이용 안내', icon: '📍' },
+                    { time: '10:00 AM', title: `${selectedFestival?.TITLE.split(' ')[0]} 도착`, desc: '주차 및 대중교통 이용 안내', icon: '📍' },
                     { time: '12:00 PM', title: '현지 맛집 점심 식사', desc: '테마 취향을 반영한 인기 음식점', icon: '🍽️' },
-                    { time: '02:00 PM', title: `${selectedFestival?.title} 체험`, desc: '주요 프로그램 및 포토존 가이드', icon: '📸' },
+                    { time: '02:00 PM', title: `${selectedFestival?.TITLE} 체험`, desc: '주요 프로그램 및 포토존 가이드', icon: '📸' },
                     { time: '05:00 PM', title: '주변 감성 카페 마무리', desc: '분위기 좋은 카페에서 일정 마무리', icon: '☕' }
                   ].map((step, idx) => (
                     <div key={idx} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
