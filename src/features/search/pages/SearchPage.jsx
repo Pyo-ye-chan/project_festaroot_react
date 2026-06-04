@@ -172,7 +172,7 @@ const SearchPage = () => {
         const response = await RegionService.sigunguList(filterRegion.region_code);
         const data = response?.data || response;
         if (Array.isArray(data)) {
-          setSidoList([{ region_code: '', region_name: '전체' }, ...data]);
+          setSigunguList([{ sigungu_code: '', sigungu_name: '전체' }, ...data]);
         } else {
           setSigunguList([{ sigungu_code: '', sigungu_name: '전체' }]);
         }
