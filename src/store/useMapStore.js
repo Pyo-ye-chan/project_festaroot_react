@@ -46,7 +46,9 @@ const useMapStore = create((set, get) => ({
   fetchFestivals: async () => {
     set({ isLoading: true });
     try {
-      const data = await festivalService.getFestivals();
+      const response = await festivalService.getFestivals();
+      // 서버 응답이 { list: [], pageInfo: {} } 형태일 수 있으므로 처리
+      const data = response?.list || (Array.isArray(response) ? response : []);
       set({ festivals: data, isLoading: false });
     } catch (error) {
       set({ error: error.message, isLoading: false });

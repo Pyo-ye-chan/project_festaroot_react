@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import festivalService from '../../../api/festivalService';
 import RegionService from '../../../api/regionService';
+import useAuthStore from '../../../store/useAuthStore';
+import { saveActivityLog } from '../../../api/activityApi';
 
 // YYYYMMDD -> YYYY.MM.DD 변환기
 const formatDate = (dateStr) => {
@@ -42,6 +44,7 @@ const getDDay = (startDateStr, endDateStr) => {
 };
 
 const SearchPage = () => {
+  const { isLoggedIn } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [filterRegion, setFilterRegion] = useState({ region_code: '', region_name: '전체' });
@@ -219,6 +222,14 @@ const SearchPage = () => {
   const handleSearchSubmit = () => {
     setCurrentPage(1);
     fetchAllFestivals({ page: 1 });
+
+    // 로그인 상태이고 검색어가 있을 경우 검색 로그 저장
+    if (isLoggedIn && searchQuery.trim()) {
+      saveActivityLog({
+        type: 'SEARCH',
+        searchQuery: searchQuery
+      });
+    }
   };
 
   return (
