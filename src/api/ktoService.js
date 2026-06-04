@@ -1,7 +1,7 @@
-import axios from 'axios';
+import { maxios } from './axiosApi';
 
-// 백엔드 API 베이스 URL (개발 환경에 맞춰 조정 필요)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:80/api';
+// 이 파일에서 사용할 공통 서브 경로
+const BASE_PATH = '/api';
 
 const ktoService = {
   /**
@@ -14,7 +14,7 @@ const ktoService = {
   getNearbyPlaces: async (mapX, mapY, radius = 5000, contentTypeId = '') => {
     try {
       // 프론트엔드에서는 우리 백엔드 서버의 엔드포인트만 호출합니다.
-      const response = await axios.get(`${API_BASE_URL}/festivals/nearby`, {
+      const response = await maxios.get(`${BASE_PATH}/festivals/nearby`, {
         params: {
           lat: mapY,
           lng: mapX,
@@ -38,7 +38,7 @@ const ktoService = {
    */
   getSigunguBySidoName: async (sidoName) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/locations/sigungu`, {
+      const response = await maxios.get(`${BASE_PATH}/locations/sigungu`, {
         params: { sidoName },
       });
       return response.data || [];

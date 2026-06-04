@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom';
 import { Search, X, Loader2, Calendar } from 'lucide-react';
 import useMapStore from '../../../store/useMapStore';
 
+
 function FestivalSearchModal({ isOpen, onClose, onSelect }) {
+  
   const [searchTerm, setSearchTerm] = useState('');
   const { 
     festivals, 
