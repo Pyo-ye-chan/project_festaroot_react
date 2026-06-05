@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, Loader2, Calendar } from 'lucide-react';
 import useMapStore from '../../../store/useMapStore';
+import useAuthStore from '../../../store/useAuthStore';
+import { saveActivityLog } from '../../../api/activityApi';
 
 
 function FestivalSearchModal({ isOpen, onClose, onSelect }) {
   
   const [searchTerm, setSearchTerm] = useState('');
+  const { isLoggedIn } = useAuthStore();
   const { 
     festivals, 
     fetchFestivals, 
@@ -115,6 +118,15 @@ function FestivalSearchModal({ isOpen, onClose, onSelect }) {
                 key={festival.content_id || `festival-${index}`}
                 onClick={() => {
                   onSelect(festival);
+                  
+                  // 축제 선택 시 로그인 상태라면 조회 로그 저장
+                  if (isLoggedIn) {
+                    saveActivityLog({
+                      type: 'MAP',
+                      festivalId: festival.content_id
+                    });
+                  }
+                  
                   onClose();
                 }}
                 className="flex gap-4 p-4 border border-slate-100 rounded-2xl hover:border-[#6B46FE] hover:bg-purple-50/30 cursor-pointer transition-all group"

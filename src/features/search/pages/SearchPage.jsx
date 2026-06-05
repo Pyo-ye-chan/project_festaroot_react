@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import festivalService from '../../../api/festivalService';
 import RegionService from '../../../api/regionService';
+import useAuthStore from '../../../store/useAuthStore';
+import { saveActivityLog } from '../../../api/activityApi';
 
 // 실무형 멀티 스토어 구독
 import useFestivalLikeStore from '../../../store/useFestivalLikeStore';
@@ -214,6 +216,14 @@ const SearchPage = () => {
   const handleSearchSubmit = () => {
     setCurrentPage(1);
     fetchAllFestivals({ page: 1 });
+
+    // 로그인 상태이고 검색어가 있을 경우 검색 로그 저장
+    if (isLoggedIn && searchQuery.trim()) {
+      saveActivityLog({
+        type: 'SEARCH',
+        searchQuery: searchQuery
+      });
+    }
   };
 
   return (

@@ -5,22 +5,20 @@ export const maxios = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost'
 });
 
-
-// 모든 요청이 서버로 출발하기 직전에 작동하는 인터셉터
+// 요청 인터셉터 추가
 maxios.interceptors.request.use(
   (config) => {
-    // 로컬 스토리지의 Key accessToken
+    // 로컬 스토리지에서 토큰을 가져옵니다.
     const token = localStorage.getItem('accessToken');
-
-    // 토큰이 존재한다면 헤더에 실어줍니다.
+    
+    // 토큰이 존재한다면 헤더에 담습니다.
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
-
+    
     return config;
   },
   (error) => {
-    // 요청 에러가 발생했을 때 처리
     return Promise.reject(error);
   }
 );
