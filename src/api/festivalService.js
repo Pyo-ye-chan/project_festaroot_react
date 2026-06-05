@@ -7,6 +7,20 @@ const festivalService = {
   /**
    * DB에 저장된 모든 축제 목록을 가져옵니다.
    */
+
+
+   getAllFestivals: async () => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/map`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching festivals:', error);
+      throw error;
+    }
+  },
+
+
+
   getFestivals: async (params) => {
     try {
       const response = await maxios.get(BASE_PATH, { params });
@@ -74,6 +88,7 @@ const festivalService = {
     }
   },
 
+
   // 조회수 1씩 증가
   increaseViewCount(contentId) {
     return maxios.put(`${BASE_PATH}/${contentId}/view-count`);
@@ -109,7 +124,24 @@ const festivalService = {
       console.error('Error toggling festival like:', error);
       throw error;
     }
+  },
+
+  getNearbyPlaces: async (lat, lng, radius = 5000, contentTypeId = '') => {
+  try {
+    const response = await maxios.get(`${BASE_PATH}/nearby`, {
+      params: {
+        lat,
+        lng,
+        radius,
+        contentTypeId,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching nearby places:', error);
+    throw error;
   }
+}
 
 };
 

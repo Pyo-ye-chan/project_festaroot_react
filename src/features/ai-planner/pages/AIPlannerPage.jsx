@@ -1,19 +1,68 @@
-import axios from 'axios';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { maxios } from '../../../api/axiosApi';
+import useAuthStore from '../../../store/useAuthStore';
 
 const AIPlannerPage = () => {
+  const { user, isLoggedIn } = useAuthStore();
   const [isRecommending, setIsRecommending] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedFestival, setSelectedFestival] = useState(null);
   const [showItinerary, setShowItinerary] = useState(false);
   const [recommendList, setRecommendList] = useState([]); // 서버 추천 데이터 저장
+  
+  const [userDetails, setUserDetails] = useState(null); // 유저 상세 정보
+  const [isLoadingContext, setIsLoadingContext] = useState(false);
 
-  // Mock data for user context (실제 연동 시 useMemberStore 등에서 가져오도록 확장 가능)
+  // 관심사 섹션 펼침/접힘 상태
+  const [isRegionsOpen, setIsRegionsOpen] = useState(true);
+  const [isThemesOpen, setIsThemesOpen] = useState(true);
+
+  // 데이터 로드 Effect
+  useEffect(() => {
+    if (isLoggedIn && (user?.member_id || user?.id)) {
+      const fetchUserData = async () => {
+        setIsLoadingContext(true);
+        try {
+          const userId = user.member_id || user.id;
+          const resp = await maxios.get(`/member/profile/${userId}`);
+          console.log('User Data:', resp.data);
+          setUserDetails(resp.data);
+        } catch (error) {
+          console.error('사용자 데이터 로드 실패:', error);
+        } finally {
+          setIsLoadingContext(false);
+        }
+      };
+
+      fetchUserData();
+    }
+  }, [isLoggedIn, user?.member_id, user?.id]);
+
+  // 유저의 생년월일을 바탕으로 연령대 계산
+  const getAgeGroup = (birthdate) => {
+    if (!birthdate) return '연령대 미정';
+    const year = parseInt(birthdate.substring(0, 4));
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - year;
+    return `${Math.floor(age / 10) * 10}대`;
+  };
+
+  // 실제 데이터를 기반으로 컨텍스트 구성
   const userContext = {
-    profile: { age: '20대', gender: '남성' },
-    interests: { regions: ['서울', '강원'], themes: ['전통문화', 'K-POP', '먹거리'] },
+    profile: { 
+      age: getAgeGroup(userDetails?.member?.birthdate), 
+      gender: userDetails?.member?.gender === 'M' ? '남성' : userDetails?.member?.gender === 'F' ? '여성' : (userDetails?.member?.gender || '성별 미정') 
+    },
+    interests: { 
+      regions: userDetails?.interestRegions?.map(r => r.region_name) || [], 
+      themes: userDetails?.interestThemes?.map(t => t.theme_name) || [] 
+    },
+    recentHistory: (userDetails?.recentLogs || []).map((log, idx) => ({
+      id: log.log_id || idx,
+      title: log.title || log.searchQuery || '최근 활동',
+      type: log.type === 'VIEW' ? '조회' : log.type === 'SEARCH' ? '검색' : log.type === 'MAP' ? '지도' : '기타'
+    }))
   };
 
   const handleRecommend = async () => {
@@ -39,7 +88,7 @@ const AIPlannerPage = () => {
     setIsGenerating(true);
     setShowItinerary(false);
     
-    // Simulate AI itinerary generation (추후 실제 일정 생성 API 연동 가능)
+    // Simulate AI itinerary generation
     setTimeout(() => {
       setIsGenerating(false);
       setShowItinerary(true);
@@ -89,19 +138,75 @@ const AIPlannerPage = () => {
               </div>
 
               <div>
-                <p className="text-xs font-black text-purple-600 uppercase tracking-wider mb-3">관심사 키워드</p>
-                <div className="flex flex-wrap gap-2">
-                  {[...userContext.interests.regions, ...userContext.interests.themes].map((tag) => (
-                    <span key={tag} className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg border border-purple-100">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
+                <button 
+                  onClick={() => setIsRegionsOpen(!isRegionsOpen)}
+                  className="w-full flex items-center justify-between text-xs font-black text-purple-600 uppercase tracking-wider mb-3 group"
+                >
+                  <span>📍 관심 지역</span>
+                  <span className={`transition-transform duration-300 ${isRegionsOpen ? 'rotate-180' : ''}`}>▼</span>
+                </button>
+                {isRegionsOpen && (
+                  <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {userContext.interests.regions.length > 0 ? (
+                      userContext.interests.regions.map((tag) => (
+                        <span key={tag} className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg border border-purple-100">
+                          #{tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[11px] text-gray-400 font-medium">설정된 관심 지역이 없습니다.</span>
+                    )}
+                  </div>
+                )}
               </div>
+
+              <div>
+                <button 
+                  onClick={() => setIsThemesOpen(!isThemesOpen)}
+                  className="w-full flex items-center justify-between text-xs font-black text-purple-600 uppercase tracking-wider mb-3 group"
+                >
+                  <span>🎨 관심 테마</span>
+                  <span className={`transition-transform duration-300 ${isThemesOpen ? 'rotate-180' : ''}`}>▼</span>
+                </button>
+                {isThemesOpen && (
+                  <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {userContext.interests.themes.length > 0 ? (
+                      userContext.interests.themes.map((tag) => (
+                        <span key={tag} className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg border border-purple-100">
+                          #{tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[11px] text-gray-400 font-medium">설정된 관심 테마가 없습니다.</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {userContext.recentHistory.length > 0 && (
+                <div>
+                  <p className="text-xs font-black text-purple-600 uppercase tracking-wider mb-3">최근 활동 내역</p>
+                  <div className="space-y-2">
+                    {userContext.recentHistory.slice(0, 3).map((history, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-gray-100">
+                        <span className="text-[11px] font-bold text-gray-700 truncate max-w-[120px]">{history.title}</span>
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                          history.type === '조회' ? 'bg-blue-100 text-blue-600' : 
+                          history.type === '검색' ? 'bg-amber-100 text-amber-600' : 
+                          history.type === '지도' ? 'bg-emerald-100 text-emerald-600' : 
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {history.type}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="pt-6 border-t border-gray-50">
                 <p className="text-sm text-gray-400 font-medium leading-relaxed">
-                  사용자의 최근 활동 로그 및 프로필을 기반으로 실시간 벡터 검색(RAG)을 수행합니다.
+                  {isLoadingContext ? '사용자 데이터를 분석하고 있습니다...' : '사용자의 최근 활동 로그 및 프로필을 기반으로 실시간 벡터 검색(RAG)을 수행합니다.'}
                 </p>
               </div>
             </div>

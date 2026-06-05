@@ -12,7 +12,7 @@ function FestivalSearchModal({ isOpen, onClose, onSelect }) {
   const { isLoggedIn } = useAuthStore();
   const { 
     festivals, 
-    fetchFestivals, 
+    fetchAllFestivals, 
     isLoading,
     searchParams,
     setDates
@@ -22,9 +22,9 @@ function FestivalSearchModal({ isOpen, onClose, onSelect }) {
 
   useEffect(() => {
     if (isOpen) {
-      fetchFestivals();
+      fetchAllFestivals();
     }
-  }, [isOpen, fetchFestivals]);
+  }, [isOpen, fetchAllFestivals]);
 
   if (!isOpen) return null;
 

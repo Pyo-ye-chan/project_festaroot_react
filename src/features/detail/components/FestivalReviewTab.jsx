@@ -22,7 +22,7 @@ const FestivalReviewTab = ({ festival, sortType, setSortType }) => {
         </div>
 
         <div className="flex gap-2 bg-gray-50 p-1.5 rounded-2xl">
-          {['최신순', '추천순'].map((type) => (
+          {['최신순', '별점순'].map((type) => (
             <button
               key={type}
               onClick={() => setSortType(type)}
