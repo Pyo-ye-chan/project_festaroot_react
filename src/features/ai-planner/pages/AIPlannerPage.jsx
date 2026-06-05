@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { maxios } from '../../../api/axiosApi';
 import useAuthStore from '../../../store/useAuthStore';
+import { getMemberProfile } from '../../../api/memberApi';
 
 const AIPlannerPage = () => {
   const { user, isLoggedIn } = useAuthStore();
@@ -25,7 +26,7 @@ const AIPlannerPage = () => {
         setIsLoadingContext(true);
         try {
           const userId = user.member_id || user.id;
-          const resp = await maxios.get(`/member/profile/${userId}`);
+          const resp = await getMemberProfile(userId);
           console.log('User Data:', resp.data);
           setUserDetails(resp.data);
         } catch (error) {
