@@ -37,9 +37,12 @@ import FestivalIntroTab from '../components/FestivalIntroTab';
 
 import FestivalNearbyTab from '../components/FestivalNearbyTab';
 
+import useMapStore from '../../../store/useMapStore';
+
 const FestivalDetailPage = () => {
   const { id } = useParams();
   const { isLoggedIn } = useAuthStore();
+  const { selectedPlace } = useMapStore();
 
   const [festival, setFestival] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -61,6 +64,7 @@ const FestivalDetailPage = () => {
   const [nearbyLoading, setNearbyLoading] = useState(false);
 
   const tabs = ['소개', '주변 정보', '오시는 길', '후기'];
+
 
   useEffect(() => {
     const fetchFestival = async () => {
@@ -215,9 +219,30 @@ const FestivalDetailPage = () => {
   const reviews = festival.reviews || [];
 
 
+  const openKakaoMap = () => {
+    const lat = festival?.map_y;
+    const lng = festival?.map_x;
+
+    if (!lat || !lng) {
+      alert('위치 정보가 없습니다.');
+      return;
+    }
+
+    const title = encodeURIComponent(festival.title);
+
+    const url = `https://map.kakao.com/link/to/${location},${lat},${lng}`;
+
+    console.log(url);
+
+    window.open(url, '_blank');
+  };
+
+
 
   return (
     <>
+
+
       <div className="bg-gray-50/30 min-h-screen pb-20 font-['Pretendard']">
         <section className="relative h-[400px] md:h-[500px]">
           <img src={imageUrl} alt={festival.title} className="w-full h-full object-cover" />
@@ -351,7 +376,12 @@ const FestivalDetailPage = () => {
               )}
 
               {activeTab === '오시는 길' && (
-                <FestivalMapTab location={location} />
+                <FestivalMapTab
+                  location={location}
+                  mapX={festival.map_x}
+                  mapY={festival.map_y}
+                  title={festival.title}
+                />
               )}
 
               {activeTab === '후기' && (
@@ -390,12 +420,16 @@ const FestivalDetailPage = () => {
                   </div>
                 </div>
 
-                <button className="w-full h-14 bg-white text-slate-900 font-black rounded-2xl hover:bg-slate-100 transition-all active:scale-95 flex items-center justify-center gap-2">
+                <button
+                  className="w-full h-14 bg-white text-slate-900 font-black rounded-2xl hover:bg-slate-100 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  onClick={openKakaoMap}
+                >
                   카카오맵으로 길찾기
                   <ChevronRight size={18} />
                 </button>
               </div>
             </div>
+
 
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 overflow-hidden relative group">
               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform duration-500">
