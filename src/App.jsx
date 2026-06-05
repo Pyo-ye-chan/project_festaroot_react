@@ -40,23 +40,32 @@ function App() {
 
   useEffect(() => {
     const restoreLikes = async () => {
-      // 로컬 스토리지에 토큰이 있는지 확인(로그인 상태 확인)
-      const token = localStorage.getItem("token");
-      if (!token) return; // 비로그인시 함수 종료
+      const token = localStorage.getItem("accessToken");
+      const storedUser = localStorage.getItem("user");
+
+      // 토큰이나 유저 정보가 아예 없으면 비로그인 상태이므로 즉시 종료
+      if (!token || !storedUser) return;
 
       try {
-        // 백엔드에서 로그인 아이디 기준 찜한 축제ID 리스트 호출
-        const response = await festivalService.getMyFestivalLikedIds();
-        if (response.data && response.data.likedFestivalIds) {
-          setInitialLikes(response.data.likedFestivalIds);
+        const user = JSON.parse(storedUser);
+
+        // 소셜/일반 유저 ID 모든 가용 필드를 검사
+        const userId = user?.userId || user?.id || user?.member_id;
+
+        if (userId) {
+          const response = await festivalService.getMyFestivalLikedIds(userId);
+
+          if (response && response.likedFestivalIds) {
+            setInitialLikes(response.likedFestivalIds);
+          }
         }
 
       } catch (error) {
-        console.error("새로고침 후 찜 목록 조회 실패 : ", error)
+        console.error("새로고침 후 찜 목록 조회 실패 : ", error);
       }
     };
     restoreLikes();
-  }, [setInitialLikes]) // 앱 실행시 1회 실행
+  }, [setInitialLikes])
 
   return (
     <>

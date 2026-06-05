@@ -9,8 +9,6 @@ import festivalService from '../../../api/festivalService';
 import RegionService from '../../../api/regionService';
 import useAuthStore from '../../../store/useAuthStore';
 import { saveActivityLog } from '../../../api/activityApi';
-
-// 실무형 멀티 스토어 구독
 import useFestivalLikeStore from '../../../store/useFestivalLikeStore';
 import useFestivalFilterStore from '../../../store/useFestivalFilterStore';
 
@@ -45,11 +43,9 @@ const getDDay = (startDateStr, endDateStr) => {
 
 const SearchPage = () => {
   const navigate = useNavigate();
-
-  // Store 1: 찜 관련 전역 상태 및 액션
-  const { likedFestivals, toggleLike } = useFestivalLikeStore();
-
-  // Store 2: 검색 필터 관련 전역 상태 및 액션
+  const { likedFestivals, toggleLike, setInitialLikes } = useFestivalLikeStore();
+  const { isLoggedIn, user } = useAuthStore();
+  const userId = user?.userId || user?.id || user?.member_id;
   const {
     searchQuery, setSearchQuery,
     searchScope, setSearchScope,
@@ -64,14 +60,12 @@ const SearchPage = () => {
     resetFilters
   } = useFestivalFilterStore();
 
-  // 컴포넌트 로컬 UI 제어 상태
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isRegionOpen, setIsRegionOpen] = useState(false);
   const [isSigunguOpen, setIsSigunguOpen] = useState(false);
-
-  // 컴포넌트 로컬 API 데이터 상태
   const [festivals, setFestivals] = useState([]);
   const [isDataLoading, setIsDataLoading] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
   const [sidoList, setSidoList] = useState([{ region_code: '', region_name: '전체' }]);
   const [sigunguList, setSigunguList] = useState([{ sigungu_code: '', sigungu_name: '전체' }]);
   const [pageInfo, setPageInfo] = useState({
@@ -82,7 +76,6 @@ const SearchPage = () => {
   const sortOptions = ['인기순', '일정순', '조회순'];
   const totalPages = Math.ceil(pageInfo.totalCount / ITEMS_PER_PAGE) || 1;
 
-  /* 서버 데이터 페칭 */
   const fetchAllFestivals = async (customParams = {}) => {
     try {
       setIsDataLoading(true);
@@ -90,21 +83,27 @@ const SearchPage = () => {
       if (sortBy === '일정순') sortParam = 'event_start_date';
       if (sortBy === '조회순') sortParam = 'view_count';
 
-      const params = {
+      const targetPage = customParams.page !== undefined ? customParams.page : currentPage;
+
+      const rawParams = {
         sort: sortParam,
-        keyword: searchQuery,
+        keyword: searchQuery?.trim() || null,
         searchScope,
-        event_start_date: startDate.replace(/-/g, ''),
-        event_end_date: endDate.replace(/-/g, ''),
-        region_code: filterRegion.region_code,
-        sigungu_code: filterSigungu.sigungu_code,
-        page: currentPage,
+        event_start_date: startDate ? startDate.replace(/-/g, '') : null,
+        event_end_date: endDate ? endDate.replace(/-/g, '') : null,
+        region_code: filterRegion.region_code || null,
+        sigungu_code: filterSigungu.sigungu_code || null,
+        page: targetPage,
         size: ITEMS_PER_PAGE,
         ongoingOnly: showOngoingOnly,
         ...customParams
       };
 
-      const response = await festivalService.getFestivals(params);
+      const cleanedParams = Object.fromEntries(
+        Object.entries(rawParams).filter(([_, value]) => value !== null && value !== '')
+      );
+
+      const response = await festivalService.getFestivals(cleanedParams);
       const data = response?.data || response;
 
       setFestivals(Array.isArray(data.list) ? data.list : []);
@@ -117,52 +116,48 @@ const SearchPage = () => {
     }
   };
 
-  // 상세 페이지 이동 핸들러 (슬래시 포함 체크 완료)
   const handleFestivalClick = async (contentId) => {
     try {
       await festivalService.increaseViewCount(contentId);
     } catch (error) {
       console.error("조회수 증가 실패:", error);
     } finally {
+      // 리다이렉트 경로에 슬래시(/)가 올바르게 포함되어 있습니다.
       navigate(`/festival/${contentId}`);
     }
   };
 
-  // 하트 토글 핸들러 (Zustand + 로컬 카운트 실시간 연동)
   const handleLikeToggle = async (e, contentId) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // 현재 클릭 시점의 찜 여부 확인 (이벤트 핸들러 내 클로저 변수 활용)
-    const isCurrentlyLiked = likedFestivals.has(contentId);
+    if (likeLoading) return;
 
-    // 1. Zustand 스토어 상태 변경
-    toggleLike(contentId);
-
-    // 2. 화면에 표시되는 축제 리스트의 like_count를 실시간으로 +1 또는 -1 반영
-    setFestivals((prevFestivals) =>
-      prevFestivals.map((fest) => {
-        if (fest.content_id === contentId) {
-          return {
-            ...fest,
-            like_count: isCurrentlyLiked
-              ? Math.max(0, (fest.like_count || 0) - 1) // 음수 방지 예외 처리
-              : (fest.like_count || 0) + 1
-          };
-        }
-        return fest;
-      })
-    );
+    setLikeLoading(true);
+    const numericId = Number(contentId);
+    const isCurrentlyLiked = likedFestivals?.has?.(numericId);
 
     try {
-      await festivalService.toggleFestivalLike(contentId, { isLiked: !isCurrentlyLiked });
-    } catch (error) {
-      console.error("DB 찜 상태 동기화 실패 : ", error);
-    }
+      const response = await festivalService.toggleFestivalLike(numericId, { isLiked: !isCurrentlyLiked });
+      toggleLike(numericId);
 
+      const updatedLikeCount = response?.data?.like_count ?? (isCurrentlyLiked ? (festivals.find(f => f.content_id === numericId)?.like_count || 1) - 1 : (festivals.find(f => f.content_id === numericId)?.like_count || 0) + 1);
+
+      setFestivals((prev) =>
+        prev.map((fest) =>
+          fest.content_id === numericId
+            ? { ...fest, like_count: Math.max(0, updatedLikeCount) }
+            : fest
+        )
+      );
+    } catch (error) {
+      console.error("DB 찜 상태 동기화 실패:", error);
+      alert("찜 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setLikeLoading(false);
+    }
   };
 
-  // 초기 시도 데이터 로드
   useEffect(() => {
     const fetchSidoData = async () => {
       try {
@@ -178,7 +173,6 @@ const SearchPage = () => {
     fetchSidoData();
   }, []);
 
-  // 시도 변경 시 시군구 데이터 동기화
   useEffect(() => {
     const fetchSigunguData = async () => {
       if (!filterRegion.region_code) {
@@ -198,31 +192,47 @@ const SearchPage = () => {
     fetchSigunguData();
   }, [filterRegion.region_code]);
 
-  // 주요 정렬 및 페이지 변경 시 이펙트 트리거
   useEffect(() => {
     fetchAllFestivals();
   }, [sortBy, currentPage, showOngoingOnly]);
 
-  // 필터 초기화 함수
+  useEffect(() => {
+    if (isLoggedIn && userId) {
+      festivalService.getMyFestivalLikedIds(userId)
+        .then(response => {
+          const ids = response?.data || response;
+          const normalizedIds = Array.isArray(ids)
+            ? ids.map(item => item && typeof item === 'object' ? Number(item.content_id || item.id) : Number(item))
+            : [];
+          setInitialLikes(normalizedIds);
+        })
+        .catch(error => {
+          console.error("찜 목록 초기화 실패:", error);
+          setInitialLikes([]);
+        });
+    } else {
+      setInitialLikes([]);
+    }
+  }, [isLoggedIn, userId, setInitialLikes]);
+
   const handleResetClick = () => {
     resetFilters();
     fetchAllFestivals({
       sort: 'like_count', keyword: '', searchScope: 'title',
-      region_code: '', sigungu_code: '', event_start_date: '', event_end_date: '',
+      region_code: null, sigungu_code: null, event_start_date: null, event_end_date: null,
       page: 1, ongoingOnly: false
     });
   };
 
   const handleSearchSubmit = () => {
-    setCurrentPage(1);
-    fetchAllFestivals({ page: 1 });
+    if (currentPage === 1) {
+      fetchAllFestivals({ page: 1 });
+    } else {
+      setCurrentPage(1);
+    }
 
-    // 로그인 상태이고 검색어가 있을 경우 검색 로그 저장
     if (isLoggedIn && searchQuery.trim()) {
-      saveActivityLog({
-        type: 'SEARCH',
-        searchQuery: searchQuery
-      });
+      saveActivityLog({ type: 'SEARCH', searchQuery: searchQuery });
     }
   };
 
@@ -273,17 +283,18 @@ const SearchPage = () => {
                   placeholder="검색어를 입력하세요..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
                   className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-[#5821B6]/20 transition-all"
                 />
               </div>
 
-              {/* 날짜 필터 */}
+              {/* 기간 설정 필터 */}
               <div className="space-y-3 pt-4 border-t border-gray-50">
                 <p className="text-xs font-black text-gray-400 uppercase tracking-wider">기간 설정</p>
                 <div className="flex items-center gap-2">
-                  <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-3 text-[11px] font-bold text-gray-600 border outline-none focus:border-[#5821B6]/40" />
+                  <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); }} className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-3 text-[11px] font-bold text-gray-600 outline-none focus:border-[#5821B6]/40" />
                   <span className="text-gray-300 font-bold text-xs">~</span>
-                  <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }} className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-3 text-[11px] font-bold text-gray-600 border outline-none focus:border-[#5821B6]/40" />
+                  <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); }} className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-3 text-[11px] font-bold text-gray-600 outline-none focus:border-[#5821B6]/40" />
                 </div>
               </div>
 
@@ -304,9 +315,8 @@ const SearchPage = () => {
                             setFilterRegion(r);
                             setFilterSigungu({ sigungu_code: '', sigungu_name: '전체' });
                             setIsRegionOpen(false);
-                            setCurrentPage(1);
                           }}
-                          className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterRegion.region_code === r.region_code ? 'bg-[#5821B6] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+                          className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterRegion.region_code === r.region_code ? 'bg-[#5821B6]' : 'text-gray-600 hover:bg-gray-50'}`}
                         >
                           {r.region_name}
                         </button>
@@ -333,9 +343,8 @@ const SearchPage = () => {
                             onClick={() => {
                               setFilterSigungu(s);
                               setIsSigunguOpen(false);
-                              setCurrentPage(1);
                             }}
-                            className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterSigungu.sigungu_code === s.sigungu_code ? 'bg-[#5821B6] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+                            className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterSigungu.sigungu_code === s.sigungu_code ? 'bg-[#5821B6]' : 'text-gray-600 hover:bg-gray-50'}`}
                           >
                             {s.sigungu_name}
                           </button>
@@ -423,10 +432,13 @@ const SearchPage = () => {
                               {getDDay(fest.event_start_date, fest.event_end_date)}
                             </span>
                           </div>
-                          {/* 하트 버튼 인터랙션 피드백 반영 */}
-                          <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`absolute top-4 right-4 w-10 h-10 backdrop-blur rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 ${likedFestivals.has(fest.content_id) ? 'bg-rose-50/90 text-rose-500 shadow-sm' : 'bg-white/90 text-gray-400 hover:text-rose-500'}`}>
-                            <Heart className={`w-4 h-4 transition-all duration-300 ${likedFestivals.has(fest.content_id) ? 'fill-rose-500 scale-110' : 'fill-transparent'}`} />
-                          </button>
+                          
+                          {/* 찜 버튼 숨김 분기 처리: 로그인 시에만 하트 버튼이 나타납니다 */}
+                          {isLoggedIn && (
+                            <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`absolute top-4 right-4 w-10 h-10 backdrop-blur rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'bg-rose-50/90 text-rose-500 shadow-sm' : 'bg-white/90 text-gray-400 hover:text-rose-500'}`}>
+                              <Heart className={`w-4 h-4 transition-all duration-300 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'fill-rose-500 scale-110' : 'fill-transparent'}`} />
+                            </button>
+                          )}
                         </div>
                         <div className="p-6">
                           <h4 className="text-lg font-black text-gray-900 group-hover:text-[#5821B6] transition-colors line-clamp-1">{fest.title}</h4>
@@ -445,7 +457,6 @@ const SearchPage = () => {
                                 <span className="text-[11px] font-black text-gray-600">{fest.view_count || 0}</span>
                               </div>
                             </div>
-                            {/* 좋아요 카운트 동적 렌더링 */}
                             <div className="flex items-center gap-1.5 text-rose-500 font-black">
                               <Heart className="w-3.5 h-3.5 fill-current" /> <span className="text-[11px]">{fest.like_count || 0}</span>
                             </div>
@@ -457,7 +468,7 @@ const SearchPage = () => {
                 ) : (
                   <div className="space-y-4">
                     {festivals.map(fest => (
-                      <div onClick={() => handleFestivalClick(fest.content_id)} key={fest.content_id} className="cursor-pointer group flex bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
+                      <div onClick={() => handleFestivalClick(fest.content_id)} key={fest.content_id} className="cursor-pointer group flex bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
                         <div className="w-48 h-48 shrink-0 overflow-hidden bg-gray-100">
                           <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                         </div>
@@ -467,10 +478,13 @@ const SearchPage = () => {
                               <span className={`px-2 py-1 rounded-lg text-[9px] font-black ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-green-500 text-white' : 'bg-gray-50 text-gray-500'}`}>
                                 {getDDay(fest.event_start_date, fest.event_end_date)}
                               </span>
-                              {/* 하트 버튼 인터랙션 피드백 반영 */}
-                              <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`transition-all duration-300 active:scale-95 ${likedFestivals.has(fest.content_id) ? 'text-rose-500' : 'text-gray-300 hover:text-rose-500'}`}>
-                                <Heart className={`w-5 h-5 transition-all duration-300 ${likedFestivals.has(fest.content_id) ? 'fill-rose-500 scale-110' : 'fill-transparent'}`} />
-                              </button>
+                              
+                              {/* 리스트 뷰 찜 버튼 숨김 분기 처리 */}
+                              {isLoggedIn && (
+                                <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`transition-all duration-300 active:scale-95 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'text-rose-500' : 'text-gray-300 hover:text-rose-500'}`}>
+                                  <Heart className={`w-5 h-5 transition-all duration-300 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'fill-rose-500 scale-110' : 'fill-transparent'}`} />
+                                </button>
+                              )}
                             </div>
                             <h4 className="text-xl font-black text-gray-900 group-hover:text-[#5821B6] transition-colors">{fest.title}</h4>
                             <div className="mt-3 flex gap-4">
@@ -487,7 +501,6 @@ const SearchPage = () => {
                               <div className="flex items-center gap-1.5 text-gray-500">
                                 <Eye className="w-4 h-4" /> <span className="text-sm font-black">{fest.view_count || 0}</span>
                               </div>
-                              {/* 좋아요 카운트 동적 렌더링 */}
                               <div className="flex items-center gap-1.5 text-rose-500 font-black">
                                 <Heart className="w-4 h-4 fill-current" /> <span className="text-sm">{fest.like_count || 0}</span>
                               </div>
@@ -511,7 +524,7 @@ const SearchPage = () => {
                     <button
                       key={pageNumber}
                       onClick={() => setCurrentPage(pageNumber)}
-                      className={`w-9 h-9 rounded-xl font-bold text-xs transition-all ${currentPage === pageNumber ? 'bg-[#5821B6] text-white shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                      className={`w-9 h-9 rounded-xl font-bold text-xs transition-all ${currentPage === pageNumber ? 'bg-[#5821B6]' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                     >
                       {pageNumber}
                     </button>

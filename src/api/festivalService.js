@@ -80,9 +80,9 @@ const festivalService = {
   },
 
   // 로그인한 유저의 찜 목록 조회
-  getMyFestivalLikedIds: async () => {
+  getMyFestivalLikedIds: async (userId) => {
     try {
-      const response = await maxios.get(`${BASE_PATH}/likeList`);
+      const response = await maxios.get(`${BASE_PATH}/likeList`, { headers: { 'user-id': userId } });
       return response.data; // 백엔드가 준 { likedFestivalIds: [...] }를 리턴
     } catch (error) {
       console.error('Error fetching my liked festival IDs:', error);
@@ -90,26 +90,25 @@ const festivalService = {
     }
   },
 
-  // 축제 찜하기 토글 추가
-  // toggleFestivalLike: async (contentId) => {
-  //   try {
-  //     // 백엔드 @RequestBody Map 구조에 맞게 { contentId: 값 } 객체로 보냄
-  //     const response = await maxios.post(`${BASE_PATH}/likeToggle`, { contentId: Number(contentId) });
-  //     return response.data; // 백엔드가 준 { isLiked: true/false, message: "..." }를 리턴
-  //   } catch (error) {
-  //     console.error('Error toggling festival like:', error);
-  //     throw error;
-  //   }
-  // },
-
-  // festivalService.js 내부
+  // 축제 찜하기 토글
   toggleFestivalLike: async (contentId) => {
-    const user = JSON.parse(localStorage.getItem('user')); // 로컬 스토리지에서 가져오기
-    const response = await maxios.post(`${BASE_PATH}/likeToggle`,
-      { contentId: Number(contentId) },
-      { headers: { 'user-id': user.id } } // 👈 헤더에 직접 실어서 보내기!
-    );
-    return response.data;
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      const userId = user?.userId || user?.id || user?.member_id;
+
+      if (!userId) {
+        throw new Error('로그인이 필요한 서비스이거나 유저 정보를 찾을 수 없습니다.');
+      }
+
+      const response = await maxios.post(`${BASE_PATH}/likeToggle`,
+        { contentId: Number(contentId) },
+        { headers: { 'user-id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error toggling festival like:', error);
+      throw error;
+    }
   }
 
 };
