@@ -88,6 +88,44 @@ const festivalService = {
     }
   },
 
+
+  // 조회수 1씩 증가
+  increaseViewCount(contentId) {
+    return maxios.put(`${BASE_PATH}/${contentId}/view-count`);
+  },
+
+  // 로그인한 유저의 찜 목록 조회
+  getMyFestivalLikedIds: async (userId) => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/likeList`, { headers: { 'user-id': userId } });
+      return response.data; // 백엔드가 준 { likedFestivalIds: [...] }를 리턴
+    } catch (error) {
+      console.error('Error fetching my liked festival IDs:', error);
+      throw error;
+    }
+  },
+
+  // 축제 찜하기 토글
+  toggleFestivalLike: async (contentId) => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      const userId = user?.userId || user?.id || user?.member_id;
+
+      if (!userId) {
+        throw new Error('로그인이 필요한 서비스이거나 유저 정보를 찾을 수 없습니다.');
+      }
+
+      const response = await maxios.post(`${BASE_PATH}/likeToggle`,
+        { contentId: Number(contentId) },
+        { headers: { 'user-id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error toggling festival like:', error);
+      throw error;
+    }
+  },
+
   getNearbyPlaces: async (lat, lng, radius = 5000, contentTypeId = '') => {
   try {
     const response = await maxios.get(`${BASE_PATH}/nearby`, {
@@ -103,7 +141,7 @@ const festivalService = {
     console.error('Error fetching nearby places:', error);
     throw error;
   }
-},
+}
 
 };
 

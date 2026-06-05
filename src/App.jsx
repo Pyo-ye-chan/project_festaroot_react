@@ -28,10 +28,44 @@ import KakaoCallbackPage from './features/auth/pages/KakaoCallbackPage'
 import SocialSignupPage from './features/auth/pages/SolcialSignupPage'
 import NaverCallbackPage from './features/auth/pages/NaverCallbackPage'
 import GoogleCallbackPage from './features/auth/pages/GoogleCallbackPage'
+import useFestivalLikeStore from './store/useFestivalLikeStore'
+import festivalService from './api/festivalService'
 
 function App() {
   const { isFloating } = useChatStore(); // 채팅방 띄우기
   const isLoading = useLoadingStore(state => state.isLoading); // 로딩 상태 확인
+
+  // 축제 찜 목록 관련 zustand 코드
+  const { setInitialLikes } = useFestivalLikeStore();
+
+  useEffect(() => {
+    const restoreLikes = async () => {
+      const token = localStorage.getItem("accessToken");
+      const storedUser = localStorage.getItem("user");
+
+      // 토큰이나 유저 정보가 아예 없으면 비로그인 상태이므로 즉시 종료
+      if (!token || !storedUser) return;
+
+      try {
+        const user = JSON.parse(storedUser);
+
+        // 소셜/일반 유저 ID 모든 가용 필드를 검사
+        const userId = user?.userId || user?.id || user?.member_id;
+
+        if (userId) {
+          const response = await festivalService.getMyFestivalLikedIds(userId);
+
+          if (response && response.likedFestivalIds) {
+            setInitialLikes(response.likedFestivalIds);
+          }
+        }
+
+      } catch (error) {
+        console.error("새로고침 후 찜 목록 조회 실패 : ", error);
+      }
+    };
+    restoreLikes();
+  }, [setInitialLikes])
 
   return (
     <>
@@ -54,9 +88,9 @@ function App() {
         </Route>
 
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/oauth/kakao/callback" element={<KakaoCallbackPage/>} />
-        <Route path="/oauth/naver/callback" element={<NaverCallbackPage/>} />
-        <Route path="/oauth/google/callback" element={<GoogleCallbackPage/>} />
+        <Route path="/oauth/kakao/callback" element={<KakaoCallbackPage />} />
+        <Route path="/oauth/naver/callback" element={<NaverCallbackPage />} />
+        <Route path="/oauth/google/callback" element={<GoogleCallbackPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/signup/social" element={<SocialSignupPage />} />
         <Route path="/signup/preferences" element={<SignupPreferencesPage />} />

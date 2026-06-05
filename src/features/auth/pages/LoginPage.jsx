@@ -11,11 +11,13 @@ import {
 import { login } from '../../../api/authApi';
 import useAuthStore from '../../../store/useAuthStore';
 import useMemberStore from '../../../store/useMemberStore';
+import useFestivalLikeStore from '../../../store/useFestivalLikeStore';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { setSignupData } = useMemberStore();
   const { login: setAuthLogin } = useAuthStore();
+  const { setInitialLikes } = useFestivalLikeStore(); // 축제 찜 목록
   const primaryPurple = '#5b21b6';
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -42,11 +44,11 @@ const LoginPage = () => {
       }
 
       const provider =
-        type === 'KAKAO_LOGIN_SUCCESS' 
-          ? 'KAKAO' 
+        type === 'KAKAO_LOGIN_SUCCESS'
+          ? 'KAKAO'
           : type === 'NAVER_LOGIN_SUCCESS'
-          ? 'NAVER' 
-          : 'GOOGLE';
+            ? 'NAVER'
+            : 'GOOGLE';
 
       console.log(`${provider} 로그인 응답:`, data);
 
@@ -70,6 +72,11 @@ const LoginPage = () => {
 
         console.log(data.token);
 
+        // 소셜 로그인 성공 시에도 백엔드가 축제 찜 목록
+        if (data.likedFestivalIds) {
+          setInitialLikes(data.likedFestivalIds);
+        }
+
         setAuthLogin(data.token, {
           member_id: data.member_id,
           nickname: data.nickname,
@@ -90,9 +97,6 @@ const LoginPage = () => {
       window.removeEventListener('message', handleSocialMessage);
     };
   }, [navigate, setSignupData, setAuthLogin]);
-
-
-
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -132,6 +136,11 @@ const LoginPage = () => {
       if (data.success) {
 
         const token = data.token;
+
+        const userLikedIds = data.likedFestivalIds; // 축제 찜 목록
+        if (userLikedIds) {
+          setInitialLikes(userLikedIds);
+        }
 
         setAuthLogin(token, {
           id: formData.id
