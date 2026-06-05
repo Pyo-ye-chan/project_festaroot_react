@@ -7,6 +7,20 @@ const festivalService = {
   /**
    * DB에 저장된 모든 축제 목록을 가져옵니다.
    */
+
+
+   getAllFestivals: async () => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/map`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching festivals:', error);
+      throw error;
+    }
+  },
+
+
+
   getFestivals: async (params) => {
     try {
       const response = await maxios.get(BASE_PATH, { params });
