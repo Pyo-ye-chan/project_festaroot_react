@@ -28,6 +28,8 @@ import { getFestivalDetail, getFestivalImages } from '../../../api/FestivalApi';
 import useAuthStore from '../../../store/useAuthStore';
 import { saveActivityLog } from '../../../api/activityApi';
 
+import festivalService from '../../../api/festivalService';
+
 
 import FestivalMapTab from '../components/FestivalMapTab';
 import FestivalReviewTab from '../components/FestivalReviewTab';
@@ -35,9 +37,12 @@ import FestivalIntroTab from '../components/FestivalIntroTab';
 
 import FestivalNearbyTab from '../components/FestivalNearbyTab';
 
+import useMapStore from '../../../store/useMapStore';
+
 const FestivalDetailPage = () => {
   const { id } = useParams();
   const { isLoggedIn } = useAuthStore();
+  const { selectedPlace } = useMapStore();
 
   const [festival, setFestival] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -59,6 +64,7 @@ const FestivalDetailPage = () => {
   const [nearbyLoading, setNearbyLoading] = useState(false);
 
   const tabs = ['소개', '주변 정보', '오시는 길', '후기'];
+
 
   useEffect(() => {
     const fetchFestival = async () => {
@@ -102,6 +108,34 @@ const FestivalDetailPage = () => {
     fetchFestivalImages();
   }, [festival?.content_id]);
 
+  useEffect(() => {
+    if (!festival?.map_x || !festival?.map_y) return;
+
+    const fetchNearbyData = async () => {
+      try {
+        setNearbyLoading(true);
+
+        const [travel, food, events] = await Promise.all([
+          festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '12'),
+          festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '39'),
+          festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '15'),
+        ]);
+
+        setNearbyTravel(travel || []);
+        setNearbyFood(food || []);
+        setNearbyEvents(events || []);
+      } catch (error) {
+        console.error('주변 정보 조회 실패:', error);
+        setNearbyTravel([]);
+        setNearbyFood([]);
+        setNearbyEvents([]);
+      } finally {
+        setNearbyLoading(false);
+      }
+    };
+
+    fetchNearbyData();
+  }, [festival?.map_x, festival?.map_y]);
 
   const DEFAULT_IMAGE = festival?.first_image || festival?.first_image2 || "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=2070";
 
@@ -138,7 +172,7 @@ const FestivalDetailPage = () => {
         return base + 'bg-gray-100 text-gray-500';
     }
   };
-  
+
 
   const handleSendMessage = (e) => {
     e.preventDefault();
@@ -185,9 +219,30 @@ const FestivalDetailPage = () => {
   const reviews = festival.reviews || [];
 
 
+  const openKakaoMap = () => {
+    const lat = festival?.map_y;
+    const lng = festival?.map_x;
+
+    if (!lat || !lng) {
+      alert('위치 정보가 없습니다.');
+      return;
+    }
+
+    const title = encodeURIComponent(festival.title);
+
+    const url = `https://map.kakao.com/link/to/${location},${lat},${lng}`;
+
+    console.log(url);
+
+    window.open(url, '_blank');
+  };
+
+
 
   return (
     <>
+
+
       <div className="bg-gray-50/30 min-h-screen pb-20 font-['Pretendard']">
         <section className="relative h-[400px] md:h-[500px]">
           <img src={imageUrl} alt={festival.title} className="w-full h-full object-cover" />
@@ -321,7 +376,12 @@ const FestivalDetailPage = () => {
               )}
 
               {activeTab === '오시는 길' && (
-                <FestivalMapTab location={location} />
+                <FestivalMapTab
+                  location={location}
+                  mapX={festival.map_x}
+                  mapY={festival.map_y}
+                  title={festival.title}
+                />
               )}
 
               {activeTab === '후기' && (
@@ -360,12 +420,16 @@ const FestivalDetailPage = () => {
                   </div>
                 </div>
 
-                <button className="w-full h-14 bg-white text-slate-900 font-black rounded-2xl hover:bg-slate-100 transition-all active:scale-95 flex items-center justify-center gap-2">
+                <button
+                  className="w-full h-14 bg-white text-slate-900 font-black rounded-2xl hover:bg-slate-100 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  onClick={openKakaoMap}
+                >
                   카카오맵으로 길찾기
                   <ChevronRight size={18} />
                 </button>
               </div>
             </div>
+
 
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 overflow-hidden relative group">
               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform duration-500">
