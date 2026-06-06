@@ -272,7 +272,7 @@ const SearchPage = () => {
                         setSearchScope(searchScope === 'title' ? 'all' : 'title');
                         setCurrentPage(1);
                       }}
-                      className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 focus:outline-none ${searchScope === 'all' ? 'bg-[#5821B6]' : 'bg-gray-200'}`}
+                      className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 focus:outline-none ${searchScope === 'all' ? 'bg-[#5821B6] text-white' : 'bg-gray-200'}`}
                     >
                       <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform duration-300 ${searchScope === 'all' ? 'translate-x-4' : 'translate-x-0'}`} />
                     </button>
@@ -316,7 +316,7 @@ const SearchPage = () => {
                             setFilterSigungu({ sigungu_code: '', sigungu_name: '전체' });
                             setIsRegionOpen(false);
                           }}
-                          className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterRegion.region_code === r.region_code ? 'bg-[#5821B6]' : 'text-gray-600 hover:bg-gray-50'}`}
+                          className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterRegion.region_code === r.region_code ? 'bg-[#5821B6] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
                         >
                           {r.region_name}
                         </button>
@@ -344,7 +344,7 @@ const SearchPage = () => {
                               setFilterSigungu(s);
                               setIsSigunguOpen(false);
                             }}
-                            className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterSigungu.sigungu_code === s.sigungu_code ? 'bg-[#5821B6]' : 'text-gray-600 hover:bg-gray-50'}`}
+                            className={`px-3 py-2 text-xs font-bold rounded-xl transition-all ${filterSigungu.sigungu_code === s.sigungu_code ? 'bg-[#5821B6] text-white' : 'text-gray-600 hover:bg-gray-50'}`}
                           >
                             {s.sigungu_name}
                           </button>
@@ -376,7 +376,7 @@ const SearchPage = () => {
                 <label className="flex items-center gap-3 cursor-pointer select-none border-l border-gray-100 pl-6">
                   <input type="checkbox" checked={showOngoingOnly} onChange={(e) => { setShowOngoingOnly(e.target.checked); setCurrentPage(1); }} className="sr-only" />
                   <span className="text-xs font-black text-gray-600">진행 및 예정 축제만 보기</span>
-                  <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 ${showOngoingOnly ? 'bg-[#5821B6]' : 'bg-gray-200'}`}>
+                  <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 ${showOngoingOnly ? 'bg-[#5821B6] text-white' : 'bg-gray-200'}`}>
                     <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform duration-300 ${showOngoingOnly ? 'translate-x-4' : 'translate-x-0'}`} />
                   </div>
                 </label>
@@ -524,7 +524,7 @@ const SearchPage = () => {
                     <button
                       key={pageNumber}
                       onClick={() => setCurrentPage(pageNumber)}
-                      className={`w-9 h-9 rounded-xl font-bold text-xs transition-all ${currentPage === pageNumber ? 'bg-[#5821B6]' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                      className={`w-9 h-9 rounded-xl font-bold text-xs transition-all ${currentPage === pageNumber ? 'bg-[#5821B6] text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                     >
                       {pageNumber}
                     </button>
