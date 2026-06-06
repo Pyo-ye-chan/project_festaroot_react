@@ -91,20 +91,16 @@ const ChatListPage = () => {
     }
   }, [messages, selectedChatId]);
 
+  // Tailwind용 스크롤바 커스텀 스타일 결합
+  const customScrollbarClass = "[&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-300";
+  const scrollbarHideClass = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]";
+
   return (
     <div className="flex h-[calc(100vh-120px)] bg-gray-50 font-['Pretendard']">
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 20px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #d1d5db; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
-
       <div className="max-w-7xl mx-auto w-full flex bg-white shadow-xl overflow-hidden md:my-10 md:rounded-[2.5rem] border border-gray-100">
         
-        <aside className="w-full md:w-80 lg:w-96 flex flex-col border-r border-gray-100 bg-white z-20 custom-scrollbar overflow-y-auto">
+        {/* 왼쪽 사이드바 (채팅방 목록) */}
+        <aside className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-gray-100 bg-white z-20 overflow-y-auto ${customScrollbarClass}`}>
           <div className="p-6 border-b border-gray-100">
             <h1 className="text-2xl font-black text-gray-900 mb-6 flex items-center gap-2">
               <MessageCircle className="w-6 h-6 text-purple-600" />
@@ -116,7 +112,7 @@ const ChatListPage = () => {
             </div>
           </div>
 
-          <div className="flex-grow overflow-y-auto custom-scrollbar">
+          <div className={`flex-grow overflow-y-auto ${customScrollbarClass}`}>
             {sections.map(section => (
               <div key={section.id} className="border-b border-gray-50 last:border-0">
                 <button onClick={() => toggleSection(section.id)} className="w-full flex items-center justify-between p-4 font-black text-gray-600 text-sm uppercase tracking-widest hover:bg-gray-50 transition-colors">
@@ -177,7 +173,8 @@ const ChatListPage = () => {
                 </div>
               </header>
 
-              <div ref={scrollRef} className="flex-grow overflow-y-auto p-6 space-y-6 bg-[#F8F9FF] scrollbar-hide">
+              {/* 채팅 내용 스크롤 영역 (스크롤바 숨김 처리) */}
+              <div ref={scrollRef} className={`flex-grow overflow-y-auto p-6 space-y-6 bg-[#F8F9FF] ${scrollbarHideClass}`}>
                 {messages.map(msg => (
                   <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-start gap-3`}>
                     {!msg.isMe && (
@@ -216,7 +213,7 @@ const ChatListPage = () => {
                         if (file) {
                           setMessages([...messages, { 
                             id: messages.length + 1, 
-                            sender: '나', 
+                            sender: 'na', 
                             text: file.name, 
                             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
                             isMe: true,
@@ -243,14 +240,15 @@ const ChatListPage = () => {
               </div>
             </div>
 
-            <aside className={`border-l border-gray-100 flex flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out custom-scrollbar ${(showParticipants || showDetails) ? 'w-64 opacity-100' : 'w-0 opacity-0'}`}>
+            {/* 오른쪽 사이드바 (상세 정보 / 인원 목록) */}
+            <aside className={`border-l border-gray-100 flex flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out ${(showParticipants || showDetails) ? 'w-64 opacity-100' : 'w-0 opacity-0'} ${customScrollbarClass}`}>
               {showParticipants && (
                 <div className="p-4 space-y-2">
                   <h3 className="font-black text-gray-900 text-sm mb-4">참여 인원</h3>
                   {participants.map(p => (
                     <div key={p.id} className="flex items-center justify-between p-2">
                         <div className="flex items-center gap-3">
-                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`} className="w-8 h-8 rounded-full" />
+                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`} className="w-8 h-8 rounded-full" alt="" />
                             <span className="text-sm font-bold">{p.name}</span>
                         </div>
                         <button className="text-gray-300 hover:text-rose-500"><Ban className="w-4 h-4"/></button>
