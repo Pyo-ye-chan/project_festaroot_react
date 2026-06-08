@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Search, Calendar, MapPin, Star, Heart, SlidersHorizontal,
   ChevronDown, LayoutGrid, List, ChevronLeft, ChevronRight,
@@ -41,11 +41,22 @@ const getDDay = (startDateStr, endDateStr) => {
   return `D-${Math.ceil(diffTime / (1000 * 60 * 60 * 24))}`;
 };
 
+const SORT_LABELS = {
+  popular: '인기순',
+  date: '일정순',
+  views: '조회순'
+};
+
 const SearchPage = () => {
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  // 1. Store Hooks 선언
   const { likedFestivals, toggleLike, setInitialLikes } = useFestivalLikeStore();
   const { isLoggedIn, user } = useAuthStore();
   const userId = user?.userId || user?.id || user?.member_id;
+  
   const {
     searchQuery, setSearchQuery,
     searchScope, setSearchScope,
@@ -73,20 +84,17 @@ const SearchPage = () => {
   });
 
   const ITEMS_PER_PAGE = 9;
-  const sortOptions = ['인기순', '일정순', '조회순'];
+  const sortOptions = ['popular', 'date', 'views'];
   const totalPages = Math.ceil(pageInfo.totalCount / ITEMS_PER_PAGE) || 1;
 
+  // 2. 데이터 페치 함수 정의 (순서 확보를 위해 위로 배치)
   const fetchAllFestivals = async (customParams = {}) => {
     try {
       setIsDataLoading(true);
-      let sortParam = 'popular';
-      if (sortBy === '일정순') sortParam = 'date';
-      if (sortBy === '조회순') sortParam = 'views';
-
       const targetPage = customParams.page !== undefined ? customParams.page : currentPage;
 
       const rawParams = {
-        sort: sortParam,
+        sort: sortBy,
         keyword: searchQuery?.trim() || null,
         searchScope,
         event_start_date: startDate ? startDate.replace(/-/g, '') : null,
@@ -116,13 +124,42 @@ const SearchPage = () => {
     }
   };
 
+  // 3. [★수정 포인트] URL 파라미터 동기화 및 누락 없는 조건부 페치 설정
+  useEffect(() => {
+    const initialSort = searchParams.get('sort') || location.state?.sort || 'popular';
+    const initialOngoing = searchParams.get('ongoingOnly') === 'true' || !!location.state?.ongoingOnly;
+    const initialKeyword = searchParams.get('keyword') || location.state?.keyword || ''; 
+
+    setSortBy(initialSort);
+    setShowOngoingOnly(initialOngoing);
+    setSearchQuery(initialKeyword); 
+
+    // 현재 페이지 상태에 따른 중복 호출 방지 및 강제 데이터 갱신 분기
+    if (currentPage === 1) {
+      // 이미 1페이지라면 아래쪽 useEffect가 무반응하므로 여기서 직접 최신 파라미터로 데이터를 가져옵니다.
+      fetchAllFestivals({
+        sort: initialSort,
+        ongoingOnly: initialOngoing,
+        keyword: initialKeyword,
+        page: 1
+      });
+    } else {
+      // 페이지가 1이 아니라면 상태값 변화를 통해 아래쪽의 [sortBy, currentPage, showOngoingOnly] useEffect가 실행됩니다.
+      setCurrentPage(1);
+    }
+  }, [searchParams, location.state]); 
+
+  // 4. 주요 상태 변경 감지 페치
+  useEffect(() => {
+    fetchAllFestivals();
+  }, [sortBy, currentPage, showOngoingOnly]);
+
   const handleFestivalClick = async (contentId) => {
     try {
       await festivalService.increaseViewCount(contentId);
     } catch (error) {
       console.error("조회수 증가 실패:", error);
     } finally {
-      // 리다이렉트 경로에 슬래시(/)가 올바르게 포함되어 있습니다.
       navigate(`/festival/${contentId}`);
     }
   };
@@ -193,10 +230,6 @@ const SearchPage = () => {
   }, [filterRegion.region_code]);
 
   useEffect(() => {
-    fetchAllFestivals();
-  }, [sortBy, currentPage, showOngoingOnly]);
-
-  useEffect(() => {
     if (isLoggedIn && userId) {
       festivalService.getMyFestivalLikedIds(userId)
         .then(response => {
@@ -216,17 +249,13 @@ const SearchPage = () => {
   }, [isLoggedIn, userId, setInitialLikes]);
 
   const handleResetClick = () => {
-    // 1. 현재 필터들이 이미 초기 상태인지 확인합니다.
     const isAlreadyDefault =
-      sortBy === '인기순' &&
+      sortBy === 'popular' &&
       currentPage === 1 &&
       !showOngoingOnly;
 
-    // 2. 스토어의 필터들을 리셋합니다.
     resetFilters();
 
-    // 3. 만약 이미 초기 상태였다면 useEffect가 실행되지 않으므로, 이때만 데이터 갱신을 위해 수동으로 호출합니다.
-    //    (만약 초기 상태가 아니었다면, resetFilters()에 의해 값이 바뀌면서 useEffect가 자동으로 데이터를 불러와 줍니다!)
     if (isAlreadyDefault) {
       fetchAllFestivals({
         sort: 'popular', keyword: '', searchScope: 'title',
@@ -407,7 +436,7 @@ const SearchPage = () => {
                 {/* 정렬 드롭다운 */}
                 <div className="relative">
                   <button onClick={() => setIsSortOpen(!isSortOpen)} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 text-gray-700 font-bold rounded-xl text-xs shadow-sm">
-                    {sortBy} <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isSortOpen ? 'rotate-180' : ''}`} />
+                  {SORT_LABELS[sortBy]} <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isSortOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {isSortOpen && (
                     <div className="absolute top-full right-0 mt-2 w-32 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden">
@@ -417,7 +446,7 @@ const SearchPage = () => {
                           onClick={() => { setSortBy(option); setIsSortOpen(false); setCurrentPage(1); }}
                           className={`w-full px-4 py-2.5 text-left text-xs font-bold ${sortBy === option ? 'bg-purple-50 text-[#5821B6]' : 'text-gray-600 hover:bg-gray-50'}`}
                         >
-                          {option}
+                          {SORT_LABELS[option]}
                         </button>
                       ))}
                     </div>
@@ -445,7 +474,6 @@ const SearchPage = () => {
                             </span>
                           </div>
 
-                          {/* 찜 버튼 숨김 분기 처리: 로그인 시에만 하트 버튼이 나타납니다 */}
                           {isLoggedIn && (
                             <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`absolute top-4 right-4 w-10 h-10 backdrop-blur rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'bg-rose-50/90 text-rose-500 shadow-sm' : 'bg-white/90 text-gray-400 hover:text-rose-500'}`}>
                               <Heart className={`w-4 h-4 transition-all duration-300 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'fill-rose-500 scale-110' : 'fill-transparent'}`} />
@@ -491,7 +519,6 @@ const SearchPage = () => {
                                 {getDDay(fest.event_start_date, fest.event_end_date)}
                               </span>
 
-                              {/* 리스트 뷰 찜 버튼 숨김 분기 처리 */}
                               {isLoggedIn && (
                                 <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`transition-all duration-300 active:scale-95 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'text-rose-500' : 'text-gray-300 hover:text-rose-500'}`}>
                                   <Heart className={`w-5 h-5 transition-all duration-300 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'fill-rose-500 scale-110' : 'fill-transparent'}`} />

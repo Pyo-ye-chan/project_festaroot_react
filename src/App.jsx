@@ -30,6 +30,7 @@ import NaverCallbackPage from './features/auth/pages/NaverCallbackPage'
 import GoogleCallbackPage from './features/auth/pages/GoogleCallbackPage'
 import useFestivalLikeStore from './store/useFestivalLikeStore'
 import festivalService from './api/festivalService'
+import ScrollToTop from './components/ScrollToTop'
 
 function App() {
   const { isFloating } = useChatStore(); // 채팅방 띄우기
@@ -69,6 +70,7 @@ function App() {
 
   return (
     <>
+      <ScrollToTop />
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />

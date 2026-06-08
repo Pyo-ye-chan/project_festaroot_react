@@ -9,7 +9,7 @@ const useFestivalFilterStore = create((set) => ({
   filterSigungu: { sigungu_code: '', sigungu_name: '전체' },
   startDate: '',
   endDate: '',
-  sortBy: '인기순',
+  sortBy: 'popular',
   currentPage: 1,
   viewMode: 'grid',
 
@@ -32,7 +32,7 @@ const useFestivalFilterStore = create((set) => ({
     filterSigungu: { sigungu_code: '', sigungu_name: '전체' },
     startDate: '',
     endDate: '',
-    sortBy: '인기순',
+    sortBy: 'popular',
     currentPage: 1,
   }),
 }));

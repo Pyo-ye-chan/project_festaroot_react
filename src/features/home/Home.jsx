@@ -363,6 +363,7 @@ const OngoingFestivals = () => {
         </div>
         <Link 
           to="/search" // 축제 전체 찾기 페이지 경로에 맞게 수정 가능
+          state={{ ongoingOnly: true, sort: 'date' }}
           className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 hover:text-green-600 transition-all duration-300 text-sm shadow-sm active:scale-95"
         >
           전체보기
