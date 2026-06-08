@@ -1,40 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Eye } from 'lucide-react'; // 👁️ Eye 아이콘 추가
+import { ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import festivalService from '../../../api/festivalService';
+import { REGIONS, REGION_MAPPER } from '../../../constants/regionData';
 
 const TopFestivalsByRegion = () => {
   const [activeRegion, setActiveRegion] = useState('서울');
-  const [festivals, setFestivals] = useState([]); // 항상 빈 배열로 초기화하여 안전성 확보
+  const [festivals, setFestivals] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const scrollRef = useRef(null);
 
-  const regions = [
-    '서울', '경기', '인천',        // 수도권
-    '강원',                       // 강원권
-    '대전', '세종', '충북', '충남', // 충청권
-    '광주', '전북', '전남',        // 호남권
-    '대구', '부산', '울산', '경북', '경남', // 영남권
-    '제주'                        // 제주권
-  ];
-
-  const regionMapper = {
-    '서울': '서울특별시','경기': '경기도', '인천': '인천광역시',
-    '강원': '강원특별자치도',
-    '대전': '대전광역시', '세종': '세종특별자치시', '충북': '충청북도', '충남': '충청남도',
-    '광주': '광주광역시', '전북': '전북특별자치도', '전남': '전라남도',
-    '대구': '대구광역시', '부산': '부산광역시', '울산': '울산광역시', '경북': '경상북도', '경남': '경상남도',
-    '제주': '제주특별자치도'
-  };
-
+  // 축제 데이터 불러오기 Effect
   useEffect(() => {
     const fetchTopFestivals = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const fullRegionName = regionMapper[activeRegion];
+        const fullRegionName = REGION_MAPPER[activeRegion];
         const data = await festivalService.getTopFestivals(fullRegionName);
 
         if (Array.isArray(data)) {
@@ -55,7 +39,6 @@ const TopFestivalsByRegion = () => {
     fetchTopFestivals();
   }, [activeRegion]);
 
-  // 상세보기 클릭 시 백엔드 조회수 증가 API 연동 함수
   const handleFestivalClick = async (contentId) => {
     try {
       if (festivalService.increaseViewCount) {
@@ -64,7 +47,6 @@ const TopFestivalsByRegion = () => {
         console.warn("festivalService에 increaseViewCount 메소드가 정의되어 있지 않습니다.");
       }
     } catch (err) {
-      // 조회수 증가 실패가 서비스 이용을 막지 않도록 오류 로그만 출력합니다.
       console.error("상세보기 조회수 누적 실패:", err);
     }
   };
@@ -87,26 +69,26 @@ const TopFestivalsByRegion = () => {
           <h3 className="text-3xl text-gray-900 font-black">지역별 인기 축제 TOP 3</h3>
           <p className="text-gray-500 mt-2 font-bold text-sm">지금 가장 주목받는 지역별 축제를 확인하세요.</p>
         </div>
-        
+
         <div className="flex items-center gap-1 max-w-full md:max-w-xl self-center">
-          <button 
+          <button
             onClick={() => scroll('left')}
             className="p-1.5 rounded-full bg-white border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors text-gray-400 hover:text-purple-600 hidden md:block shrink-0"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          
-          <div 
+
+          <div
             ref={scrollRef}
             className="flex gap-2 overflow-x-auto pb-2 scroll-smooth [&::-webkit-scrollbar]:h-[3px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full"
           >
-            {regions.map((r) => (
+            {REGIONS.map((r) => (
               <button
                 key={r}
                 onClick={() => setActiveRegion(r)}
                 className={`px-5 py-2.5 rounded-full font-bold text-sm transition-all duration-300 whitespace-nowrap ${activeRegion === r
-                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-100'
-                    : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 hover:text-purple-600'
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-100'
+                  : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 hover:text-purple-600'
                   }`}
               >
                 {r}
@@ -114,7 +96,7 @@ const TopFestivalsByRegion = () => {
             ))}
           </div>
 
-          <button 
+          <button
             onClick={() => scroll('right')}
             className="p-1.5 rounded-full bg-white border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors text-gray-400 hover:text-purple-600 hidden md:block shrink-0"
           >
@@ -123,7 +105,6 @@ const TopFestivalsByRegion = () => {
         </div>
       </div>
 
-      {/* 🔄 조건부 렌더링 영역 */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[1, 2, 3].map((n) => (
@@ -178,7 +159,7 @@ const TopFestivalsByRegion = () => {
                     </p>
                   </div>
                   
-                  {/* 👀 스크린샷 템플릿 맞춤 아이콘형 조회수 컴포넌트 */}
+                  {/* 조회수 표시 컴포넌트 */}
                   {viewCount > 0 && (
                     <div className="flex items-center gap-1 mt-2 text-gray-400">
                       <Eye className="w-4 h-4 stroke-[2.5]" />
