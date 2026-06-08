@@ -126,6 +126,39 @@ const festivalService = {
     }
   },
 
+  // 홈 > 지역별 인기 축제 TOP 3 조회
+  getTopFestivals: async (regionName) => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/top`, { params: { regionName } }); // region : 서울특별시
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching top festivals for ${region}:`, error);
+      throw error;
+    }
+  },
+
+  // 홈 > 종료 임박 축제 조회
+  getClosingSoonFestivals: async () => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/closing-soon`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching closing soon festivals:', error);
+      throw error;
+    }
+  },
+
+  // 홈 > 랜덤 축체 추천
+  getRandomFestival: async () => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/random`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching random festival:', error);
+      throw error;
+    }
+  },
+
   getNearbyPlaces: async (lat, lng, radius = 5000, contentTypeId = '') => {
   try {
     const response = await maxios.get(`${BASE_PATH}/nearby`, {

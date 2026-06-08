@@ -10,14 +10,14 @@ import SignupPage from './features/auth/pages/SignupPage'
 import SignupPreferencesPage from './features/auth/pages/SignupPreferencesPage'
 import FindAccountPage from './features/auth/pages/FindAccountPage'
 import FestivalDetailPage from './features/detail/pages/FestivalDetailPage'
-import Home from './features/home/Home'
+import Home from './features/home/pages/Home'
 import CommunityMainPage from './features/community/pages/CommunityMainPage'
 import BoardListPage from './features/community/pages/BoardListPage'
 import PostDetailPage from './features/community/pages/PostDetailPage'
 import PostWritePage from './features/community/pages/PostWritePage'
 import MainLayout from './components/MainLayout'
-import ChatListPage from './features/chat/ChatListPage'
-import FloatingChat from './features/chat/FloatingChat'
+import ChatListPage from './features/chat/pages/ChatListPage'
+import FloatingChat from './features/chat/components/FloatingChat'
 import SearchPage from './features/search/pages/SearchPage'
 import MyPage from './features/mypage/pages/MyPage'
 import AIPlannerPage from './features/ai-planner/pages/AIPlannerPage'
@@ -30,6 +30,7 @@ import NaverCallbackPage from './features/auth/pages/NaverCallbackPage'
 import GoogleCallbackPage from './features/auth/pages/GoogleCallbackPage'
 import useFestivalLikeStore from './store/useFestivalLikeStore'
 import festivalService from './api/festivalService'
+import ScrollToTop from './components/ScrollToTop'
 
 function App() {
   const { isFloating } = useChatStore(); // 채팅방 띄우기
@@ -52,12 +53,14 @@ function App() {
         // 소셜/일반 유저 ID 모든 가용 필드를 검사
         const userId = user?.userId || user?.id || user?.member_id;
 
-        if (userId) {
-          const response = await festivalService.getMyFestivalLikedIds(userId);
+        if (!userId) {
+          console.log("비로그인 상태이므로, 찜 목록을 가져오지 않습니다.")
+          return; // 아이디가 없으면 백엔드 호출을 사전에 차단 (401 에러 방지)
+        }
+        const response = await festivalService.getMyFestivalLikedIds(userId);
 
-          if (response && response.likedFestivalIds) {
-            setInitialLikes(response.likedFestivalIds);
-          }
+        if (response && response.likedFestivalIds) {
+          setInitialLikes(response.likedFestivalIds);
         }
 
       } catch (error) {
@@ -69,6 +72,7 @@ function App() {
 
   return (
     <>
+      <ScrollToTop />
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
