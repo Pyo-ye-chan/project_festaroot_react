@@ -128,7 +128,7 @@ const ClosingSoon = () => {
     <section className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-gray-100 h-full flex flex-col transition-all duration-300 hover:shadow-md">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
-          <span>마감 임박!</span>
+          <span>종료 임박!</span>
           <span className="text-lg animate-bounce">🏃‍♂️</span>
         </h3>
         <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-full uppercase tracking-tighter border border-gray-100">Hurry Up</span>
@@ -288,39 +288,145 @@ const FestivalList = () => {
   );
 };
 
-// --- Sub-component: OngoingFestivals ---
+// --- 진행중인 축제 목록 ---
 const OngoingFestivals = () => {
-  const ongoing = [
-    { id: 10, name: '에버랜드 산리오 캐릭터즈 튤립 축제', region: '경기 용인', date: '03.22 - 06.16' },
-    { id: 11, name: '아침고요수목원 봄꽃페스타', region: '경기 가평', date: '04.19 - 05.26' },
-    { id: 12, name: '태안 세계튤립꽃박람회', region: '충남 태안', date: '04.12 - 05.07' },
-    { id: 13, name: '담양 대나무 축제', region: '전남 담양', date: '05.11 - 05.15' },
-  ];
+  const [ongoingList, setOngoingList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOngoingFestivals = async () => {
+      try {
+        setIsLoading(true);
+        
+        // MyBatis의 selectByOptions 조건에 맞춰 파라미터 전달
+        // 진행중인 축제만 필터링(ongoingOnly), 1페이지, 4개 노출, 인기순 정렬
+        const params = {
+          ongoingOnly: true,
+          page: 1,
+          size: 4,
+          sort: 'recentStart' 
+        };
+
+        const response = await festivalService.getFestivals(params);
+        
+        // 백엔드 반환 구조가 페이징 객체(예: response.list)인지 
+        // 혹은 순수 배열(예: response)인지에 따라 안전하게 데이터 추출
+        const data = Array.isArray(response) ? response : (response.list || []);
+        setOngoingList(data);
+      } catch (error) {
+        console.error("진행 중인 축제 데이터를 가져오는데 실패했습니다:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOngoingFestivals();
+  }, []);
+
+  // 주소(예: "경기도 용인시 처인구...")를 UI에 맞게 "경기 용인" 형태로 축소하는 함수
+  const formatRegion = (addr) => {
+    if (!addr) return '지역 정보 없음';
+    const parts = addr.split(' ');
+    if (parts.length >= 2) {
+      const doName = parts[0].substring(0, 2); // 경기도 -> 경기, 서울특별시 -> 서울
+      const siName = parts[1].substring(0, 2); // 용인시 -> 용인, 강릉시 -> 강릉
+      return `${doName} ${siName}`;
+    }
+    return parts[0];
+  };
+
+  // 날짜 데이터(예: "2026-03-22" 또는 "20260322")를 "03.22" 형태로 포맷팅하는 함수
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const cleanStr = String(dateStr).replace(/-/g, ''); // 대시(-) 제거
+    if (cleanStr.length === 8) {
+      return `${cleanStr.substring(0, 4)}.${cleanStr.substring(4, 6)}.${cleanStr.substring(6, 8)}`;
+    }
+    return dateStr;
+  };
+
+  // 로딩 중 스켈레톤 또는 로딩 문구 표시
+  if (isLoading) {
+    return (
+      <section className="max-w-7xl mx-auto py-20 px-4 text-center bg-gray-50/50 rounded-[3rem] my-12">
+        <div className="animate-pulse text-gray-400 font-bold">지금 열심히 축제 정보를 불러오고 있어요... 🎡</div>
+      </section>
+    );
+  }
+
   return (
     <section className="max-w-7xl mx-auto py-20 px-4 sm:px-6 lg:px-8 bg-gray-50/50 rounded-[3rem] my-12 text-left transition-all duration-500 hover:bg-gray-100/50 border border-gray-100/50">
       <div className="flex justify-between items-end mb-10 px-4">
-        <div><h3 className="text-3xl font-black text-gray-900 tracking-tight">지금 진행 중인 축제</h3><p className="text-gray-500 mt-2 font-bold text-sm">오늘 바로 즐길 수 있는 축제들을 확인해 보세요.</p></div>
-        <button className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 hover:text-green-600 transition-all duration-300 text-sm shadow-sm active:scale-95">전체보기<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></button>
+        <div>
+          <h3 className="text-3xl font-black text-gray-900 tracking-tight">지금 진행 중인 축제</h3>
+          <p className="text-gray-500 mt-2 font-bold text-sm">오늘 바로 즐길 수 있는 축제들을 확인해 보세요.</p>
+        </div>
+        <Link 
+          to="/search" // 축제 전체 찾기 페이지 경로에 맞게 수정 가능
+          className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 hover:text-green-600 transition-all duration-300 text-sm shadow-sm active:scale-95"
+        >
+          전체보기
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </Link>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
-        {ongoing.map((fest) => (
-          <Link to={`/festival/${fest.id}`} key={fest.id} className="group cursor-pointer bg-white p-4 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100">
-            <div className="relative aspect-square rounded-[2rem] overflow-hidden mb-4 bg-gray-100 border border-gray-50">
-              <img src={`https://picsum.photos/seed/${fest.id + 50}/600/600`} alt={fest.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-              <div className="absolute top-3 left-3"><span className="bg-green-500 text-white px-3 py-1 rounded-full text-[10px] font-black shadow-lg animate-pulse">● 진행중</span></div>
-            </div>
-            <div className="px-2 pb-2">
-              <h4 className="text-base font-black text-gray-900 mt-1 line-clamp-1 group-hover:text-green-600 transition-colors duration-300">{fest.name}</h4>
-              <div className="mt-2 space-y-1">
-                <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1">📍 {fest.region}</p>
-                <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1">📅 {fest.date}</p>
-              </div>
-              <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
-                <svg className="w-4 h-4 text-gray-300 group-hover:text-green-500 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-              </div>
-            </div>
-          </Link>
-        ))}
+        {ongoingList.length > 0 ? (
+          ongoingList.map((fest) => {
+            // MyBatis 반환 필드(언더스코어 자바스크립트 호환성 처리)
+            const contentId = fest.contentId || fest.content_id;
+            const title = fest.title;
+            const region = fest.addr1;
+            const startDate = fest.eventStartDate || fest.event_start_date;
+            const endDate = fest.eventEndDate || fest.event_end_date;
+            const image = fest.firstImage || fest.first_image;
+
+            return (
+              <Link 
+                to={`/festival/${contentId}`} 
+                key={contentId} 
+                className="group cursor-pointer bg-white p-4 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100"
+              >
+                <div className="relative aspect-square rounded-[2rem] overflow-hidden mb-4 bg-gray-100 border border-gray-50">
+                  <img 
+                    src={image || `https://picsum.photos/seed/${contentId}/600/600`} 
+                    alt={title} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                  />
+                  <div className="absolute top-3 left-3">
+                    <span className="bg-green-500 text-white px-3 py-1 rounded-full text-[10px] font-black shadow-lg animate-pulse">
+                      ● 진행중
+                    </span>
+                  </div>
+                </div>
+                <div className="px-2 pb-2">
+                  <h4 className="text-base font-black text-gray-900 mt-1 line-clamp-1 group-hover:text-green-600 transition-colors duration-300">
+                    {title}
+                  </h4>
+                  <div className="mt-2 space-y-1">
+                    <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1">
+                      📍 {formatRegion(region)}
+                    </p>
+                    <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1">
+                      📅 {formatDate(startDate)} - {formatDate(endDate)}
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
+                    <svg className="w-4 h-4 text-gray-300 group-hover:text-green-500 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </div>
+                </div>
+              </Link>
+            );
+          })
+        ) : (
+          <div className="col-span-full text-center py-12 text-gray-400 font-bold">
+            현재 진행 중인 축제가 없습니다. 🥲
+          </div>
+        )}
       </div>
     </section>
   );
