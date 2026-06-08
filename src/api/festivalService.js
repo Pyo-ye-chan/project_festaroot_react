@@ -148,6 +148,17 @@ const festivalService = {
     }
   },
 
+  // 홈 > 랜덤 축체 추천
+  getRandomFestival: async () => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/random`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching random festival:', error);
+      throw error;
+    }
+  },
+
   getNearbyPlaces: async (lat, lng, radius = 5000, contentTypeId = '') => {
   try {
     const response = await maxios.get(`${BASE_PATH}/nearby`, {
