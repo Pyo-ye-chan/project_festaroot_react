@@ -137,6 +137,17 @@ const festivalService = {
     }
   },
 
+  // 홈 > 종료 임박 축제 조회
+  getClosingSoonFestivals: async () => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/closing-soon`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching closing soon festivals:', error);
+      throw error;
+    }
+  },
+
   getNearbyPlaces: async (lat, lng, radius = 5000, contentTypeId = '') => {
   try {
     const response = await maxios.get(`${BASE_PATH}/nearby`, {
