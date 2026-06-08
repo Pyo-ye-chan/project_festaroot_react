@@ -5,7 +5,6 @@ import useLoadingStore from '../../store/useLoadingStore';
 
 // --- Sub-component: Hero ---
 const Hero = () => {
-
   const { startLoading, stopLoading } = useLoadingStore(); // 로딩바 zustand로 가져오기
 
   // 축제 데이터 업데이트 버튼을 눌렀을 때,
@@ -244,45 +243,164 @@ const TopFestivalsByRegion = () => {
   );
 };
 
-// --- Sub-component: FestivalList ---
+// --- 인기 축제 목록 ---
 const FestivalList = () => {
-  const festivals = [
-    { id: 1, name: '2026 별빛 밤거리 페스티벌', region: '서울 중구', date: '05.28 - 06.01', dDay: 'D-12', rating: 4.8 },
-    { id: 2, name: '양평 딸기 축제', region: '경기 양평', date: '05.20 - 05.25', dDay: '종료임박', rating: 4.5 },
-    { id: 3, name: '강릉 커피 축제', region: '강원 강릉', date: '06.10 - 06.15', dDay: 'D-25', rating: 4.9 },
-    { id: 4, name: '경주 벚꽃 축제', region: '경북 경주', date: '04.05 - 04.10', dDay: 'D-1', rating: 4.7 },
-  ];
+  const [popularList, setPopularList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPopularFestivals = async () => {
+      try {
+        setIsLoading(true);
+        
+        // 인기 높은 축제를 가져오기 위한 파라미터 설정
+        const params = {
+          page: 1,
+          size: 4,
+          sort: 'popular' 
+        };
+
+        const response = await festivalService.getFestivals(params);
+        
+        // 백엔드 반환 구조 분기 처리 (배열 혹은 페이징 객체 대응)
+        const data = Array.isArray(response) ? response : (response.list || []);
+        setPopularList(data);
+      } catch (error) {
+        console.error("인기 축제 데이터를 가져오는데 실패했습니다:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPopularFestivals();
+  }, []);
+
+  // 주소 축소 함수
+  const formatRegion = (addr) => {
+    if (!addr) return '지역 정보 없음';
+    const parts = addr.split(' ');
+    if (parts.length >= 2) {
+      const doName = parts[0].substring(0, 2); // 경기도 -> 경기
+      const siName = parts[1].substring(0, 2); // 용인시 -> 용인
+      return `${doName} ${siName}`;
+    }
+    return parts[0];
+  };
+
+  // 날짜 포맷팅 함수
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const cleanStr = String(dateStr).replace(/-/g, ''); 
+    if (cleanStr.length === 8) {
+      return `${cleanStr.substring(0, 4)}.${cleanStr.substring(4, 6)}.${cleanStr.substring(6, 8)}`;
+    }
+    return dateStr;
+  };
+
+  // 로딩 중 스켈레톤/문구 표시
+  if (isLoading) {
+    return (
+      <section className="max-w-7xl mx-auto py-20 px-4 text-center">
+        <div className="animate-pulse text-gray-400 font-bold">지금 인기 있는 축제들을 불러오고 있어요... 🎡</div>
+      </section>
+    );
+  }
+
   return (
     <section className="max-w-7xl mx-auto py-20 px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-end mb-10">
-        <div><h3 className="text-3xl font-black text-gray-900 tracking-tight">인기 축제 목록</h3><p className="text-gray-500 mt-2 font-bold text-sm">지금 사람들에게 가장 사랑받고 있는 축제들이에요.</p></div>
-        <button className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 hover:text-purple-600 transition-all duration-300 text-sm shadow-sm active:scale-95">더보기<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" /></svg></button>
+        <div>
+          <h3 className="text-3xl font-black text-gray-900 tracking-tight">인기 축제 목록</h3>
+          <p className="text-gray-500 mt-2 font-bold text-sm">지금 사람들에게 가장 사랑받고 있는 축제들이에요.</p>
+        </div>
+        <Link 
+          to="/search" 
+          state={{ ongoingOnly: false, sort: 'popular' }} // 더보기 클릭 시 검색 페이지로 인기순 정렬 조건 전달
+          className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 hover:text-purple-600 transition-all duration-300 text-sm shadow-sm active:scale-95"
+        >
+          더보기
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {festivals.map((fest) => (
-          <Link to={`/festival/${fest.id}`} key={fest.id} className="group cursor-pointer">
-            <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl hover:border-purple-100 border border-transparent transition-all duration-500 bg-gray-100">
-              <img src={`https://picsum.photos/seed/${fest.id + 20}/800/1000`} alt={fest.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-              <div className="absolute top-4 left-4 flex gap-2"><span className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full text-[10px] font-black text-gray-900 shadow-sm">{fest.dDay}</span><span className="bg-purple-600/90 backdrop-blur px-3 py-1.5 rounded-full text-[10px] font-black text-white shadow-sm w-fit">TOP {fest.id}</span></div>
-              <button className="absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-rose-500 transition-colors duration-300 shadow-sm active:scale-90"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001z" /></svg></button>
-            </div>
-            <div className="mt-4 px-1">
-              <h4 className="text-lg font-black text-gray-900 leading-tight group-hover:text-purple-600 transition-colors duration-300 line-clamp-1">{fest.name}</h4>
-              <div className="mt-2 space-y-1">
-                <p className="text-[11px] text-gray-500 font-bold flex items-center gap-1">
-                  <span className="text-purple-400">📍</span> {fest.region}
-                </p>
-                <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1">
-                  <span>📅</span> {fest.date}
-                </p>
-              </div>
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
-                <div className="flex items-center gap-1"><span className="text-yellow-400 text-xs">★</span><span className="text-xs font-black text-gray-700">{fest.rating}</span></div>
-                <span className="text-[10px] text-purple-600 font-black px-2 py-0.5 bg-purple-50 rounded-md tracking-tighter">인기</span>
-              </div>
-            </div>
-          </Link>
-        ))}
+        {popularList.length > 0 ? (
+          popularList.map((fest, index) => {
+            // MyBatis 언더스코어-카멜케이스 호환성 처리
+            const contentId = fest.contentId || fest.content_id;
+            const title = fest.title;
+            const region = fest.addr1;
+            const startDate = fest.eventStartDate || fest.event_start_date;
+            const endDate = fest.eventEndDate || fest.event_end_date;
+            const image = fest.firstImage || fest.first_image;
+            const rating = fest.rating || 0.0; // 별점 데이터 유무에 따라 기본값 설정
+            
+            // 🔥 좋아요 개수 데이터 맵핑 추가 (CamelCase / SnakeCase 대응)
+            const likes = fest.likes || fest.likeCount || fest.like_count || 0; 
+
+            return (
+              <Link to={`/festival/${contentId}`} key={contentId} className="group cursor-pointer">
+                <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl hover:border-purple-100 border border-transparent transition-all duration-500 bg-gray-100">
+                  <img 
+                    src={image || `https://picsum.photos/seed/${contentId}/800/1000`} 
+                    alt={title} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                  />
+                  <div className="absolute top-4 left-4 flex gap-2">
+                    <span className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full text-[10px] font-black text-gray-900 shadow-sm">
+                      추천
+                    </span>
+                    <span className="bg-purple-600/90 backdrop-blur px-3 py-1.5 rounded-full text-[10px] font-black text-white shadow-sm w-fit">
+                      TOP {index + 1}
+                    </span>
+                  </div>
+                  <button className="absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-rose-500 transition-colors duration-300 shadow-sm active:scale-90">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001z" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-4 px-1">
+                  <h4 className="text-lg font-black text-gray-900 leading-tight group-hover:text-purple-600 transition-colors duration-300 line-clamp-1">
+                    {title}
+                  </h4>
+                  <div className="mt-2 space-y-1">
+                    <p className="text-[11px] text-gray-500 font-bold flex items-center gap-1">
+                      <span className="text-purple-400">📍</span> {formatRegion(region)}
+                    </p>
+                    <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1">
+                      <span>📅</span> {formatDate(startDate)} - {formatDate(endDate)}
+                    </p>
+                  </div>
+                  
+                  {/* 🔥 하단 별점 영역 옆에 하트 아이콘 및 좋아요 수 추가 */}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
+                    <div className="flex items-center gap-2.5">
+                      {/* 별점 */}
+                      <div className="flex items-center gap-0.5">
+                        <span className="text-yellow-400 text-xs">★</span>
+                        <span className="text-xs font-black text-gray-700">{rating}</span>
+                      </div>
+                      {/* 좋아요 수 */}
+                      <div className="flex items-center gap-0.5 text-rose-500">
+                        <span className="text-xs">❤️</span>
+                        <span className="text-xs font-black">{likes}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-purple-600 font-black px-2 py-0.5 bg-purple-50 rounded-md tracking-tighter">인기</span>
+                  </div>
+
+                </div>
+              </Link>
+            );
+          })
+        ) : (
+          <div className="col-span-full text-center py-12 text-gray-400 font-bold">
+            현재 데이터가 존재하지 않습니다. 🥲
+          </div>
+        )}
       </div>
     </section>
   );
@@ -298,8 +416,6 @@ const OngoingFestivals = () => {
       try {
         setIsLoading(true);
         
-        // MyBatis의 selectByOptions 조건에 맞춰 파라미터 전달
-        // 진행중인 축제만 필터링(ongoingOnly), 1페이지, 4개 노출, 인기순 정렬
         const params = {
           ongoingOnly: true,
           page: 1,
@@ -308,9 +424,6 @@ const OngoingFestivals = () => {
         };
 
         const response = await festivalService.getFestivals(params);
-        
-        // 백엔드 반환 구조가 페이징 객체(예: response.list)인지 
-        // 혹은 순수 배열(예: response)인지에 따라 안전하게 데이터 추출
         const data = Array.isArray(response) ? response : (response.list || []);
         setOngoingList(data);
       } catch (error) {
@@ -323,29 +436,26 @@ const OngoingFestivals = () => {
     fetchOngoingFestivals();
   }, []);
 
-  // 주소(예: "경기도 용인시 처인구...")를 UI에 맞게 "경기 용인" 형태로 축소하는 함수
   const formatRegion = (addr) => {
     if (!addr) return '지역 정보 없음';
     const parts = addr.split(' ');
     if (parts.length >= 2) {
-      const doName = parts[0].substring(0, 2); // 경기도 -> 경기, 서울특별시 -> 서울
-      const siName = parts[1].substring(0, 2); // 용인시 -> 용인, 강릉시 -> 강릉
+      const doName = parts[0].substring(0, 2);
+      const siName = parts[1].substring(0, 2);
       return `${doName} ${siName}`;
     }
     return parts[0];
   };
 
-  // 날짜 데이터(예: "2026-03-22" 또는 "20260322")를 "03.22" 형태로 포맷팅하는 함수
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    const cleanStr = String(dateStr).replace(/-/g, ''); // 대시(-) 제거
+    const cleanStr = String(dateStr).replace(/-/g, '');
     if (cleanStr.length === 8) {
       return `${cleanStr.substring(0, 4)}.${cleanStr.substring(4, 6)}.${cleanStr.substring(6, 8)}`;
     }
     return dateStr;
   };
 
-  // 로딩 중 스켈레톤 또는 로딩 문구 표시
   if (isLoading) {
     return (
       <section className="max-w-7xl mx-auto py-20 px-4 text-center bg-gray-50/50 rounded-[3rem] my-12">
@@ -362,7 +472,7 @@ const OngoingFestivals = () => {
           <p className="text-gray-500 mt-2 font-bold text-sm">오늘 바로 즐길 수 있는 축제들을 확인해 보세요.</p>
         </div>
         <Link 
-          to="/search" // 축제 전체 찾기 페이지 경로에 맞게 수정 가능
+          to="/search" 
           state={{ ongoingOnly: true, sort: 'date' }}
           className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 hover:text-green-600 transition-all duration-300 text-sm shadow-sm active:scale-95"
         >
@@ -376,7 +486,6 @@ const OngoingFestivals = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
         {ongoingList.length > 0 ? (
           ongoingList.map((fest) => {
-            // MyBatis 반환 필드(언더스코어 자바스크립트 호환성 처리)
             const contentId = fest.contentId || fest.content_id;
             const title = fest.title;
             const region = fest.addr1;

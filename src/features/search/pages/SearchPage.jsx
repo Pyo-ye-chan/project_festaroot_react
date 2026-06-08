@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Search, Calendar, MapPin, Star, Heart, SlidersHorizontal,
@@ -87,7 +87,10 @@ const SearchPage = () => {
   const sortOptions = ['popular', 'date', 'views'];
   const totalPages = Math.ceil(pageInfo.totalCount / ITEMS_PER_PAGE) || 1;
 
-  // 2. 데이터 페치 함수 정의 (순서 확보를 위해 위로 배치)
+  // 컴포넌트 마운트 및 동기화 시점 제어를 위한 Ref 추가
+  const isFirstRender = useRef(true);
+
+  // 2. 데이터 페치 함수 정의
   const fetchAllFestivals = async (customParams = {}) => {
     try {
       setIsDataLoading(true);
@@ -124,7 +127,7 @@ const SearchPage = () => {
     }
   };
 
-  // 3. [★수정 포인트] URL 파라미터 동기화 및 누락 없는 조건부 페치 설정
+  // 3. [★수정] URL 파라미터를 Zustand 스토어 상태와 깨끗하게 동기화
   useEffect(() => {
     const initialSort = searchParams.get('sort') || location.state?.sort || 'popular';
     const initialOngoing = searchParams.get('ongoingOnly') === 'true' || !!location.state?.ongoingOnly;
@@ -134,23 +137,26 @@ const SearchPage = () => {
     setShowOngoingOnly(initialOngoing);
     setSearchQuery(initialKeyword); 
 
-    // 현재 페이지 상태에 따른 중복 호출 방지 및 강제 데이터 갱신 분기
-    if (currentPage === 1) {
-      // 이미 1페이지라면 아래쪽 useEffect가 무반응하므로 여기서 직접 최신 파라미터로 데이터를 가져옵니다.
-      fetchAllFestivals({
-        sort: initialSort,
-        ongoingOnly: initialOngoing,
-        keyword: initialKeyword,
-        page: 1
-      });
-    } else {
-      // 페이지가 1이 아니라면 상태값 변화를 통해 아래쪽의 [sortBy, currentPage, showOngoingOnly] useEffect가 실행됩니다.
+    if (currentPage !== 1) {
       setCurrentPage(1);
     }
   }, [searchParams, location.state]); 
 
-  // 4. 주요 상태 변경 감지 페치
+  // 4. [★수정] 핵심 상태 변경 감지 페치 (마운트 시 레이스 컨디션 및 중복 API 호출 방지 가드 처리)
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      
+      const urlSort = searchParams.get('sort') || location.state?.sort || 'popular';
+      const urlOngoing = searchParams.get('ongoingOnly') === 'true' || !!location.state?.ongoingOnly;
+      
+      // 전역 스토어에 남아있던 상태가 URL 파라미터와 다를 경우, 3번 useEffect가 스토어를 갱신하면서 
+      // 본 Effect를 어차피 다시 실행시키므로 첫 렌더링 시점의 중복 호출을 가드(return)해 줍니다.
+      if (sortBy !== urlSort || showOngoingOnly !== urlOngoing) {
+        return;
+      }
+    }
+
     fetchAllFestivals();
   }, [sortBy, currentPage, showOngoingOnly]);
 
