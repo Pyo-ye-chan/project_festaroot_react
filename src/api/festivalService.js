@@ -126,6 +126,17 @@ const festivalService = {
     }
   },
 
+  // 홈 > 지역별 인기 축제 TOP 3 조회
+  getTopFestivals: async (regionName) => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/top`, { params: { regionName } }); // region : 서울특별시
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching top festivals for ${region}:`, error);
+      throw error;
+    }
+  },
+
   getNearbyPlaces: async (lat, lng, radius = 5000, contentTypeId = '') => {
   try {
     const response = await maxios.get(`${BASE_PATH}/nearby`, {

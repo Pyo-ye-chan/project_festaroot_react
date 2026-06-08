@@ -53,12 +53,14 @@ function App() {
         // 소셜/일반 유저 ID 모든 가용 필드를 검사
         const userId = user?.userId || user?.id || user?.member_id;
 
-        if (userId) {
-          const response = await festivalService.getMyFestivalLikedIds(userId);
+        if (!userId) {
+          console.log("비로그인 상태이므로, 찜 목록을 가져오지 않습니다.")
+          return; // 아이디가 없으면 백엔드 호출을 사전에 차단 (401 에러 방지)
+        }
+        const response = await festivalService.getMyFestivalLikedIds(userId);
 
-          if (response && response.likedFestivalIds) {
-            setInitialLikes(response.likedFestivalIds);
-          }
+        if (response && response.likedFestivalIds) {
+          setInitialLikes(response.likedFestivalIds);
         }
 
       } catch (error) {
