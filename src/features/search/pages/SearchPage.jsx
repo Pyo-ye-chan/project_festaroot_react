@@ -79,9 +79,9 @@ const SearchPage = () => {
   const fetchAllFestivals = async (customParams = {}) => {
     try {
       setIsDataLoading(true);
-      let sortParam = 'like_count';
-      if (sortBy === '일정순') sortParam = 'event_start_date';
-      if (sortBy === '조회순') sortParam = 'view_count';
+      let sortParam = 'popular';
+      if (sortBy === '일정순') sortParam = 'date';
+      if (sortBy === '조회순') sortParam = 'views';
 
       const targetPage = customParams.page !== undefined ? customParams.page : currentPage;
 
@@ -216,12 +216,24 @@ const SearchPage = () => {
   }, [isLoggedIn, userId, setInitialLikes]);
 
   const handleResetClick = () => {
+    // 1. 현재 필터들이 이미 초기 상태인지 확인합니다.
+    const isAlreadyDefault =
+      sortBy === '인기순' &&
+      currentPage === 1 &&
+      !showOngoingOnly;
+
+    // 2. 스토어의 필터들을 리셋합니다.
     resetFilters();
-    fetchAllFestivals({
-      sort: 'like_count', keyword: '', searchScope: 'title',
-      region_code: null, sigungu_code: null, event_start_date: null, event_end_date: null,
-      page: 1, ongoingOnly: false
-    });
+
+    // 3. 만약 이미 초기 상태였다면 useEffect가 실행되지 않으므로, 이때만 데이터 갱신을 위해 수동으로 호출합니다.
+    //    (만약 초기 상태가 아니었다면, resetFilters()에 의해 값이 바뀌면서 useEffect가 자동으로 데이터를 불러와 줍니다!)
+    if (isAlreadyDefault) {
+      fetchAllFestivals({
+        sort: 'popular', keyword: '', searchScope: 'title',
+        region_code: null, sigungu_code: null, event_start_date: null, event_end_date: null,
+        page: 1, ongoingOnly: false
+      });
+    }
   };
 
   const handleSearchSubmit = () => {
@@ -432,7 +444,7 @@ const SearchPage = () => {
                               {getDDay(fest.event_start_date, fest.event_end_date)}
                             </span>
                           </div>
-                          
+
                           {/* 찜 버튼 숨김 분기 처리: 로그인 시에만 하트 버튼이 나타납니다 */}
                           {isLoggedIn && (
                             <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`absolute top-4 right-4 w-10 h-10 backdrop-blur rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'bg-rose-50/90 text-rose-500 shadow-sm' : 'bg-white/90 text-gray-400 hover:text-rose-500'}`}>
@@ -478,7 +490,7 @@ const SearchPage = () => {
                               <span className={`px-2 py-1 rounded-lg text-[9px] font-black ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-green-500 text-white' : 'bg-gray-50 text-gray-500'}`}>
                                 {getDDay(fest.event_start_date, fest.event_end_date)}
                               </span>
-                              
+
                               {/* 리스트 뷰 찜 버튼 숨김 분기 처리 */}
                               {isLoggedIn && (
                                 <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`transition-all duration-300 active:scale-95 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'text-rose-500' : 'text-gray-300 hover:text-rose-500'}`}>
