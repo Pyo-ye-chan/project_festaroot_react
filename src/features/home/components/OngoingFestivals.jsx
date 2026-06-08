@@ -28,6 +28,20 @@ const OngoingFestivals = () => {
     fetchOngoingFestivals();
   }, []);
 
+  // 상세보기 이동 시 조회수를 상승시키는 클릭 핸들러 함수
+  const handleFestivalClick = async (contentId) => {
+    try {
+      if (festivalService.increaseViewCount) {
+        await festivalService.increaseViewCount(contentId);
+      } else {
+        console.warn("festivalService에 increaseViewCount 메소드가 정의되어 있지 않습니다.");
+      }
+    } catch (error) {
+      // 메인 페이지 흐름에 방해되지 않도록 에러만 출력합니다.
+      console.error("진행 중인 축제 목록 조회수 상승 실패:", error);
+    }
+  };
+
   const formatRegion = (addr) => {
     if (!addr) return '지역 정보 없음';
     const parts = addr.split(' ');
@@ -89,6 +103,7 @@ const OngoingFestivals = () => {
               <Link 
                 to={`/festival/${contentId}`} 
                 key={contentId} 
+                onClick={() => handleFestivalClick(contentId)}
                 className="group cursor-pointer bg-white p-4 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100"
               >
                 <div className="relative aspect-square rounded-[2rem] overflow-hidden mb-4 bg-gray-100 border border-gray-50">
