@@ -87,8 +87,8 @@ const SearchPage = () => {
   const sortOptions = ['popular', 'date', 'views'];
   const totalPages = Math.ceil(pageInfo.totalCount / ITEMS_PER_PAGE) || 1;
 
-  // 컴포넌트 마운트 및 동기화 시점 제어를 위한 Ref 추가
-  const isFirstRender = useRef(true);
+  // [★수정] 무작위 렌더링 및 F5 레이스 컨디션을 방지하기 위한 초기화 완료 플래그 상태 추가
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // 2. 데이터 페치 함수 정의
   const fetchAllFestivals = async (customParams = {}) => {
@@ -127,7 +127,7 @@ const SearchPage = () => {
     }
   };
 
-  // 3. [★수정] URL 파라미터를 Zustand 스토어 상태와 깨끗하게 동기화
+  // 3. [★수정] URL 파라미터를 Zustand 스토어 상태와 깨끗하게 동기화 후 초기화 완료 처리
   useEffect(() => {
     const initialSort = searchParams.get('sort') || location.state?.sort || 'popular';
     const initialOngoing = searchParams.get('ongoingOnly') === 'true' || !!location.state?.ongoingOnly;
@@ -140,25 +140,17 @@ const SearchPage = () => {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
+
+    // 초기 주입이 완벽히 끝났음을 명시
+    setIsInitialized(true);
   }, [searchParams, location.state]); 
 
-  // 4. [★수정] 핵심 상태 변경 감지 페치 (마운트 시 레이스 컨디션 및 중복 API 호출 방지 가드 처리)
+  // 4. [★수정] 핵심 상태 변경 감지 페치 (초기 동기화가 완전히 끝난 직후부터 안전하게 반응)
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      
-      const urlSort = searchParams.get('sort') || location.state?.sort || 'popular';
-      const urlOngoing = searchParams.get('ongoingOnly') === 'true' || !!location.state?.ongoingOnly;
-      
-      // 전역 스토어에 남아있던 상태가 URL 파라미터와 다를 경우, 3번 useEffect가 스토어를 갱신하면서 
-      // 본 Effect를 어차피 다시 실행시키므로 첫 렌더링 시점의 중복 호출을 가드(return)해 줍니다.
-      if (sortBy !== urlSort || showOngoingOnly !== urlOngoing) {
-        return;
-      }
-    }
+    if (!isInitialized) return; // URL 동기화 전 스태일(stale) 데이터 호출 가드
 
     fetchAllFestivals();
-  }, [sortBy, currentPage, showOngoingOnly]);
+  }, [sortBy, currentPage, showOngoingOnly, isInitialized]);
 
   const handleFestivalClick = async (contentId) => {
     try {

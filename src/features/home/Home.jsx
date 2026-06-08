@@ -5,26 +5,22 @@ import useLoadingStore from '../../store/useLoadingStore';
 
 // --- Sub-component: Hero ---
 const Hero = () => {
-  const { startLoading, stopLoading } = useLoadingStore(); // 로딩바 zustand로 가져오기
+  const { startLoading, stopLoading } = useLoadingStore();
 
-  // 축제 데이터 업데이트 버튼을 눌렀을 때,
   const handleUpdateDB = async () => {
     if (confirm("축제API 데이터가 DB에 업데이트 됩니다. 진행하시겠습니까?")) {
       try {
-        // 로딩바 시작
         startLoading();
-
-        // axios 호출
         const result = await festivalService.upsertFestivals();
         console.log(result)
         alert(result)
       } catch (error) {
         console.error("메인에서 잡은 에러 : ", error)
         alert("서버 연결에 실패했거나 업데이트 중 오류가 발생했습니다.")
-      } finally { // 연결에 성공하든 실패하든 로딩 종료하기
+      } finally {
         stopLoading();
       }
-    } else { // 취소 버튼을 눌렀을 때,
+    } else {
       alert("업데이트가 취소되었습니다.")
     }
   }
@@ -62,7 +58,6 @@ const Hero = () => {
           <button onClick={handleUpdateDB} className="px-8 py-4 bg-green-500/10 backdrop-blur-md border border-green-500/20 hover:bg-green-500/20 text-white font-bold rounded-2xl transition-all duration-300 flex items-center gap-2 text-lg active:scale-95">
             축제 데이터 DB 업데이트 하기
           </button>
-
         </div>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           {['#인기축제', '#가족과함께', '#서울야경', '#먹거리축제'].map(tag => (
@@ -243,7 +238,7 @@ const TopFestivalsByRegion = () => {
   );
 };
 
-// --- 인기 축제 목록 ---
+// --- 인기 축제 목록 (진행중인 축제만 필터링) ---
 const FestivalList = () => {
   const [popularList, setPopularList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -253,16 +248,16 @@ const FestivalList = () => {
       try {
         setIsLoading(true);
         
-        // 인기 높은 축제를 가져오기 위한 파라미터 설정
+        // 진행 중인 축제만 가져오도록 ongoingOnly 속성 추가
         const params = {
           page: 1,
           size: 4,
-          sort: 'popular' 
+          sort: 'popular',
+          ongoingOnly: true 
         };
 
         const response = await festivalService.getFestivals(params);
         
-        // 백엔드 반환 구조 분기 처리 (배열 혹은 페이징 객체 대응)
         const data = Array.isArray(response) ? response : (response.list || []);
         setPopularList(data);
       } catch (error) {
@@ -275,19 +270,17 @@ const FestivalList = () => {
     fetchPopularFestivals();
   }, []);
 
-  // 주소 축소 함수
   const formatRegion = (addr) => {
     if (!addr) return '지역 정보 없음';
     const parts = addr.split(' ');
     if (parts.length >= 2) {
-      const doName = parts[0].substring(0, 2); // 경기도 -> 경기
-      const siName = parts[1].substring(0, 2); // 용인시 -> 용인
+      const doName = parts[0].substring(0, 2);
+      const siName = parts[1].substring(0, 2);
       return `${doName} ${siName}`;
     }
     return parts[0];
   };
 
-  // 날짜 포맷팅 함수
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const cleanStr = String(dateStr).replace(/-/g, ''); 
@@ -297,7 +290,6 @@ const FestivalList = () => {
     return dateStr;
   };
 
-  // 로딩 중 스켈레톤/문구 표시
   if (isLoading) {
     return (
       <section className="max-w-7xl mx-auto py-20 px-4 text-center">
@@ -313,9 +305,10 @@ const FestivalList = () => {
           <h3 className="text-3xl font-black text-gray-900 tracking-tight">인기 축제 목록</h3>
           <p className="text-gray-500 mt-2 font-bold text-sm">지금 사람들에게 가장 사랑받고 있는 축제들이에요.</p>
         </div>
+        {/* 🛠️ 링크 수정: 더보기 클릭 시 검색 페이지에서 '진행중만 보기' 토글이 켜지도록 state 값 변경 */}
         <Link 
           to="/search" 
-          state={{ ongoingOnly: false, sort: 'popular' }} // 더보기 클릭 시 검색 페이지로 인기순 정렬 조건 전달
+          state={{ ongoingOnly: true, sort: 'popular' }} 
           className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 hover:text-purple-600 transition-all duration-300 text-sm shadow-sm active:scale-95"
         >
           더보기
@@ -328,16 +321,13 @@ const FestivalList = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {popularList.length > 0 ? (
           popularList.map((fest, index) => {
-            // MyBatis 언더스코어-카멜케이스 호환성 처리
             const contentId = fest.contentId || fest.content_id;
             const title = fest.title;
             const region = fest.addr1;
             const startDate = fest.eventStartDate || fest.event_start_date;
             const endDate = fest.eventEndDate || fest.event_end_date;
             const image = fest.firstImage || fest.first_image;
-            const rating = fest.rating || 0.0; // 별점 데이터 유무에 따라 기본값 설정
-            
-            // 🔥 좋아요 개수 데이터 맵핑 추가 (CamelCase / SnakeCase 대응)
+            const rating = fest.rating || 0.0; 
             const likes = fest.likes || fest.likeCount || fest.like_count || 0; 
 
             return (
@@ -375,15 +365,12 @@ const FestivalList = () => {
                     </p>
                   </div>
                   
-                  {/* 🔥 하단 별점 영역 옆에 하트 아이콘 및 좋아요 수 추가 */}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
                     <div className="flex items-center gap-2.5">
-                      {/* 별점 */}
                       <div className="flex items-center gap-0.5">
                         <span className="text-yellow-400 text-xs">★</span>
                         <span className="text-xs font-black text-gray-700">{rating}</span>
                       </div>
-                      {/* 좋아요 수 */}
                       <div className="flex items-center gap-0.5 text-rose-500">
                         <span className="text-xs">❤️</span>
                         <span className="text-xs font-black">{likes}</span>
@@ -391,7 +378,6 @@ const FestivalList = () => {
                     </div>
                     <span className="text-[10px] text-purple-600 font-black px-2 py-0.5 bg-purple-50 rounded-md tracking-tighter">인기</span>
                   </div>
-
                 </div>
               </Link>
             );
@@ -415,14 +401,12 @@ const OngoingFestivals = () => {
     const fetchOngoingFestivals = async () => {
       try {
         setIsLoading(true);
-        
         const params = {
           ongoingOnly: true,
           page: 1,
           size: 4,
           sort: 'recentStart' 
         };
-
         const response = await festivalService.getFestivals(params);
         const data = Array.isArray(response) ? response : (response.list || []);
         setOngoingList(data);
@@ -432,7 +416,6 @@ const OngoingFestivals = () => {
         setIsLoading(false);
       }
     };
-
     fetchOngoingFestivals();
   }, []);
 
