@@ -9,7 +9,7 @@ import {
   Minimize2,
   Maximize2
 } from 'lucide-react';
-import useChatStore from '../../store/useChatStore';
+import useChatStore from '../../../store/useChatStore';
 
 const FloatingChat = () => {
   const { isFloating, activeChatId, closeFloatingChat } = useChatStore();
