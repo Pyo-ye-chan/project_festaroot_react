@@ -15,7 +15,7 @@ const CommunitySidebar = () => {
     { name: '커뮤니티 홈', path: '/community', icon: LayoutDashboard },
     { name: '게시판', path: '/community/board/all', icon: ClipboardList },
     { name: '모임', path: '/community/gathering', icon: Users },
-    { name: '채팅', path: '/chats', icon: MessageCircle },
+    { name: '채팅', path: '/community/chat', icon: MessageCircle },
   ];
 
   const isActive = (path) => {

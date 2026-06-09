@@ -85,7 +85,7 @@ function App() {
           <Route path="/community/post/:id" element={<PostDetailPage />} />
           <Route path="/community/write" element={<PostWritePage />} />
 
-          <Route path="/chats" element={<ChatListPage />} />
+          <Route path="/community/chat" element={<ChatListPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/ai-planner" element={<AIPlannerPage />} />

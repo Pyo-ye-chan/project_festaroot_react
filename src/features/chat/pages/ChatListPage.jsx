@@ -3,6 +3,7 @@ import useChatStore from '../../../store/useChatStore';
 import ChatSidebar from '../components/ChatSidebar';
 import ChatWindow from '../components/ChatWindow';
 import ChatDetails from '../components/ChatDetails';
+import CommunitySidebar from '../../community/components/CommunitySidebar';
 
 const ChatListPage = () => {
   const openFloatingChat = useChatStore(state => state.openFloatingChat);
@@ -79,49 +80,60 @@ const ChatListPage = () => {
   const scrollbarHideClass = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]";
 
   return (
-    <div className="flex h-[calc(100vh-120px)] bg-gray-50 font-['Pretendard']">
-      <div className="max-w-7xl mx-auto w-full flex bg-white shadow-xl overflow-hidden md:my-10 md:rounded-[2.5rem] border border-gray-100">
-        
-        <ChatSidebar 
-          sections={sections}
-          expandedSections={expandedSections}
-          toggleSection={toggleSection}
-          chatRooms={chatRooms}
-          selectedChatId={selectedChatId}
-          setSelectedChatId={setSelectedChatId}
-          customScrollbarClass={customScrollbarClass}
-        />
+    <div className="min-h-screen bg-[#F8F9FD] font-['Pretendard'] pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Sidebar (3 cols) */}
+          <aside className="lg:col-span-3">
+            <CommunitySidebar />
+          </aside>
 
-        {selectedChatId ? (
-          <div className="hidden md:flex flex-grow min-w-0 bg-[#F8F9FF]">
-            <ChatWindow 
-              selectedChat={selectedChat}
-              setSelectedChatId={setSelectedChatId}
-              openFloatingChat={openFloatingChat}
-              toggleSidebar={toggleSidebar}
-              showParticipants={showParticipants}
-              messages={messages}
-              setMessages={setMessages}
-              scrollRef={scrollRef}
-              scrollbarHideClass={scrollbarHideClass}
-              message={message}
-              setMessage={setMessage}
-              handleSendMessage={handleSendMessage}
-            />
+          {/* Main Content (9 cols) */}
+          <main className="lg:col-span-9">
+            <div className="flex h-[750px] bg-white shadow-xl overflow-hidden rounded-[2.5rem] border border-gray-100">
+              <ChatSidebar 
+                sections={sections}
+                expandedSections={expandedSections}
+                toggleSection={toggleSection}
+                chatRooms={chatRooms}
+                selectedChatId={selectedChatId}
+                setSelectedChatId={setSelectedChatId}
+                customScrollbarClass={customScrollbarClass}
+              />
 
-            <ChatDetails 
-              showParticipants={showParticipants}
-              showDetails={showDetails}
-              participants={participants}
-              selectedChat={selectedChat}
-              customScrollbarClass={customScrollbarClass}
-            />
-          </div>
-        ) : (
-          <div className="flex flex-grow items-center justify-center text-gray-400 font-bold">
-            채팅방을 선택해주세요.
-          </div>
-        )}
+              {selectedChatId ? (
+                <div className="hidden md:flex flex-grow min-w-0 bg-[#F8F9FF]">
+                  <ChatWindow 
+                    selectedChat={selectedChat}
+                    setSelectedChatId={setSelectedChatId}
+                    openFloatingChat={openFloatingChat}
+                    toggleSidebar={toggleSidebar}
+                    showParticipants={showParticipants}
+                    messages={messages}
+                    setMessages={setMessages}
+                    scrollRef={scrollRef}
+                    scrollbarHideClass={scrollbarHideClass}
+                    message={message}
+                    setMessage={setMessage}
+                    handleSendMessage={handleSendMessage}
+                  />
+
+                  <ChatDetails 
+                    showParticipants={showParticipants}
+                    showDetails={showDetails}
+                    participants={participants}
+                    selectedChat={selectedChat}
+                    customScrollbarClass={customScrollbarClass}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-grow items-center justify-center text-gray-400 font-bold bg-[#F8F9FF]">
+                  채팅방을 선택해주세요.
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );
