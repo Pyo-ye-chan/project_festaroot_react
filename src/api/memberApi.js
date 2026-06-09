@@ -14,3 +14,9 @@ export const getMemberProfile = (userId) => maxios.get(`/member/profile/${userId
  * @param {Object} profileData 
  */
 export const updateMemberProfile = (userId, profileData) => maxios.put(`/member/profile/${userId}`, profileData);
+
+/**
+ * 유저의 업적 정보 조회
+ * @param {string} userId 
+ */
+export const getMemberAchievements = (userId) => maxios.get(`/member/achievements/${userId}`);

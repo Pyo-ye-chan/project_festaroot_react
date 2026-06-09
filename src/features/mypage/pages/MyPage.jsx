@@ -55,7 +55,7 @@ const MyPage = () => {
       case 'saved-plans':
         return <MySavedPlansTab />;
       case 'likes':
-        return <MyLikedFestivalsTab likesCount={0} />;
+        return <MyLikedFestivalsTab userDetails={userDetails} />;
       case 'inquiry':
         return <MyInquiryTab />;
       case 'account':

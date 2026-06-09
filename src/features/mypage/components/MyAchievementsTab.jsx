@@ -1,119 +1,173 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { getMemberAchievements } from '../../../api/memberApi';
+import useAuthStore from '../../../store/useAuthStore';
+import LoadingSpinner from '../../../components/LoadingSpinner';
 
 const MyAchievementsTab = () => {
+  const { user, isLoggedIn } = useAuthStore();
+  const [achievementData, setAchievementData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAchievements = async () => {
+      if (!isLoggedIn || !(user?.member_id || user?.id)) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const userId = user.member_id || user.id;
+        const resp = await getMemberAchievements(userId);
+        console.log('Achievements Data:', resp.data);
+        setAchievementData(resp.data);
+      } catch (error) {
+        console.error('업적 데이터 로드 실패:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAchievements();
+  }, [isLoggedIn, user?.member_id, user?.id]);
+
+  if (isLoading) {
+    return (
+      <div className="py-20 flex justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (!achievementData || !achievementData.achievements || achievementData.achievements.length === 0) {
+    return (
+      <div className="py-20 text-center">
+        <div className="text-4xl mb-4">🏆</div>
+        <h2 className="text-xl font-black text-gray-800">아직 달성할 수 있는 업적이 없습니다.</h2>
+        <p className="text-gray-500 mt-2 font-medium">활동을 시작하여 첫 번째 배지를 획득해 보세요!</p>
+      </div>
+    );
+  }
+
+  const { userGrowth, summary, achievements } = achievementData;
+
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <header className="px-2 sm:px-0">
-        <h1 className="text-2xl sm:text-3xl font-black text-gray-900">나의 업적</h1>
-        <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2 font-medium">활동을 통해 업적을 달성하고 보상을 받으세요!</p>
+    <div className="space-y-8 sm:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header & Growth Dashboard */}
+      <header className="space-y-6">
+        <div className="px-2 sm:px-0">
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900">나의 업적</h1>
+          <p className="text-sm sm:text-base text-gray-500 mt-1 font-medium">활동을 통해 업적을 달성하고 보상을 받으세요!</p>
+        </div>
+
+        {/* Growth Stats Card */}
+        <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-[32px] p-6 sm:p-8 text-white shadow-xl shadow-purple-900/20">
+          <div className="flex flex-col md:flex-row justify-between gap-8">
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-white/30">
+                  🎖️
+                </div>
+                <div>
+                  <p className="text-purple-100 text-xs font-black uppercase tracking-widest">Current Title</p>
+                  <h2 className="text-2xl font-black">{userGrowth?.TITLE_NAME || '초보 여행자'}</h2>
+                </div>
+              </div>
+              <div className="flex items-center gap-6">
+                <div>
+                  <p className="text-purple-200 text-[10px] font-bold uppercase">Level</p>
+                  <p className="text-xl font-black">LV.{userGrowth?.CURRENT_LV || 1}</p>
+                </div>
+                <div className="h-8 w-px bg-white/20" />
+                <div>
+                  <p className="text-purple-200 text-[10px] font-bold uppercase">Experience</p>
+                  <p className="text-xl font-black">{userGrowth?.EXP_POINT?.toLocaleString() || 0} EXP</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-grow max-w-md space-y-3">
+              <div className="flex justify-between items-end">
+                <p className="text-sm font-black">전체 업적 달성률</p>
+                <p className="text-2xl font-black">{summary?.progressRate || 0}%</p>
+              </div>
+              <div className="h-3 w-full bg-white/20 rounded-full overflow-hidden border border-white/10">
+                <div 
+                  className="h-full bg-white transition-all duration-1000 shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+                  style={{ width: `${summary?.progressRate || 0}%` }}
+                />
+              </div>
+              <p className="text-right text-[11px] font-bold text-purple-100">
+                {summary?.achievedCount || 0} / {summary?.totalCount || 0} Completed
+              </p>
+            </div>
+          </div>
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-8 sm:gap-10">
-        {[
-          {
-            category: '🤝 모임 & 소통',
-            achievements: [
-              { id: 101, title: '혼자가 아니야', desc: '새로운 여행 모임에 1번 가입하세요.', reward: 30, progress: 1, condition: 1, completed: true },
-              { id: 102, title: '인맥왕의 서막', desc: '여행 모임에 총 5번 가입하세요.', reward: 100, progress: 2, condition: 5, completed: false },
-              { id: 301, title: '따뜻한 한마디', desc: '게시글에 첫 댓글을 달아보세요.', reward: 20, progress: 1, condition: 1, completed: true },
-              { id: 302, title: '친절한 이웃', desc: '게시글에 댓글을 50개 달아보세요.', reward: 150, progress: 12, condition: 50, completed: false },
-              { id: 303, title: '소통의 마스터', desc: '게시글에 댓글을 100개 달아보세요.', reward: 300, progress: 12, condition: 100, completed: false },
-            ]
-          },
-          {
-            category: '✍️ 콘텐츠 & 후기',
-            achievements: [
-              { id: 201, title: '소중한 기록', desc: '커뮤니티에 게시글을 1개 작성하세요.', reward: 30, progress: 1, condition: 1, completed: true },
-              { id: 202, title: '이야기 보따리', desc: '커뮤니티에 게시글을 50개 작성하세요.', reward: 250, progress: 5, condition: 50, completed: false },
-              { id: 203, title: '커뮤니티 네임드', desc: '커뮤니티에 게시글을 100개 작성하세요.', reward: 400, progress: 5, condition: 100, completed: false },
-              { id: 901, title: '솔직 담백 리뷰어', desc: '축제 후기 글을 1개 작성하세요.', reward: 40, progress: 1, condition: 1, completed: true },
-              { id: 902, title: '신뢰받는 발자국', desc: '축제 후기 글을 총 50개 작성하세요.', reward: 300, progress: 0, condition: 50, completed: false },
-              { id: 903, title: '베테랑 트래블 가이드', desc: '축제 후기 글을 총 100개 작성하세요.', reward: 500, progress: 0, condition: 100, completed: false },
-              { id: 501, title: '오 대단한데?', desc: '좋아요를 총 10번 받으세요.', reward: 50, progress: 8, condition: 10, completed: false },
-              { id: 502, title: '슈퍼 스타', desc: '좋아요를 총 100번 받으세요.', reward: 350, progress: 8, condition: 100, completed: false },
-            ]
-          },
-          {
-            category: '🤖 AI & 스마트 기능',
-            achievements: [
-              { id: 401, title: '스마트한 여행자', desc: 'AI 코스를 1번 생성하세요.', reward: 50, progress: 1, condition: 1, completed: true },
-              { id: 402, title: 'AI의 조수', desc: 'AI 코스를 총 10번 생성하세요.', reward: 200, progress: 3, condition: 10, completed: false },
-              { id: 403, title: '내 마음속에 저장', desc: 'AI 일정을 1번 저장하세요.', reward: 30, progress: 0, condition: 1, completed: false },
-              { id: 801, title: '어디로 갈까?', desc: '랜덤 뽑기를 1번 이용하세요.', reward: 20, progress: 1, condition: 1, completed: true },
-              { id: 802, title: '운명에 맡긴 여행', desc: '랜덤 뽑기를 총 10번 이용하세요.', reward: 80, progress: 4, condition: 10, completed: false },
-            ]
-          },
-          {
-            category: '🎁 프로필 & 수집',
-            achievements: [
-              { id: 601, title: '새 옷 입기', desc: '프로필 사진을 등록하세요.', reward: 30, progress: 1, condition: 1, completed: true },
-              { id: 701, title: '가보고 싶다', desc: '축제를 1번 찜해보세요.', reward: 20, progress: 1, condition: 1, completed: true },
-              { id: 702, title: '축제 콜렉터', desc: '축제를 총 30번 찜해보세요.', reward: 100, progress: 15, condition: 30, completed: false },
-            ]
-          },
-          {
-            category: '👑 마스터 업적',
-            achievements: [
-              { id: 999, title: '전설의 인디아나 존스', desc: '모든 업적을 클리어하세요.', reward: 500, progress: 8, condition: 19, completed: false },
-            ]
-          }
-        ].map((group) => (
-          <section key={group.category} className="space-y-4 sm:space-y-6">
-            <h2 className="text-lg sm:text-xl font-black text-gray-800 flex items-center gap-2 px-2">
-              {group.category}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              {group.achievements.map((ach) => (
-                <div 
-                  key={ach.id} 
-                  className={`group relative p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border transition-all duration-300 ${
-                    ach.completed 
-                    ? 'bg-white border-purple-100 shadow-sm hover:shadow-md' 
-                    : 'bg-gray-50/50 border-gray-100 opacity-80'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-3 sm:mb-4">
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-inner ${
-                      ach.completed ? 'bg-purple-100' : 'bg-gray-100 grayscale'
-                    }`}>
-                      {ach.completed ? '⭐' : '🔒'}
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-[8px] sm:text-[10px] font-black px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full uppercase tracking-wider ${
-                        ach.completed ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500'
-                      }`}>
-                        {ach.completed ? 'Done' : 'Ing'}
-                      </span>
-                      <p className="mt-1 sm:mt-2 text-[10px] sm:text-xs font-bold text-purple-600">+{ach.reward} EXP</p>
-                    </div>
-                  </div>
-                  
-                  <h3 className={`text-base sm:text-lg font-black mb-0.5 sm:mb-1 ${ach.completed ? 'text-gray-800' : 'text-gray-400'}`}>
-                    {ach.title}
-                  </h3>
-                  <p className={`text-xs sm:text-sm font-medium leading-relaxed mb-4 sm:mb-6 ${ach.completed ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {ach.desc}
-                  </p>
+      {/* Achievement List */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-black text-gray-800 flex items-center gap-2 px-2">
+          🏆 전체 업적 목록
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          {achievements.map((ach, idx) => {
+            const isCompleted = ach.IS_ACHIEVED === 'Y';
+            const progress = ach.CURRENT_COUNT || 0;
+            const goal = ach.CONDITION_COUNT || 1;
+            const percent = Math.min((progress / goal) * 100, 100);
 
-                  {/* Progress Bar */}
-                  <div className="space-y-1.5 sm:space-y-2">
-                    <div className="flex justify-between text-[10px] sm:text-[11px] font-black">
-                      <span className={ach.completed ? 'text-purple-600' : 'text-gray-400'}>Progress</span>
-                      <span className={ach.completed ? 'text-gray-700' : 'text-gray-400'}>{ach.progress} / {ach.condition}</span>
-                    </div>
-                    <div className="h-1.5 sm:h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full transition-all duration-1000 ${ach.completed ? 'bg-purple-600' : 'bg-gray-300'}`}
-                        style={{ width: `${(ach.progress / ach.condition) * 100}%` }}
-                      />
-                    </div>
+            return (
+              <div 
+                key={idx} 
+                className={`group relative p-6 rounded-[28px] border transition-all duration-300 ${
+                  isCompleted 
+                  ? 'bg-white border-purple-100 shadow-sm hover:shadow-md' 
+                  : 'bg-gray-50/50 border-gray-100 opacity-80'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-inner ${
+                    isCompleted ? 'bg-purple-100 animate-in zoom-in duration-500' : 'bg-gray-100 grayscale'
+                  }`}>
+                    {isCompleted ? '⭐' : '🔒'}
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-wider ${
+                      isCompleted ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {isCompleted ? 'Completed' : 'In Progress'}
+                    </span>
+                    {ach.ACHIEVED_DATE && (
+                      <p className="mt-2 text-[10px] font-bold text-gray-400">{ach.ACHIEVED_DATE}</p>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
+                
+                <h3 className={`text-lg font-black mb-1 ${isCompleted ? 'text-gray-800' : 'text-gray-400'}`}>
+                  {ach.ACH_TITLE}
+                </h3>
+                <p className={`text-sm font-medium leading-relaxed mb-6 ${isCompleted ? 'text-gray-500' : 'text-gray-400'}`}>
+                  {ach.ACH_DESC || '활동을 통해 이 업적을 달성하세요!'}
+                </p>
+
+                {/* Progress Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[11px] font-black">
+                    <span className={isCompleted ? 'text-purple-600' : 'text-gray-400'}>Progress</span>
+                    <span className={isCompleted ? 'text-gray-700' : 'text-gray-400'}>{progress} / {goal}</span>
+                  </div>
+                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-1000 ${isCompleted ? 'bg-purple-600' : 'bg-gray-300'}`}
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 };

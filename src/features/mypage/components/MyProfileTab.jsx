@@ -46,7 +46,15 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
     );
   }
 
-  const { member, interestRegions, interestThemes, recentLogs } = userDetails;
+  const { member, interestRegions, interestThemes, recentLogs ,likedFestivals,level,titleName,currentExp,nextLevelExp} = userDetails;
+
+  // 성장 정보 추출 (백엔드 DTO 매핑)
+  // const { 
+  //   level = 1, 
+  //   titleName = '초보 여행자', 
+  //   currentExp = 0, 
+  //   nextLevelExp = 100 
+  // } = member;
 
   const handleEditStart = () => {
     setEditNickname(member.nickname);
@@ -117,17 +125,6 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
       setIsSaving(false);
     }
   };
-
-  // 레벨 및 칭호 계산 (예시 로직)
-  const calculateLevel = (exp) => {
-    const level = Math.floor(exp / 500) + 1;
-    const currentExp = exp % 500;
-    const nextLevelExp = 500;
-    const rank = level > 5 ? '축제 마스터' : level > 3 ? '축제 전문가' : '축제 비기너';
-    return { level, currentExp, nextLevelExp, rank };
-  };
-
-  const { level, currentExp, nextLevelExp, rank } = calculateLevel(member.exp_point || 0);
 
   // 가입일 포맷팅
   const formatDate = (dateStr) => {
@@ -272,7 +269,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
                 </h2>
               )}
               <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 bg-yellow-100 text-yellow-700 text-[10px] sm:text-xs font-bold rounded-full border border-yellow-200">
-                ✨ {rank}
+                ✨ {titleName}
               </span>
             </div>
             <p className="text-sm sm:text-base text-gray-500 font-medium">{member.email}</p>
@@ -282,15 +279,15 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
           <div className="w-full max-w-md mx-auto md:mx-0 space-y-1.5 sm:space-y-2">
             <div className="flex justify-between text-[10px] sm:text-[11px] font-black uppercase tracking-wider">
               <span className="text-purple-600">Experience</span>
-              <span className="text-gray-400">{currentExp} / {nextLevelExp}</span>
+              <span className="text-gray-400">{currentExp?.toLocaleString()} / {nextLevelExp?.toLocaleString()}</span>
             </div>
             <div className="h-2 sm:h-3 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-50 shadow-inner">
               <div 
                 className="h-full bg-gradient-to-r from-purple-500 to-purple-700 transition-all duration-1000 ease-out"
-                style={{ width: `${(currentExp / nextLevelExp) * 100}%` }}
+                style={{ width: `${Math.min((currentExp / nextLevelExp) * 100, 100)}%` }}
               />
             </div>
-            <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold">다음 레벨까지 {nextLevelExp - currentExp} EXP 남았습니다.</p>
+            <p className="text-[9px] sm:text-[10px] text-gray-400 font-bold">다음 레벨까지 {(nextLevelExp - currentExp)?.toLocaleString()} EXP 남았습니다.</p>
           </div>
 
           {/* Interests Section */}
@@ -392,9 +389,9 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         {[
-          { label: '작성글', value: 0, color: 'text-blue-600', bg: 'bg-blue-50', icon: '📝' },
-          { label: '댓글', value: 0, color: 'text-purple-600', bg: 'bg-purple-50', icon: '💬' },
-          { label: '찜한 축제', value: 0, color: 'text-rose-600', bg: 'bg-rose-50', icon: '❤️' }
+          { label: '작성글', value: member.post_count || 0, color: 'text-blue-600', bg: 'bg-blue-50', icon: '📝' },
+          { label: '댓글', value: member.comment_count || 0, color: 'text-purple-600', bg: 'bg-purple-50', icon: '💬' },
+          { label: '찜한 축제', value: likedFestivals.length || 0, color: 'text-rose-600', bg: 'bg-rose-50', icon: '❤️' }
         ].map((stat) => (
           <div key={stat.label} className="bg-white p-6 sm:p-8 rounded-[24px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex sm:flex-col items-center sm:items-start gap-4 sm:gap-0">
             <div className={`w-10 h-10 sm:w-12 sm:h-12 ${stat.bg} rounded-xl flex items-center justify-center text-xl sm:text-2xl sm:mb-4 shrink-0`}>
