@@ -21,16 +21,16 @@ const ChatDetails = ({
         />
       )}
       
-      <aside className={`absolute right-0 top-0 h-full border-l border-gray-100 flex flex-col bg-white z-30 transition-all duration-300 ease-in-out ${isOpen ? 'w-72 translate-x-0 shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.1)]' : 'w-72 translate-x-full'} ${customScrollbarClass}`}>
+      <aside className={`absolute right-0 top-0 h-full border-l border-gray-100 flex flex-col bg-white z-30 transition-all duration-300 ease-in-out ${isOpen ? 'w-72 translate-x-0 shadow-[-20px_0_40px_-20px_rgba(0,0,0,0.15)]' : 'w-72 translate-x-full'} ${customScrollbarClass}`}>
         <div className="p-4 border-b border-gray-50 flex items-center justify-between">
-          <h3 className="font-black text-gray-900 text-sm">
+          <h3 className="font-black text-gray-900 text-base">
             {showParticipants ? '참여 인원' : '채팅방 상세 정보'}
           </h3>
           <button 
             onClick={() => toggleSidebar(showParticipants ? 'participants' : 'details')}
             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-400"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -40,10 +40,10 @@ const ChatDetails = ({
               {participants.map(p => (
                 <div key={p.id} className="flex items-center justify-between p-2">
                   <div className="flex items-center gap-3">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`} className="w-8 h-8 rounded-full" alt="" />
-                    <span className="text-sm font-bold">{p.name}</span>
+                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${p.name}`} className="w-10 h-10 rounded-full" alt="" />
+                    <span className="text-base font-bold">{p.name}</span>
                   </div>
-                  <button className="text-gray-300 hover:text-rose-500"><Ban className="w-4 h-4"/></button>
+                  <button className="text-gray-300 hover:text-rose-500"><Ban className="w-5 h-5"/></button>
                 </div>
               ))}
             </div>
@@ -52,13 +52,13 @@ const ChatDetails = ({
             <div className="p-6 space-y-6">
               {selectedChat?.type === 'festival' && (
                 <>
-                  <div><p className="text-xs font-black text-gray-400">축제 기간</p><p className="text-sm font-bold">{selectedChat.date}</p></div>
-                  <div><p className="text-xs font-black text-gray-400">위치</p><p className="text-sm font-bold flex items-center gap-1"><MapPin className="w-4 h-4"/>{selectedChat.location}</p></div>
+                  <div><p className="text-sm font-black text-gray-400">축제 기간</p><p className="text-base font-bold">{selectedChat.date}</p></div>
+                  <div><p className="text-sm font-black text-gray-400">위치</p><p className="text-base font-bold flex items-center gap-1"><MapPin className="w-5 h-5"/>{selectedChat.location}</p></div>
                 </>
               )}
               <div className="pt-4 border-t border-gray-50">
-                <p className="text-xs font-black text-gray-400 mb-2">설명</p>
-                <p className="text-sm text-gray-600 leading-relaxed">
+                <p className="text-sm font-black text-gray-400 mb-2">설명</p>
+                <p className="text-base text-gray-600 leading-relaxed">
                   이 채팅방은 {selectedChat?.title}에 대한 정보를 공유하고 함께 방문할 메이트를 찾는 공간입니다. 매너 있는 대화 부탁드립니다.
                 </p>
               </div>

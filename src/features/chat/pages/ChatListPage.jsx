@@ -101,7 +101,7 @@ const ChatListPage = () => {
                 customScrollbarClass={customScrollbarClass}
               />
 
-              {selectedChatId ? (
+              {selectedChatId && (
                 <div className="hidden md:flex flex-grow min-w-0 bg-[#F8F9FF] relative overflow-hidden">
                   <ChatWindow 
                     selectedChat={selectedChat}
@@ -126,10 +126,6 @@ const ChatListPage = () => {
                     customScrollbarClass={customScrollbarClass}
                     toggleSidebar={toggleSidebar}
                   />
-                </div>
-              ) : (
-                <div className="flex flex-grow items-center justify-center text-gray-400 font-bold bg-[#F8F9FF]">
-                  채팅방을 선택해주세요.
                 </div>
               )}
             </div>
