@@ -2,18 +2,12 @@
 
 @import "tailwindcss";
 
-@theme {
-  --color-festival-yellow: #FFD23F;
-  --color-festival-purple: #5B21B6;
-  --color-festival-purple-soft: #8B5CF6;
-  --color-warm-white: #FAFAF9;
-}
-
 :root {
   --festival-yellow: #FFD23F;
   --festival-purple: #5B21B6;
   --festival-purple-soft: #8B5CF6;
   --warm-white: #FAFAF9;
+  --dark-gray: #374151;
 }
 
 body {

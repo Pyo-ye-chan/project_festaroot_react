@@ -40,8 +40,27 @@ const BoardListPage = () => {
     { label: '좋아요순', value: 'likes' },
   ];
 
+  const getCategoryClasses = (postCategory) => {
+    switch (postCategory) {
+      case '후기':
+        return 'bg-[var(--festival-yellow)] text-gray-800';
+      case '팁':
+        return 'bg-[var(--festival-purple-soft)] text-white';
+      case '정보':
+        return 'bg-gray-300 text-gray-800';
+      case '자유':
+        return 'bg-gray-500 text-white';
+      case '꿀팁': // Specific for '꿀팁공유'
+        return 'bg-blue-400 text-white'; 
+      case '공지사항':
+        return 'bg-red-500 text-white';
+      default:
+        return 'bg-gray-200 text-gray-700';
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#fcfcfc] font-['Pretendard'] pb-20">
+    <div className="min-h-screen bg-[var(--warm-white)] font-['Pretendard'] pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <aside className="lg:col-span-3">
@@ -51,7 +70,7 @@ const BoardListPage = () => {
           <main className="lg:col-span-9">
             <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-5">
               <div>
-                <div className="flex items-center gap-2 text-purple-600 font-bold text-sm mb-2">
+                <div className="flex items-center gap-2 text-[var(--festival-purple)] font-bold text-sm mb-2">
                   <Link to="/community" className="hover:underline">
                     커뮤니티
                   </Link>
@@ -66,7 +85,7 @@ const BoardListPage = () => {
 
               <Link
                 to="/community/write"
-                className="h-12 px-6 bg-purple-600 text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-purple-700 transition-all shadow-lg shadow-purple-100 active:scale-95"
+                className="h-12 px-6 bg-[var(--festival-purple)] text-white rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-[var(--festival-purple-soft)] transition-all shadow-lg shadow-[var(--festival-purple)]/20 active:scale-95"
               >
                 <Plus className="w-5 h-5" />
                 글쓰기
@@ -79,7 +98,7 @@ const BoardListPage = () => {
                   <select
                     value={searchType}
                     onChange={(e) => setSearchType(e.target.value)}
-                    className="h-12 bg-gray-50 rounded-2xl px-4 text-sm font-bold text-gray-600 outline-none focus:ring-2 focus:ring-purple-100"
+                    className="h-12 bg-gray-50 rounded-2xl px-4 text-sm font-bold text-gray-600 outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20"
                   >
                     <option value="title">제목</option>
                     <option value="content">내용</option>
@@ -93,7 +112,7 @@ const BoardListPage = () => {
                       onChange={(e) => setKeyword(e.target.value)}
                       type="text"
                       placeholder="검색어를 입력하세요"
-                      className="w-full h-12 bg-gray-50 rounded-2xl pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-purple-100"
+                      className="w-full h-12 bg-gray-50 rounded-2xl pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20"
                     />
                   </div>
 
@@ -108,8 +127,8 @@ const BoardListPage = () => {
                       key={sort.value}
                       onClick={() => setSortBy(sort.value)}
                       className={`h-12 px-5 rounded-2xl text-sm font-black whitespace-nowrap transition-all ${sortBy === sort.value
-                          ? 'bg-purple-600 text-white shadow-md shadow-purple-100'
-                          : 'bg-gray-50 text-gray-500 hover:bg-purple-50 hover:text-purple-600'
+                          ? 'bg-[var(--festival-purple)] text-white shadow-md shadow-[var(--festival-purple)]/20'
+                          : 'bg-gray-50 text-gray-500 hover:bg-[var(--festival-purple-soft)]/20 hover:text-[var(--festival-purple)]'
                         }`}
                     >
                       {sort.label}
@@ -126,12 +145,12 @@ const BoardListPage = () => {
                   <Link
                     key={post.id}
                     to={`/community/post/${post.id}`}
-                    className="block px-6 py-5 hover:bg-purple-50/50 transition-all group"
+                    className="block px-6 py-5 hover:bg-[var(--festival-purple-soft)]/20 transition-all group"
                   >
                     <div className="flex flex-col gap-3">
                       {/* 상단: 카테고리 + 날짜 */}
                       <div className="flex items-center justify-between gap-3">
-                        <span className="px-3 py-1 rounded-full bg-purple-50 text-purple-600 text-xs font-black">
+                        <span className={`px-3 py-1 rounded-full text-xs font-black ${getCategoryClasses(post.category)}`}>
                           {post.category}
                         </span>
 
@@ -142,7 +161,7 @@ const BoardListPage = () => {
 
                       {/* 제목 */}
                       <div className="flex items-center gap-2">
-                        <h3 className="text-[17px] font-black text-gray-900 group-hover:text-purple-600 transition-colors line-clamp-1">
+                        <h3 className="text-[17px] font-black text-gray-900 group-hover:text-[var(--festival-purple)] transition-colors line-clamp-1">
                           {post.title}
                         </h3>
 
@@ -176,7 +195,7 @@ const BoardListPage = () => {
               </div>
             </section>
             <div className="mt-8 flex justify-center items-center gap-2">
-              <button className="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-purple-600">
+              <button className="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-[var(--festival-purple)]">
                 ‹
               </button>
 
@@ -184,15 +203,15 @@ const BoardListPage = () => {
                 <button
                   key={page}
                   className={`w-10 h-10 rounded-xl text-xs font-black ${page === 1
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-white border border-gray-100 text-gray-400 hover:text-purple-600'
+                      ? 'bg-[var(--festival-purple)] text-white'
+                      : 'bg-white border border-gray-100 text-gray-400 hover:text-[var(--festival-purple)]'
                     }`}
                 >
                   {page}
                 </button>
               ))}
 
-              <button className="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-purple-600">
+              <button className="w-10 h-10 rounded-xl bg-white border border-gray-100 text-gray-400 hover:text-[var(--festival-purple)]">
                 ›
               </button>
             </div>

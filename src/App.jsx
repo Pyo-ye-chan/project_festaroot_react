@@ -29,6 +29,7 @@ import SocialSignupPage from './features/auth/pages/SolcialSignupPage'
 import NaverCallbackPage from './features/auth/pages/NaverCallbackPage'
 import GoogleCallbackPage from './features/auth/pages/GoogleCallbackPage'
 import GatheringPage from './features/community/pages/GatheringPage'
+import GatheringDetailPage from './features/community/pages/GatheringDetailPage'
 
 function App() {
   const { isFloating } = useChatStore(); // 채팅방 띄우기
@@ -48,6 +49,7 @@ function App() {
           <Route path="/community/post/:id" element={<PostDetailPage />} />
           <Route path="/community/write" element={<PostWritePage />} />
           <Route path="/community/gathering" element={<GatheringPage />} />
+          <Route path="/community/gathering/:id" element={<GatheringDetailPage />} />
 
           <Route path="/chats" element={<ChatListPage />} />
           <Route path="/search" element={<SearchPage />} />
