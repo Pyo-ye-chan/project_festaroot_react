@@ -102,7 +102,7 @@ const ChatListPage = () => {
               />
 
               {selectedChatId ? (
-                <div className="hidden md:flex flex-grow min-w-0 bg-[#F8F9FF]">
+                <div className="hidden md:flex flex-grow min-w-0 bg-[#F8F9FF] relative overflow-hidden">
                   <ChatWindow 
                     selectedChat={selectedChat}
                     setSelectedChatId={setSelectedChatId}
@@ -124,6 +124,7 @@ const ChatListPage = () => {
                     participants={participants}
                     selectedChat={selectedChat}
                     customScrollbarClass={customScrollbarClass}
+                    toggleSidebar={toggleSidebar}
                   />
                 </div>
               ) : (
