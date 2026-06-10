@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { notifyAchievements } from './notificationUtils.jsx';
 
 export const maxios = axios.create({
   // env 파일에 있는 주소를 쓰고, 만약 없으면(초기값) localhost
@@ -17,6 +18,25 @@ maxios.interceptors.request.use(
     }
     
     return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// 응답 인터셉터 추가
+maxios.interceptors.response.use(
+  (response) => {
+    // 요청 설정에 skipAchievementNotification 플래그가 있으면 알림을 띄우지 않음
+    if (response.config && response.config.skipAchievementNotification) {
+      return response;
+    }
+
+    // 백엔드 응답 데이터 구조에 따라 업적 정보가 있는지 확인
+    if (response.data && response.data.achievements && Array.isArray(response.data.achievements)) {
+      notifyAchievements(response.data.achievements);
+    }
+    return response;
   },
   (error) => {
     return Promise.reject(error);

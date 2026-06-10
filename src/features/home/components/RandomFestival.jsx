@@ -16,7 +16,7 @@ const RandomFestival = () => {
       ]);
 
       if (data) {
-        setResult(data);
+        setResult(data.festival);
       } else {
         alert("추천해 드릴 축제 데이터가 존재하지 않습니다.");
       }
