@@ -2,18 +2,12 @@
 
 @import "tailwindcss";
 
-@theme {
-  --color-festival-yellow: #FFD23F;
-  --color-festival-purple: #5B21B6;
-  --color-festival-purple-soft: #8B5CF6;
-  --color-warm-white: #FAFAF9;
-}
-
 :root {
   --festival-yellow: #FFD23F;
   --festival-purple: #5B21B6;
   --festival-purple-soft: #8B5CF6;
   --warm-white: #FAFAF9;
+  --dark-gray: #374151;
 }
 
 body {
@@ -24,4 +18,28 @@ body {
 
 * {
   font-family: 'Pretendard', sans-serif;
+}
+
+/* tiptap */
+.ProseMirror {
+  min-height: 400px;
+  outline: none;
+}
+
+.ProseMirror p {
+  margin: 0.5rem 0;
+}
+
+.ProseMirror ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+
+.ProseMirror ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+}
+
+.ProseMirror img {
+  max-width: 100%;
 }

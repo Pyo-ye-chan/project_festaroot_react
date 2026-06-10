@@ -28,11 +28,16 @@ import KakaoCallbackPage from './features/auth/pages/KakaoCallbackPage'
 import SocialSignupPage from './features/auth/pages/SolcialSignupPage'
 import NaverCallbackPage from './features/auth/pages/NaverCallbackPage'
 import GoogleCallbackPage from './features/auth/pages/GoogleCallbackPage'
+
+import GatheringPage from './features/community/pages/GatheringPage'
+import GatheringDetailPage from './features/community/pages/GatheringDetailPage'
+
 import useFestivalLikeStore from './store/useFestivalLikeStore'
 import festivalService from './api/festivalService'
 import ScrollToTop from './components/ScrollToTop'
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 
 function App() {
   const { isFloating } = useChatStore(); // 채팅방 띄우기
@@ -86,6 +91,8 @@ function App() {
           <Route path="/community/board/:category" element={<BoardListPage />} />
           <Route path="/community/post/:id" element={<PostDetailPage />} />
           <Route path="/community/write" element={<PostWritePage />} />
+          <Route path="/community/gathering" element={<GatheringPage />} />
+          <Route path="/community/gathering/:id" element={<GatheringDetailPage />} />
 
           <Route path="/chats" element={<ChatListPage />} />
           <Route path="/search" element={<SearchPage />} />

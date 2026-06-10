@@ -68,9 +68,9 @@ const LoginPage = () => {
       }
 
       if (data.token) {
-        localStorage.setItem('token', data.token);
+        
 
-        console.log(data.token);
+        
 
         // 소셜 로그인 성공 시에도 백엔드가 축제 찜 목록
         if (data.likedFestivalIds) {

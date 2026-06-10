@@ -1,178 +1,367 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { 
-  X, 
-  Image as ImageIcon, 
-  Paperclip, 
+import {
+  X,
+  Image as ImageIcon,
+  Paperclip,
   ChevronRight,
-  Info,
-  CheckCircle2,
-  AlertCircle
+  XCircle,
 } from 'lucide-react';
+
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import MenuBar from '../components/MenuBar';
+import Image from '@tiptap/extension-image';
+
+import { uploadImage } from '../../../api/boardApi';
+import { addPost } from '../../../api/boardApi';
 
 const PostWritePage = () => {
   const navigate = useNavigate();
+
+  const [uploading, setUploading] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+
   const [formData, setFormData] = useState({
     category: 'free',
     title: '',
-    content: ''
+    content: '',
   });
+
+  const editor = useEditor({
+    extensions: [StarterKit, Image],
+    content: '',
+    onUpdate: ({ editor }) => {
+      setFormData((prev) => ({
+        ...prev,
+        content: editor.getHTML(),
+      }));
+    },
+    editorProps: {
+      attributes: {
+        class:
+          'min-h-[400px] outline-none text-base font-medium leading-relaxed text-gray-700',
+      },
+    },
+  });
+
+  const formatFileSize = (size) => {
+    if (size < 1024) return `${size}B`;
+    if (size < 1024 * 1024) return `${Math.round(size / 1024)}KB`;
+    return `${(size / 1024 / 1024).toFixed(1)}MB`;
+  };
+
+  const addFilesWithoutDuplicate = (files) => {
+    setAttachedFiles((prev) => {
+      const newFiles = files.filter(
+        (file) =>
+          !prev.some(
+            (saved) => saved.name === file.name && saved.size === file.size
+          )
+      );
+
+      return [...prev, ...newFiles];
+    });
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleSubmit = (e) => {
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+
+    if (files.length === 0 || !editor) return;
+
+    const invalidFile = files.find((file) => !file.type.startsWith('image/'));
+
+    if (invalidFile) {
+      alert('이미지 파일만 업로드 가능합니다.');
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      for (const file of files) {
+        const imageUrl = await uploadImage(file, 'board/image');
+
+        editor
+          .chain()
+          .focus()
+          .insertContent(`
+            <img
+              src="${imageUrl}"
+              style="max-width:100%; height:auto; display:block; margin:16px auto; border-radius:0; object-fit:contain;"
+            />
+          `)
+          .run();
+      }
+
+      e.target.value = '';
+    } catch (error) {
+      console.error(error);
+      alert('이미지 업로드에 실패했습니다.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+
+    if (files.length === 0) return;
+
+    addFilesWithoutDuplicate(files);
+
+    e.target.value = '';
+  };
+
+  const handleRemoveFile = (targetFile) => {
+    setAttachedFiles((prev) =>
+      prev.filter(
+        (file) =>
+          !(file.name === targetFile.name && file.size === targetFile.size)
+      )
+    );
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Post submitted:', formData);
-    // Mock redirect
-    navigate('/community/board/' + formData.category);
+
+    if (!formData.content || formData.content === '<p></p>') {
+      alert('내용을 입력해 주세요.');
+      return;
+    }
+
+    try {
+      const data = new FormData();
+
+      const post = {
+        category: formData.category,
+        title: formData.title,
+        content: formData.content,
+      };
+
+      data.append(
+        'post',
+        new Blob([JSON.stringify(post)], {
+          type: 'application/json',
+        })
+      );
+
+      attachedFiles.forEach((file) => {
+        data.append('files', file);
+      });
+
+      await addPost(data);
+
+      console.log('Post added successfully');
+      alert('등록 완료');
+
+      // navigate('/community/board/' + formData.category);
+    } catch (error) {
+      console.error(error);
+      alert('등록 실패');
+    }
   };
 
-  const categoryOptions = [
-    { id: 'free', label: '자유게시판', icon: '💬', color: 'bg-blue-50 text-blue-600' },
-    { id: 'review', label: '축제후기', icon: '📸', color: 'bg-rose-50 text-rose-600' },
-    { id: 'tip', label: '꿀팁공유', icon: '💡', color: 'bg-amber-50 text-amber-600' },
-    { id: 'notice', label: '공지사항', icon: '📢', color: 'bg-slate-100 text-slate-600' }
-  ];
+
 
   return (
-    <div className="min-h-screen bg-gray-50/30 font-['Pretendard'] pb-20">
+    <div className="min-h-screen bg-[var(--warm-white)] font-['Pretendard'] pb-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        
-        {/* Header Section */}
-        <div className="flex items-center justify-between mb-12 px-2">
+        <div className="flex items-center justify-between mb-10 px-2">
           <div>
-             <div className="flex items-center gap-2 text-purple-600 font-bold text-sm mb-2">
-              <Link to="/community" className="hover:text-purple-700 transition-colors">커뮤니티</Link>
+            <div className="flex items-center gap-2 text-[var(--festival-purple)] font-bold text-sm mb-2">
+              <Link to="/community" className="hover:underline">
+                커뮤니티
+              </Link>
               <ChevronRight className="w-3 h-3" />
-              <span className="text-gray-400">새 글 작성</span>
+              <span>글쓰기</span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight">당신의 이야기를 들려주세요</h2>
+
+            <h2 className="text-4xl font-black text-gray-900 tracking-tight">
+              게시글 작성
+            </h2>
           </div>
-          <button 
+
+          <button
+            type="button"
             onClick={() => navigate(-1)}
-            className="group p-4 bg-white text-gray-400 hover:text-gray-900 rounded-[1.5rem] border border-gray-100 transition-all hover:shadow-xl hover:rotate-90"
+            className="p-3 bg-white text-gray-400 hover:text-gray-600 rounded-full border border-gray-100 transition-all hover:shadow-md"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Main Form Area */}
-        <form onSubmit={handleSubmit} className="space-y-8">
-          
-          {/* Card: Category & Title */}
-          <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-sm border border-gray-100">
-            
-            {/* Category Selection */}
-            <div className="mb-12">
-              <div className="flex items-center gap-2 mb-6 ml-1">
-                <span className="w-1.5 h-1.5 bg-purple-600 rounded-full"></span>
-                <label className="text-sm font-black text-gray-900 uppercase tracking-widest">게시판 선택</label>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {categoryOptions.map((cat) => (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-gray-100">
+            <div className="mb-8">
+              <label className="block text-sm font-black text-gray-900 mb-3 ml-1 uppercase tracking-widest">
+                게시판 선택
+              </label>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { id: 'free', label: '자유게시판' },
+                  { id: 'review', label: '축제후기' },
+                  { id: 'tip', label: '꿀팁공유' },
+                  { id: 'notice', label: '공지사항' },
+                ].map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => setFormData({ ...formData, category: cat.id })}
-                    className={`relative py-6 px-4 rounded-[2rem] font-black text-sm transition-all border-2 flex flex-col items-center gap-3 overflow-hidden ${
-                      formData.category === cat.id 
-                      ? 'bg-white border-purple-600 text-purple-600 shadow-xl shadow-purple-50 translate-y-[-4px]' 
-                      : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-100 hover:text-gray-600'
-                    }`}
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        category: cat.id,
+                      }))
+                    }
+                    className={`py-4 px-4 rounded-2xl font-bold text-sm transition-all border ${formData.category === cat.id
+                      ? 'bg-[var(--festival-yellow)] text-black border-[var(--festival-yellow)] shadow-lg shadow-[var(--festival-purple)]/20'
+                      : 'bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100'
+                      }`}
                   >
-                    <span className="text-2xl">{cat.icon}</span>
                     {cat.label}
-                    {formData.category === cat.id && (
-                      <CheckCircle2 className="absolute top-3 right-3 w-4 h-4 text-purple-600" />
-                    )}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Title Input */}
-            <div className="mb-10">
-              <div className="flex items-center gap-2 mb-4 ml-1">
-                <span className="w-1.5 h-1.5 bg-purple-600 rounded-full"></span>
-                <label className="text-sm font-black text-gray-900 uppercase tracking-widest">제목</label>
-              </div>
-              <input 
-                type="text" 
+            <div className="mb-8">
+              <label className="block text-sm font-black text-gray-900 mb-3 ml-1 uppercase tracking-widest">
+                제목
+              </label>
+
+              <input
+                type="text"
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
                 placeholder="제목을 입력해 주세요"
-                className="w-full bg-gray-50/50 border-2 border-transparent rounded-[2rem] p-6 text-xl font-black focus:ring-4 focus:ring-purple-600/5 focus:bg-white focus:border-purple-600/10 outline-none transition-all placeholder:text-gray-300"
+                className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-5 text-gray-900 focus:ring-2 focus:ring-[var(--festival-purple)]/20 focus:border-[var(--festival-purple)]/30 outline-none transition-all placeholder:text-gray-300"
                 required
               />
             </div>
 
-            {/* Content Input */}
-            <div>
-              <div className="flex items-center gap-2 mb-4 ml-1">
-                <span className="w-1.5 h-1.5 bg-purple-600 rounded-full"></span>
-                <label className="text-sm font-black text-gray-900 uppercase tracking-widest">본문 내용</label>
+            <div className="mb-8">
+              <label className="block text-sm font-black text-gray-900 mb-3 ml-1 uppercase tracking-widest">
+                내용
+              </label>
+
+              <div className="overflow-hidden bg-gray-50 border border-gray-200 rounded-2xl focus-within:ring-2 focus-within:ring-[var(--festival-purple)]/20 focus-within:border-[var(--festival-purple)]/30 transition-all">
+                <MenuBar editor={editor} />
+
+                <div className="min-h-[450px] p-5">
+                  <EditorContent editor={editor} />
+                </div>
               </div>
-              <textarea 
-                name="content"
-                value={formData.content}
-                onChange={handleChange}
-                placeholder="어떤 즐거운 축제 소식을 전해주실 건가요?"
-                className="w-full bg-gray-50/50 border-2 border-transparent rounded-[2.5rem] p-8 text-lg min-h-[450px] focus:ring-4 focus:ring-purple-600/5 focus:bg-white focus:border-purple-600/10 outline-none transition-all resize-none font-medium leading-relaxed placeholder:text-gray-300"
-                required
-              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-black text-gray-900 mb-3 ml-1 uppercase tracking-widest">
+                첨부파일
+              </label>
+
+              <div className="flex flex-wrap gap-4">
+                <label
+                  className={`flex items-center gap-2 px-6 py-4 bg-gray-50 text-gray-500 rounded-2xl font-bold text-sm transition-all border border-dashed border-gray-200 cursor-pointer ${uploading
+                    ? 'opacity-50 pointer-events-none'
+                    : 'hover:bg-[var(--festival-purple-soft)]/20 hover:text-[var(--festival-purple)]'
+                    }`}
+                >
+                  <ImageIcon className="w-5 h-5" />
+                  {uploading ? '업로드 중...' : '이미지 첨부'}
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleImageUpload}
+                    disabled={uploading}
+                  />
+                </label>
+
+                <label className="flex items-center gap-2 px-6 py-4 bg-gray-50 text-gray-500 rounded-2xl font-bold text-sm hover:bg-[var(--festival-purple-soft)]/20 hover:text-[var(--festival-purple)] transition-all border border-dashed border-gray-200 cursor-pointer">
+                  <Paperclip className="w-5 h-5" />
+                  파일 첨부
+
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </label>
+              </div>
+
+              {attachedFiles.length > 0 && (
+                <div className="mt-5 rounded-2xl border border-gray-100 bg-gray-50 p-4 space-y-2">
+                  {attachedFiles.map((file) => (
+                    <div
+                      key={`${file.name}-${file.size}`}
+                      className="flex items-center justify-between gap-4 rounded-xl bg-white border border-gray-100 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-700 truncate">
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {formatFileSize(file.size)}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(file)}
+                        className="shrink-0 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <XCircle className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Card: Attachments */}
-          <div className="bg-white rounded-[3rem] p-8 md:px-12 py-10 shadow-sm border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex flex-wrap gap-4">
-              <button type="button" className="flex items-center gap-3 px-8 py-4 bg-gray-50 text-gray-500 rounded-2xl font-black text-sm hover:bg-purple-50 hover:text-purple-600 transition-all border-2 border-dashed border-gray-200 hover:border-purple-200 group">
-                <ImageIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                이미지 추가
-              </button>
-              <button type="button" className="flex items-center gap-3 px-8 py-4 bg-gray-50 text-gray-500 rounded-2xl font-black text-sm hover:bg-purple-50 hover:text-purple-600 transition-all border-2 border-dashed border-gray-200 hover:border-purple-200 group">
-                <Paperclip className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                파일 첨부
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-3 text-gray-400 font-bold text-sm bg-gray-50 px-6 py-4 rounded-2xl border border-gray-100">
-              <AlertCircle className="w-4 h-4" />
-              최대 20MB까지 첨부 가능합니다.
+          <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-gray-100">
+            <div className="bg-gray-50 rounded-[1.5rem] p-6">
+              <h4 className="text-sm font-black text-gray-700 mb-4">
+                작성 안내
+              </h4>
+
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li>• 타인을 비방하거나 불쾌감을 주는 게시글은 삭제될 수 있습니다.</li>
+                <li>• 광고 및 홍보성 게시물은 운영 정책에 따라 제한될 수 있습니다.</li>
+                <li>• 개인정보가 포함된 내용은 작성하지 않도록 주의해 주세요.</li>
+              </ul>
             </div>
           </div>
 
-          {/* Guide / Safe Space */}
-          <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-[2.5rem] p-8 flex gap-6 border border-purple-100/50">
-            <div className="flex-shrink-0 w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-purple-600 shadow-sm border border-purple-100">
-              <Info className="w-6 h-6" />
-            </div>
-            <div className="text-base text-purple-900/70 font-medium leading-relaxed">
-              <p className="font-black text-purple-900 text-lg mb-1">매너 있는 커뮤니티 활동</p>
-              함께 즐기는 축제처럼 즐거운 커뮤니티가 될 수 있도록 <br />
-              타인을 배려하는 소중한 게시글 작성을 부탁드립니다.
-            </div>
-          </div>
-
-          {/* Bottom Actions */}
-          <div className="flex gap-6 pt-6">
-            <button 
+          <div className="flex gap-4 pt-4 px-2">
+            <button
               type="button"
               onClick={() => navigate(-1)}
-              className="flex-1 py-6 bg-white text-gray-400 font-black rounded-[2.5rem] border-2 border-gray-100 hover:bg-gray-50 hover:text-gray-600 transition-all active:scale-95 shadow-sm"
+              className="flex-1 py-5 bg-white text-gray-400 font-black rounded-[2rem] border border-gray-100 hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
             >
-              다음에 쓸게요
+              취소하기
             </button>
-            <button 
+
+            <button
               type="submit"
-              className="flex-[2] py-6 bg-purple-600 text-white font-black rounded-[2.5rem] hover:bg-purple-700 transition-all active:scale-95 shadow-2xl shadow-purple-200 flex items-center justify-center gap-3 text-lg"
+              className="flex-[2] py-5 bg-[var(--festival-purple)] text-white font-black rounded-[2rem] hover:bg-[var(--festival-purple-soft)] transition-all active:scale-95 shadow-lg shadow-[var(--festival-purple)]/30 flex items-center justify-center gap-2"
             >
               게시글 등록하기
-              <ChevronRight className="w-6 h-6" />
+              <ChevronRight className="w-5 h-5" />
             </button>
           </div>
         </form>
