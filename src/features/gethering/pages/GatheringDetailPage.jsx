@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle } from 'lucide-react';
-import CommunitySidebar from '../components/CommunitySidebar';
+import CommunitySidebar from '../../community/components/CommunitySidebar';
 
 const GatheringDetailPage = () => {
   const { id } = useParams();

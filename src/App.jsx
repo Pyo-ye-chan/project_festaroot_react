@@ -29,8 +29,8 @@ import SocialSignupPage from './features/auth/pages/SolcialSignupPage'
 import NaverCallbackPage from './features/auth/pages/NaverCallbackPage'
 import GoogleCallbackPage from './features/auth/pages/GoogleCallbackPage'
 
-import GatheringPage from './features/community/pages/GatheringPage'
-import GatheringDetailPage from './features/community/pages/GatheringDetailPage'
+import GatheringPage from './features/gethering/pages/GatheringPage'
+import GatheringDetailPage from './features/gethering/pages/GatheringDetailPage'
 
 import useFestivalLikeStore from './store/useFestivalLikeStore'
 import festivalService from './api/festivalService'

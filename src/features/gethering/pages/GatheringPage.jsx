@@ -9,8 +9,8 @@ import {
   ChevronRight,
   Search,
 } from 'lucide-react';
-import CommunitySidebar from '../components/CommunitySidebar';
-import CreateGatheringModal from '../components/CreateGatheringModal';
+import CommunitySidebar from '../../community/components/CommunitySidebar';
+import CreateGatheringModal from '../../community/components/CreateGatheringModal';
 
 const GatheringPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
