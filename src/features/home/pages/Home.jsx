@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Hero from '../components/Hero';
 import WeatherDetail from '../components/WeatherDetail';
 import ClosingSoon from '../components/ClosingSoon';
@@ -8,8 +8,12 @@ import FestivalList from '../components/FestivalList';
 import OngoingFestivals from '../components/OngoingFestivals';
 import PopularPosts from '../components/PopularPosts';
 import { notifyAchievements } from '../../../api/notificationUtils.jsx';
+import useAuthStore from '../../../store/useAuthStore';
+import { maxios } from '../../../api/axiosApi';
 
 const Home = () => {
+  const { isLoggedIn, user } = useAuthStore();
+
   // 테스트용 알림 호출 함수
   const handleTestNotification = () => {
     notifyAchievements([
@@ -21,6 +25,43 @@ const Home = () => {
       }
     ]);
   };
+
+  // 자동 출석 체크 로직
+  useEffect(() => {
+    const checkAttendance = async () => {
+      // 1. 로그인 상태인지 확인
+      if (!isLoggedIn || !user) return;
+
+      const memberId = user.member_id || user.id;
+      if (!memberId) return;
+
+      // 2. 오늘 이미 출석 체크를 했는지 로컬 스토리지 확인 (중복 요청 방지)
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const lastCheck = localStorage.getItem(`attendance_${memberId}`);
+
+      if (lastCheck === today) {
+        console.log('이미 오늘 출석 체크를 완료했습니다.');
+        return;
+      }
+
+      try {
+        // 3. 백엔드 출석 API 호출 (엔드포인트는 설계하신 대로 /member/attendance 가정)
+        // 응답에 업적이 있다면 인터셉터가 자동으로 알림을 띄워줍니다.
+        await maxios.post(`/member/attendance/${memberId}`);
+        
+        // 4. 호출 성공 시 로컬 스토리지 업데이트
+        localStorage.setItem(`attendance_${memberId}`, today);
+      } catch (error) {
+        // 이미 오늘 출석했다는 에러(400 등)가 올 경우에도 로컬 스토리지를 업데이트하여 재요청 방지
+        if (error.response && error.response.status === 400) {
+          localStorage.setItem(`attendance_${memberId}`, today);
+        }
+        console.error('출석 체크 중 오류 발생:', error);
+      }
+    };
+
+    checkAttendance();
+  }, [isLoggedIn, user]);
 
   return (
     <div className="space-y-12 pb-20 bg-gray-50/30 relative">

@@ -158,6 +158,13 @@ const MyAchievementsTab = () => {
                 <h3 className={`text-lg font-black mb-1 ${isCompleted ? 'text-gray-800' : 'text-gray-400'}`}>
                   {ach.ACH_TITLE}
                 </h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                    isCompleted ? 'bg-yellow-50 text-yellow-700 border-yellow-100' : 'bg-gray-50 text-gray-400 border-gray-100'
+                  }`}>
+                    🎁 {ach.EXP_REWARD || 0} EXP
+                  </span>
+                </div>
                 <p className={`text-sm font-medium leading-relaxed mb-6 ${isCompleted ? 'text-gray-500' : 'text-gray-400'}`}>
                   {ach.ACH_DESC || '활동을 통해 이 업적을 달성하세요!'}
                 </p>

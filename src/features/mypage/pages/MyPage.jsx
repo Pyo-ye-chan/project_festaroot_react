@@ -55,7 +55,7 @@ const MyPage = () => {
       case 'saved-plans':
         return <MySavedPlansTab />;
       case 'likes':
-        return <MyLikedFestivalsTab userDetails={userDetails} />;
+        return <MyLikedFestivalsTab userDetails={userDetails} onRefresh={fetchUserData} />;
       case 'inquiry':
         return <MyInquiryTab />;
       case 'account':
