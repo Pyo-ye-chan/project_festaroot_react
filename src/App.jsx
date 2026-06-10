@@ -31,6 +31,8 @@ import GoogleCallbackPage from './features/auth/pages/GoogleCallbackPage'
 import useFestivalLikeStore from './store/useFestivalLikeStore'
 import festivalService from './api/festivalService'
 import ScrollToTop from './components/ScrollToTop'
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   const { isFloating } = useChatStore(); // 채팅방 띄우기
@@ -105,6 +107,19 @@ function App() {
       {/* Routes 바깥 영역에 조건부 렌더링으로 배치 / 주소창 영향X */}
       {isLoading && <LoadingSpinner />}
       {isFloating && <FloatingChat />}
+      
+      <ToastContainer 
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </>
 
   )

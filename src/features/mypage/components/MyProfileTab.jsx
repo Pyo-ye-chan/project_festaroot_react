@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { updateMemberProfile } from '../../../api/memberApi';
 import { getSidoList } from '../../../api/regionApi';
 import { getThemeList } from '../../../api/themeApi';
+import { toast } from 'react-toastify';
 
 const MyProfileTab = ({ userDetails, onRefresh }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -100,7 +101,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
 
   const handleSave = async () => {
     if (!editNickname.trim()) {
-      alert('닉네임을 입력해 주세요.');
+      toast.warn('닉네임을 입력해 주세요.');
       return;
     }
 
@@ -115,12 +116,16 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
       }
 
       await updateMemberProfile(member.member_id, formData);
+      // const { achievements } = response.data; // 이제 인터셉터에서 처리함
+
       setIsEditing(false);
       if (onRefresh) onRefresh();
-      alert('프로필이 수정되었습니다.');
+      
+      toast.success('프로필이 수정되었습니다.');
+
     } catch (error) {
       console.error('프로필 수정 실패:', error);
-      alert('프로필 수정에 실패했습니다.');
+      toast.error('프로필 수정에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
