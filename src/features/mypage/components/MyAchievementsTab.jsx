@@ -7,6 +7,7 @@ const MyAchievementsTab = () => {
   const { user, isLoggedIn } = useAuthStore();
   const [achievementData, setAchievementData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState('all'); // 'all' | 'unachieved'
 
   useEffect(() => {
     const fetchAchievements = async () => {
@@ -49,6 +50,12 @@ const MyAchievementsTab = () => {
   }
 
   const { userGrowth, summary, achievements } = achievementData;
+
+  // 필터링된 업적 목록
+  const filteredAchievements = achievements.filter(ach => {
+    if (filter === 'all') return true;
+    return ach.IS_ACHIEVED !== 'Y';
+  });
 
   // 날짜 포맷팅 함수 추가
   const formatDate = (dateStr) => {
@@ -118,11 +125,37 @@ const MyAchievementsTab = () => {
 
       {/* Achievement List */}
       <section className="space-y-6">
-        <h2 className="text-xl font-black text-gray-800 flex items-center gap-2 px-2">
-          🏆 전체 업적 목록
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">
+          <h2 className="text-xl font-black text-gray-800 flex items-center gap-2">
+            🏆 전체 업적 목록
+          </h2>
+          
+          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-2xl w-fit">
+            <button 
+              onClick={() => setFilter('all')}
+              className={`px-4 py-1.5 text-xs font-black rounded-xl transition-all ${
+                filter === 'all' 
+                ? 'bg-white text-purple-600 shadow-sm' 
+                : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              전체보기
+            </button>
+            <button 
+              onClick={() => setFilter('unachieved')}
+              className={`px-4 py-1.5 text-xs font-black rounded-xl transition-all ${
+                filter === 'unachieved' 
+                ? 'bg-white text-purple-600 shadow-sm' 
+                : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              미달성만 보기
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          {achievements.map((ach, idx) => {
+          {filteredAchievements.map((ach, idx) => {
             const isCompleted = ach.IS_ACHIEVED === 'Y';
             const progress = ach.CURRENT_COUNT || 0;
             const goal = ach.CONDITION_COUNT || 1;
