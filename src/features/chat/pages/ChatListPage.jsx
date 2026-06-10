@@ -8,7 +8,21 @@ import CommunitySidebar from '../../community/components/CommunitySidebar';
 const ChatListPage = () => {
   const openFloatingChat = useChatStore(state => state.openFloatingChat);
   const [selectedChatId, setSelectedChatId] = useState(null);
+  const [displayChatId, setDisplayChatId] = useState(null);
   const [message, setMessage] = useState('');
+  
+  // Update displayChatId with a delay when closing to allow for animation
+  useEffect(() => {
+    if (selectedChatId) {
+      setDisplayChatId(selectedChatId);
+    } else {
+      const timer = setTimeout(() => {
+        setDisplayChatId(null);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedChatId]);
+
   const [showParticipants, setShowParticipants] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
@@ -68,13 +82,13 @@ const ChatListPage = () => {
     setMessage('');
   };
 
-  const selectedChat = chatRooms.find(c => c.id === selectedChatId);
+  const selectedChat = chatRooms.find(c => c.id === (selectedChatId || displayChatId));
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, selectedChatId]);
+  }, [messages, selectedChatId, displayChatId]);
 
   const customScrollbarClass = "[&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-300";
   const scrollbarHideClass = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]";
@@ -101,33 +115,36 @@ const ChatListPage = () => {
                 customScrollbarClass={customScrollbarClass}
               />
 
-              {selectedChatId && (
-                <div className="hidden md:flex flex-grow min-w-0 bg-[#F8F9FF] relative overflow-hidden">
-                  <ChatWindow 
-                    selectedChat={selectedChat}
-                    setSelectedChatId={setSelectedChatId}
-                    openFloatingChat={openFloatingChat}
-                    toggleSidebar={toggleSidebar}
-                    showParticipants={showParticipants}
-                    messages={messages}
-                    setMessages={setMessages}
-                    scrollRef={scrollRef}
-                    scrollbarHideClass={scrollbarHideClass}
-                    message={message}
-                    setMessage={setMessage}
-                    handleSendMessage={handleSendMessage}
-                  />
+              <div className={`hidden md:flex flex-grow min-w-0 bg-[#F8F9FF] relative overflow-hidden transition-all duration-500 ease-in-out ${selectedChatId ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+                   style={{ flexGrow: selectedChatId ? 1 : 0.00001, minWidth: selectedChatId ? '0' : '0', width: selectedChatId ? 'auto' : '0' }}>
+                {selectedChat && (
+                  <div className="w-full h-full flex">
+                    <ChatWindow 
+                      selectedChat={selectedChat}
+                      setSelectedChatId={setSelectedChatId}
+                      openFloatingChat={openFloatingChat}
+                      toggleSidebar={toggleSidebar}
+                      showParticipants={showParticipants}
+                      messages={messages}
+                      setMessages={setMessages}
+                      scrollRef={scrollRef}
+                      scrollbarHideClass={scrollbarHideClass}
+                      message={message}
+                      setMessage={setMessage}
+                      handleSendMessage={handleSendMessage}
+                    />
 
-                  <ChatDetails 
-                    showParticipants={showParticipants}
-                    showDetails={showDetails}
-                    participants={participants}
-                    selectedChat={selectedChat}
-                    customScrollbarClass={customScrollbarClass}
-                    toggleSidebar={toggleSidebar}
-                  />
-                </div>
-              )}
+                    <ChatDetails 
+                      showParticipants={showParticipants}
+                      showDetails={showDetails}
+                      participants={participants}
+                      selectedChat={selectedChat}
+                      customScrollbarClass={customScrollbarClass}
+                      toggleSidebar={toggleSidebar}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </main>
         </div>

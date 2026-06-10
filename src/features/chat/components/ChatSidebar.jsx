@@ -11,7 +11,7 @@ const ChatSidebar = ({
   customScrollbarClass
 }) => {
   return (
-    <aside className={`flex flex-col bg-white z-20 overflow-y-auto transition-all duration-300 ${customScrollbarClass} ${selectedChatId ? 'w-full md:w-64 lg:w-72 border-r border-gray-100' : 'flex-grow w-full'}`}>
+    <aside className={`flex flex-col bg-white z-20 overflow-y-auto transition-all duration-500 ${customScrollbarClass} ${selectedChatId ? 'w-full md:w-64 lg:w-72 border-r border-gray-100' : 'flex-grow w-full'}`}>
       <div className="p-6 border-b border-gray-100">
         <h1 className="text-2xl font-black text-gray-900 mb-6 flex items-center gap-2">
           <MessageCircle className="w-6 h-6 text-purple-600" />
@@ -42,7 +42,7 @@ const ChatSidebar = ({
                 {chatRooms.filter(c => c.type === section.id).map((chat) => (
                   <button 
                     key={chat.id} 
-                    onClick={() => setSelectedChatId(chat.id)} 
+                    onClick={() => setSelectedChatId(selectedChatId === chat.id ? null : chat.id)} 
                     className={`w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition-all border-l-4 ${selectedChatId === chat.id ? 'bg-purple-50/50 border-purple-600' : 'border-transparent'}`}
                   >
                     <div className="relative flex-shrink-0">
