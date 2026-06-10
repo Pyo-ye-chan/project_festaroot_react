@@ -14,10 +14,10 @@ const Home = () => {
   const handleTestNotification = () => {
     notifyAchievements([
       {
-        title: "새 옷 입기",
-        desc: "마이페이지에서 프로필 사진을 등록하세요.",
-        expReward: 30,
-        leveledUp: true
+        ach_title: "새 옷 입기",
+        ach_desc: "마이페이지에서 프로필 사진을 등록하세요.",
+        exp_reward: 30,
+        leveled_up: true
       }
     ]);
   };

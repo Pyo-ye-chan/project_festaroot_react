@@ -19,12 +19,12 @@ export const notifyAchievements = (achievements) => {
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none mb-1">New Achievement</span>
-              <span className="text-sm font-black text-gray-800 leading-tight">{ach.title}</span>
+              <span className="text-sm font-black text-gray-800 leading-tight">{ach.ach_title}</span>
             </div>
           </div>
           
           <div className="bg-gray-50/80 backdrop-blur-sm rounded-xl p-3 border border-gray-100/50 mb-2">
-            <p className="text-xs text-gray-500 font-bold leading-relaxed">{ach.desc}</p>
+            <p className="text-xs text-gray-500 font-bold leading-relaxed">{ach.ach_desc}</p>
           </div>
           
           <div className="flex items-center justify-between px-1">
@@ -33,7 +33,7 @@ export const notifyAchievements = (achievements) => {
               <span className="text-[10px] font-black text-purple-600 uppercase tracking-tighter">Experience Reward</span>
             </div>
             <div className="bg-purple-600 px-2 py-0.5 rounded-md shadow-lg shadow-purple-100">
-              <span className="text-[11px] font-black text-white">+{ach.expReward} EXP</span>
+              <span className="text-[11px] font-black text-white">+{ach.exp_reward} EXP</span>
             </div>
           </div>
         </div>,
@@ -47,7 +47,7 @@ export const notifyAchievements = (achievements) => {
       );
 
       // 레벨업 알림
-      if (ach.leveledUp) {
+      if (ach.leveled_up) {
         setTimeout(() => {
           toast.info(
             <div className="flex flex-col p-1 min-w-[280px]">
