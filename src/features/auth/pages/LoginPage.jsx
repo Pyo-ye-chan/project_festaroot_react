@@ -66,9 +66,9 @@ const LoginPage = () => {
       }
 
       if (data.token) {
-        localStorage.setItem('token', data.token);
+        
 
-        console.log(data.token);
+        
 
         setAuthLogin(data.token, {
           member_id: data.member_id,

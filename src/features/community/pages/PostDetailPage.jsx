@@ -10,7 +10,8 @@ import {
   Send,
   User,
   Trash2,
-  Edit3
+  Edit3,
+  Download // Added for attachments
 } from 'lucide-react';
 
 const PostDetailPage = () => {
@@ -39,7 +40,12 @@ const PostDetailPage = () => {
 
 다음에 또 기회가 된다면 다시 방문하고 싶네요. 
 축제 정보 공유해주신 분들 모두 감사합니다!`,
-    images: ['https://picsum.photos/seed/post1/800/500']
+    images: ['https://picsum.photos/seed/post1/800/500'],
+    attachments: [
+      { name: '축제_일정표.pdf', url: '/mock-files/festival_schedule.pdf' },
+      { name: '축제_지도.jpg', url: '/mock-files/festival_map.jpg' },
+      { name: '참가신청서.hwp', url: '/mock-files/application_form.hwp' },
+    ]
   };
 
   const [comments, setComments] = useState([
@@ -153,6 +159,25 @@ const PostDetailPage = () => {
                 <img src={img} alt="Post content" className="w-full h-auto" />
               </div>
             ))}
+
+            {post.attachments && post.attachments.length > 0 && (
+              <div className="mt-8 pt-8 border-t border-gray-50">
+                <h3 className="text-xl font-black text-gray-800 mb-4">첨부 파일</h3>
+                <div className="space-y-3">
+                  {post.attachments.map((file, index) => (
+                    <a 
+                      key={index} 
+                      href={file.url} 
+                      download 
+                      className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors group"
+                    >
+                      <Download className="w-5 h-5 text-gray-500 group-hover:text-[var(--festival-purple)]" />
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{file.name}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex flex-wrap items-center justify-between gap-4 mt-12 pt-8 border-t border-gray-50">
