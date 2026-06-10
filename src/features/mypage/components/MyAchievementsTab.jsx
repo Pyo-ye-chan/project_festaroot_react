@@ -50,6 +50,18 @@ const MyAchievementsTab = () => {
 
   const { userGrowth, summary, achievements } = achievementData;
 
+  // 날짜 포맷팅 함수 추가
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}.${month}.${day} ${hours}:${minutes}`;
+  };
+
   return (
     <div className="space-y-8 sm:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header & Growth Dashboard */}
@@ -138,7 +150,7 @@ const MyAchievementsTab = () => {
                       {isCompleted ? 'Completed' : 'In Progress'}
                     </span>
                     {ach.ACHIEVED_DATE && (
-                      <p className="mt-2 text-[10px] font-bold text-gray-400">{ach.ACHIEVED_DATE}</p>
+                      <p className="mt-2 text-[10px] font-bold text-gray-400">{formatDate(ach.ACHIEVED_DATE)}</p>
                     )}
                   </div>
                 </div>

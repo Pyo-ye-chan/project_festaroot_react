@@ -7,10 +7,32 @@ import TopFestivalsByRegion from '../components/TopFestivalsByRegion';
 import FestivalList from '../components/FestivalList';
 import OngoingFestivals from '../components/OngoingFestivals';
 import PopularPosts from '../components/PopularPosts';
+import { notifyAchievements } from '../../../api/notificationUtils.jsx';
 
 const Home = () => {
+  // 테스트용 알림 호출 함수
+  const handleTestNotification = () => {
+    notifyAchievements([
+      {
+        title: "새 옷 입기",
+        desc: "마이페이지에서 프로필 사진을 등록하세요.",
+        expReward: 30,
+        leveledUp: true
+      }
+    ]);
+  };
+
   return (
-    <div className="space-y-12 pb-20 bg-gray-50/30">
+    <div className="space-y-12 pb-20 bg-gray-50/30 relative">
+      {/* 개발용 테스트 버튼 */}
+      <button 
+        onClick={handleTestNotification}
+        className="fixed bottom-24 right-8 z-50 bg-white border-2 border-purple-500 text-purple-600 px-4 py-2 rounded-full font-black text-xs shadow-xl hover:bg-purple-500 hover:text-white transition-all transform hover:scale-110 flex items-center gap-2 group"
+      >
+        <span className="group-hover:animate-spin">⚙️</span>
+        Test Alert
+      </button>
+
       <Hero />
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
