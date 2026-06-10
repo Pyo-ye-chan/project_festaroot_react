@@ -7,6 +7,20 @@ const festivalService = {
   /**
    * DB에 저장된 모든 축제 목록을 가져옵니다.
    */
+
+
+   getAllFestivals: async () => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/map`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching festivals:', error);
+      throw error;
+    }
+  },
+
+
+
   getFestivals: async (params) => {
     try {
       const response = await maxios.get(BASE_PATH, { params });
@@ -74,6 +88,77 @@ const festivalService = {
     }
   },
 
+
+  // 조회수 1씩 증가
+  increaseViewCount(contentId) {
+    return maxios.put(`${BASE_PATH}/${contentId}/view-count`);
+  },
+
+  // 로그인한 유저의 찜 목록 조회
+  getMyFestivalLikedIds: async (userId) => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/likeList`, { headers: { 'user-id': userId } });
+      return response.data; // 백엔드가 준 { likedFestivalIds: [...] }를 리턴
+    } catch (error) {
+      console.error('Error fetching my liked festival IDs:', error);
+      throw error;
+    }
+  },
+
+  // 축제 찜하기 토글
+  toggleFestivalLike: async (contentId) => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      const userId = user?.userId || user?.id || user?.member_id;
+
+      if (!userId) {
+        throw new Error('로그인이 필요한 서비스이거나 유저 정보를 찾을 수 없습니다.');
+      }
+
+      const response = await maxios.post(`${BASE_PATH}/likeToggle`,
+        { contentId: Number(contentId) },
+        { headers: { 'user-id': userId } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error toggling festival like:', error);
+      throw error;
+    }
+  },
+
+  // 홈 > 지역별 인기 축제 TOP 3 조회
+  getTopFestivals: async (regionName) => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/top`, { params: { regionName } }); // region : 서울특별시
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching top festivals for ${region}:`, error);
+      throw error;
+    }
+  },
+
+  // 홈 > 종료 임박 축제 조회
+  getClosingSoonFestivals: async () => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/closing-soon`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching closing soon festivals:', error);
+      throw error;
+    }
+  },
+
+  // 홈 > 랜덤 축체 추천
+  getRandomFestival: async () => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/random`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching random festival:', error);
+      throw error;
+    }
+  },
+
   getNearbyPlaces: async (lat, lng, radius = 5000, contentTypeId = '') => {
   try {
     const response = await maxios.get(`${BASE_PATH}/nearby`, {
@@ -89,7 +174,7 @@ const festivalService = {
     console.error('Error fetching nearby places:', error);
     throw error;
   }
-},
+}
 
 };
 

@@ -42,6 +42,18 @@ const useMapStore = create((set, get) => ({
 
   // Actions
   
+
+  fetchAllFestivals: async () => {
+    set({ isLoading: true });
+    try {
+      const data = await festivalService.getAllFestivals();
+      set({ festivals: data, isLoading: false });
+    } catch (error) {
+      set({ error: error.message, isLoading: false });
+    }
+  },
+
+
   // 1. 백엔드에서 축제 목록 가져오기
   fetchFestivals: async () => {
     set({ isLoading: true });

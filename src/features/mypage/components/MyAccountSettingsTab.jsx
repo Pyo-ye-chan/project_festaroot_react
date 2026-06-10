@@ -1,6 +1,9 @@
 import React from 'react';
 
-const MyAccountSettingsTab = ({ user }) => {
+const MyAccountSettingsTab = ({ userDetails }) => {
+  if (!userDetails) return null;
+  const { member } = userDetails;
+
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
       <header className="px-2 sm:px-0">
@@ -20,7 +23,7 @@ const MyAccountSettingsTab = ({ user }) => {
               <label className="text-xs font-black text-gray-400 uppercase ml-1">닉네임</label>
               <input 
                 type="text" 
-                defaultValue={user.nickname}
+                defaultValue={member.nickname}
                 className="w-full bg-gray-50 border-none rounded-2xl px-4 py-3.5 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-purple-500 outline-none transition-all"
               />
             </div>
@@ -28,7 +31,7 @@ const MyAccountSettingsTab = ({ user }) => {
               <label className="text-xs font-black text-gray-400 uppercase ml-1">이메일 주소</label>
               <input 
                 type="email" 
-                defaultValue={user.email}
+                defaultValue={member.email}
                 disabled
                 className="w-full bg-gray-100 border-none rounded-2xl px-4 py-3.5 text-sm font-bold text-gray-400 cursor-not-allowed outline-none"
               />

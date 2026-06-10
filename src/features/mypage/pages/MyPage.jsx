@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MyPageSidebar from '../components/MyPageSidebar';
 import MyProfileTab from '../components/MyProfileTab';
 import MyAchievementsTab from '../components/MyAchievementsTab';
@@ -8,51 +8,62 @@ import MyInquiryTab from '../components/MyInquiryTab';
 import MySavedPlansTab from '../components/MySavedPlansTab';
 import MyAccountSettingsTab from '../components/MyAccountSettingsTab';
 import MyNotificationsTab from '../components/MyNotificationsTab';
+import useAuthStore from '../../../store/useAuthStore';
+import { getMemberProfile } from '../../../api/memberApi';
 
 const MyPage = () => {
+  const { user, isLoggedIn } = useAuthStore();
   const [activeTab, setActiveTab] = useState('profile');
+  const [userDetails, setUserDetails] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Hardcoded data for demonstration
-  const user = {
-    nickname: '축제요정',
-    email: 'festival_lover@example.com',
-    joinDate: '2024.01.15',
-    profileImg: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-    level: 3,
-    rank: '축제 마스터',
-    currentExp: 450,
-    nextLevelExp: 600,
-    interests: {
-      regions: ['서울', '강원', '제주'],
-      themes: ['전통문화', 'K-POP', '불꽃놀이', '지역맛집']
-    },
-    stats: {
-      posts: 12,
-      comments: 45,
-      likes: 8
+  const fetchUserData = async () => {
+    setIsLoading(true);
+    try {
+      const userId = user.member_id || user.id;
+      const resp = await getMemberProfile(userId);
+      setUserDetails(resp.data);
+    } catch (error) {
+      console.error('마이페이지 데이터 로드 실패:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (isLoggedIn && (user?.member_id || user?.id)) {
+      fetchUserData();
+    }
+  }, [isLoggedIn, user?.member_id, user?.id]);
+
   const renderTabContent = () => {
+    if (isLoading && !userDetails) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'profile':
-        return <MyProfileTab user={user} />;
+        return <MyProfileTab userDetails={userDetails} onRefresh={fetchUserData} />;
       case 'achievements':
         return <MyAchievementsTab />;
       case 'posts':
-        return <MyPostsTab postsCount={user.stats.posts} />;
+        return <MyPostsTab postsCount={0} />;
       case 'saved-plans':
         return <MySavedPlansTab />;
       case 'likes':
-        return <MyLikedFestivalsTab likesCount={user.stats.likes} />;
+        return <MyLikedFestivalsTab userDetails={userDetails} onRefresh={fetchUserData} />;
       case 'inquiry':
         return <MyInquiryTab />;
       case 'account':
-        return <MyAccountSettingsTab user={user} />;
+        return <MyAccountSettingsTab userDetails={userDetails} />;
       case 'notifications':
         return <MyNotificationsTab />;
       default:
-        return <MyProfileTab user={user} />;
+        return <MyProfileTab userDetails={userDetails} onRefresh={fetchUserData} />;
     }
   };
 
