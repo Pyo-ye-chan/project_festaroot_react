@@ -10,78 +10,83 @@ import {
   Search,
   MessageSquare,
   LayoutGrid,
-  Info
+  Info,
+  Flame,
+  ArrowRight,
+  Filter
 } from 'lucide-react';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
-import CreateGatheringModal from '../../community/components/CreateGatheringModal';
+import CreateGatheringModal from '../components/CreateGatheringModal';
 
 const GatheringPage = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('전체 모임');
   const [keyword, setKeyword] = useState('');
+  
+  // 참여중인 모임 전용 필터 (전체, 축제, 자유)
+  const [joinedFilter, setJoinedFilter] = useState('전체');
 
   const categories = ['전체 모임', '축제별 모임', '자유 모임', '참여중인 모임'];
 
-  // 축제별 모임 (시스템 제공 - 축제당 하나씩 고정된 채팅방/모임)
   const festivalRooms = [
     { 
       id: 101, 
       type: 'festival',
       festivalName: '부산 록 페스티벌', 
-      title: '부산 록 페스티벌 공식 오픈 채팅방', 
+      title: '부산 록 페스티벌 공식 채팅방', 
       location: '부산 삼락생태공원', 
       date: '2026.08.10 - 08.12',
       current: 156, 
       max: 500,
-      image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=200',
-      isJoined: true
+      image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300',
+      isJoined: true,
+      joinedAt: '2026-06-01'
     },
     { 
       id: 102, 
       type: 'festival',
       festivalName: '태안 세계 튤립 축제', 
-      title: '태안 튤립 축제 정보 공유 및 메이트 찾기', 
+      title: '튤립 축제 메이트 찾기', 
       location: '태안 코리아플라워파크', 
       date: '2026.04.10 - 05.10',
       current: 84, 
       max: 200,
-      image: 'https://images.unsplash.com/photo-1554123168-b400f9c806ca?auto=format&fit=crop&q=80&w=200',
+      image: 'https://images.unsplash.com/photo-1554123168-b400f9c806ca?auto=format&fit=crop&q=80&w=300',
       isJoined: false
     },
     { 
       id: 103, 
       type: 'festival',
       festivalName: '서울 재즈 페스티벌', 
-      title: '서재페 라인업 공유 및 동행 모집방', 
+      title: '서재페 동행 모집방', 
       location: '서울 올림픽공원', 
       date: '2026.05.28 - 05.30',
       current: 243, 
       max: 1000,
-      image: 'https://images.unsplash.com/photo-1514525253361-bee8a19744c1?auto=format&fit=crop&q=80&w=200',
-      isJoined: false
+      image: 'https://images.unsplash.com/photo-1514525253361-bee8a19744c1?auto=format&fit=crop&q=80&w=300',
+      isJoined: true,
+      joinedAt: '2026-06-05'
     },
   ];
 
-  // 자유 모임 (사용자 생성)
   const freeGatherings = [
     { 
       id: 1, 
       type: 'free',
-      title: '이번 주말 한강 치맥 파티 하실 분?! 🍗🍺', 
+      title: '한강 치맥 파티 🍗🍺', 
       date: '2026.06.15', 
-      location: '반포 한강공원', 
       current: 7, 
       max: 10,
       creator: { name: '치킨마스터', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Max' },
-      isJoined: true
+      isJoined: true,
+      joinedAt: '2026-06-03'
     },
     { 
       id: 2, 
       type: 'free',
-      title: '보드게임 동호회 멤버 모집합니다 🎲', 
+      title: '보드게임 동호회 🎲', 
       date: '2026.06.20', 
-      location: '강남역 인근', 
       current: 3, 
       max: 6,
       creator: { name: '게임광', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zoe' },
@@ -90,13 +95,23 @@ const GatheringPage = () => {
     { 
       id: 3, 
       type: 'free',
-      title: '경복궁 야간개장 사진 같이 찍어요 🏯', 
+      title: '경복궁 야간개장 출사 🏯', 
       date: '2026.06.18', 
-      location: '서울 경복궁', 
       current: 2, 
       max: 4,
       creator: { name: '셔터보이', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' },
       isJoined: false
+    },
+    { 
+      id: 4, 
+      type: 'free',
+      title: '남산 둘레길 산책 🏃‍♂️', 
+      date: '2026.06.22', 
+      current: 5, 
+      max: 8,
+      creator: { name: '산들바람', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Lily' },
+      isJoined: true,
+      joinedAt: '2026-06-07'
     },
   ];
 
@@ -105,57 +120,137 @@ const GatheringPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const GatheringItem = ({ item, isFestival }) => (
+  // --- Grid View Components ---
+  const FestivalGridCard = ({ item }) => (
     <Link 
       to={`/community/gathering/${item.id}`}
-      className="flex items-center gap-4 py-3 px-6 hover:bg-gray-50 transition-all group border-b border-gray-50 last:border-none"
+      className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl hover:shadow-purple-100/50 transition-all flex flex-col"
     >
-      {isFestival ? (
-        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100">
-          <img src={item.image} alt={item.festivalName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+      <div className="relative h-32 overflow-hidden">
+        <img src={item.image} alt={item.festivalName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+        <div className="absolute bottom-3 left-4">
+          <span className="text-[10px] font-black text-white bg-purple-600 px-2 py-0.5 rounded-md uppercase tracking-wider">
+            Official
+          </span>
+          <h4 className="text-white font-black text-sm mt-1">{item.festivalName}</h4>
         </div>
-      ) : (
-        <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 border-white shadow-sm">
-          <img src={item.creator.avatar} alt={item.creator.name} className="w-full h-full object-cover" />
+      </div>
+      <div className="p-4 flex flex-col flex-grow">
+        <h5 className="font-bold text-gray-900 text-sm mb-3 line-clamp-1 group-hover:text-[var(--festival-purple)] transition-colors">
+          {item.title}
+        </h5>
+        <div className="mt-auto space-y-1.5">
+          <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
+            <MapPin className="w-3 h-3" /> {item.location}
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400">
+              <CalendarDays className="w-3 h-3" /> {item.date}
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-black text-purple-600">
+              <Users className="w-3 h-3" /> {item.current}/{item.max}
+            </div>
+          </div>
         </div>
-      )}
+      </div>
+    </Link>
+  );
+
+  const FreeGridCard = ({ item }) => (
+    <Link 
+      to={`/community/gathering/${item.id}`}
+      className="group bg-white rounded-2xl p-4 border border-gray-100 hover:shadow-xl hover:shadow-blue-100/50 transition-all flex items-center gap-3"
+    >
+      <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border-2 border-white shadow-sm">
+        <img src={item.creator.avatar} alt={item.creator.name} className="w-full h-full object-cover" />
+      </div>
+      <div className="flex-grow min-w-0">
+        <h5 className="font-bold text-gray-900 text-sm truncate group-hover:text-blue-600 transition-colors">
+          {item.title}
+        </h5>
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-[10px] font-bold text-gray-400">{item.date}</span>
+          <div className="flex items-center gap-1 text-[10px] font-black text-blue-600">
+            <Users className="w-3 h-3" /> {item.current}/{item.max}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+
+  // --- List View Component ---
+  const GatheringListItem = ({ item, isFestival, showTypeBadge = false }) => (
+    <Link 
+      to={`/community/gathering/${item.id}`}
+      className="flex items-center gap-4 py-4 px-6 hover:bg-gray-50 transition-all group border-b border-gray-50 last:border-none"
+    >
+      <div className="w-14 h-14 flex-shrink-0 flex items-center justify-center">
+        {isFestival ? (
+          <div className="w-14 h-14 rounded-xl overflow-hidden border border-gray-100">
+            <img src={item.image} alt={item.festivalName} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+          </div>
+        ) : (
+          <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-white shadow-sm">
+            <img src={item.creator.avatar} alt={item.creator.name} className="w-full h-full object-cover" />
+          </div>
+        )}
+      </div>
 
       <div className="flex-grow min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          {isFestival && (
-            <span className="text-[9px] font-black text-[var(--festival-purple)] bg-purple-50 px-1.5 py-0.5 rounded">
-              {item.festivalName}
+        <div className="flex items-center gap-2 mb-1">
+          {showTypeBadge && (
+            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${
+              isFestival ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
+            }`}>
+              {isFestival ? 'Festival' : 'Free'}
             </span>
           )}
-          {!isFestival && (
+          {isFestival ? (
+            activeTab !== '참여중인 모임' && (
+              <span className="text-[10px] font-black text-[var(--festival-purple)] bg-purple-50 px-2 py-0.5 rounded-md">
+                {item.festivalName}
+              </span>
+            )
+          ) : (
             <span className="text-[10px] font-black text-gray-400">
               {item.creator.name}
             </span>
           )}
         </div>
-        <h4 className="font-bold text-gray-800 truncate group-hover:text-[var(--festival-purple)] transition-colors text-sm md:text-base">
+        <h4 className="font-bold text-gray-900 truncate group-hover:text-[var(--festival-purple)] transition-colors text-base">
           {item.title}
         </h4>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+        <div className="flex items-center gap-4 mt-1.5">
           {isFestival && (
-            <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400">
-              <MapPin className="w-3 h-3" /> {item.location}
+            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
+              <MapPin className="w-3.5 h-3.5" /> {item.location}
             </div>
           )}
-          {item.date && (
-            <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400">
-              <CalendarDays className="w-3 h-3" /> {item.date}
-            </div>
-          )}
-          <div className="flex items-center gap-1 text-[10px] font-black text-purple-600">
-            <Users className="w-3 h-3" /> {item.current}/{item.max}명
+          <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
+            <CalendarDays className="w-3.5 h-3.5" /> {item.date}
+          </div>
+          <div className="flex items-center gap-1 text-[11px] font-black text-purple-600">
+            <Users className="w-3.5 h-3.5" /> {item.current}/{item.max}명
           </div>
         </div>
       </div>
 
-      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[var(--festival-purple)] group-hover:translate-x-1 transition-all flex-shrink-0" />
+      <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-[var(--festival-purple)] group-hover:translate-x-1 transition-all flex-shrink-0" />
     </Link>
   );
+
+  // 참여중인 모임 필터링 로직
+  const getJoinedItems = () => {
+    let combined = [...festivalRooms, ...freeGatherings].filter(item => item.isJoined);
+    
+    // 참여한 순서대로 정렬 (joinedAt 기준)
+    combined.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
+
+    if (joinedFilter === '축제별 모임') return combined.filter(i => i.type === 'festival');
+    if (joinedFilter === '자유 모임') return combined.filter(i => i.type === 'free');
+    return combined; // '전체'
+  };
 
   return (
     <div className="min-h-screen bg-[var(--warm-white)] font-['Pretendard'] pb-20">
@@ -170,7 +265,7 @@ const GatheringPage = () => {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
                 <h2 className="text-4xl font-black text-gray-900 mb-2">모임</h2>
-                <p className="text-gray-500 font-medium">축제 정보 공유부터 번개 모임까지, 다양한 메이트를 만나보세요.</p>
+                <p className="text-gray-500 font-medium">다양한 축제 메이트와 소통을 시작해보세요.</p>
               </div>
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -187,7 +282,7 @@ const GatheringPage = () => {
                 {categories.map(cat => (
                   <button
                     key={cat}
-                    onClick={() => setActiveTab(cat)}
+                    onClick={() => handleTabChange(cat)}
                     className={`px-6 py-3 rounded-2xl font-black text-sm transition-all whitespace-nowrap ${
                       activeTab === cat 
                       ? 'bg-[var(--festival-purple)] text-white shadow-lg shadow-purple-100' 
@@ -210,94 +305,140 @@ const GatheringPage = () => {
               </div>
             </div>
 
-            {/* Grouped Content */}
-            <div className="space-y-10">
+            {/* Content Areas */}
+            <div className="grid grid-cols-1 gap-10">
               
               {/* 축제별 모임 섹션 */}
               {(activeTab === '전체 모임' || activeTab === '축제별 모임') && (
-                <section className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-                  <div className="p-8 border-b border-gray-50 flex items-center justify-between bg-gradient-to-r from-purple-50/50 to-transparent">
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className={`flex items-center justify-between p-8 ${activeTab === '전체 모임' ? 'pb-4' : 'border-b border-gray-50'}`}>
                     <div className="flex items-center gap-3">
                       <div className="p-3 bg-purple-100 rounded-2xl text-[var(--festival-purple)]">
                         <Sparkles className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-gray-900">축제별 모임</h3>
-                        <p className="text-sm text-gray-500 font-medium">축제 공식 정보를 공유하고 함께할 메이트를 찾으세요.</p>
+                        <h3 className="text-xl font-black text-gray-900">축제별 공식 모임</h3>
+                        {activeTab === '축제별 모임' && (
+                          <p className="text-xs text-gray-400 font-medium mt-1">
+                            축제 정보에 관심이 있다면, 모임에 참여해 채팅방으로 대화를 나눠보세요!
+                          </p>
+                        )}
                       </div>
                     </div>
                     {activeTab === '전체 모임' && (
                       <button 
                         onClick={() => handleTabChange('축제별 모임')}
-                        className="flex items-center gap-1 text-sm font-black text-gray-400 hover:text-[var(--festival-purple)] transition-colors group"
+                        className="text-xs font-black text-gray-400 hover:text-[var(--festival-purple)] flex items-center gap-1 group"
                       >
-                        더보기 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        더보기 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       </button>
                     )}
                   </div>
-                  <div className="divide-y divide-gray-50">
-                    {festivalRooms.slice(0, activeTab === '전체 모임' ? 3 : festivalRooms.length).map(room => (
-                      <GatheringItem key={room.id} item={room} isFestival={true} />
-                    ))}
-                  </div>
+                  
+                  {activeTab === '전체 모임' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-8 pt-4">
+                      {festivalRooms.slice(0, 3).map(room => (
+                        <FestivalGridCard key={room.id} item={room} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-50">
+                      {festivalRooms.map(room => (
+                        <GatheringListItem key={room.id} item={room} isFestival={true} />
+                      ))}
+                    </div>
+                  )}
                 </section>
               )}
 
               {/* 자유 모임 섹션 */}
               {(activeTab === '전체 모임' || activeTab === '자유 모임') && (
-                <section className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-                  <div className="p-8 border-b border-gray-50 flex items-center justify-between bg-gradient-to-r from-blue-50/50 to-transparent">
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className={`flex items-center justify-between p-8 ${activeTab === '전체 모임' ? 'pb-4' : 'border-b border-gray-50'}`}>
                     <div className="flex items-center gap-3">
                       <div className="p-3 bg-blue-100 rounded-2xl text-blue-600">
                         <Users className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-gray-900">자유 모임</h3>
-                        <p className="text-sm text-gray-500 font-medium">관심사가 비슷한 사람들끼리 자유롭게 모여보세요.</p>
+                        <h3 className="text-xl font-black text-gray-900">자유 친목 모임</h3>
+                        {activeTab === '자유 모임' && (
+                          <p className="text-xs text-gray-400 font-medium mt-1">
+                            관심사가 비슷한 사람들을 찾아 자유롭게 소통하고 축제 메이트가 되어보세요!
+                          </p>
+                        )}
                       </div>
                     </div>
                     {activeTab === '전체 모임' && (
                       <button 
                         onClick={() => handleTabChange('자유 모임')}
-                        className="flex items-center gap-1 text-sm font-black text-gray-400 hover:text-blue-600 transition-colors group"
+                        className="text-xs font-black text-gray-400 hover:text-blue-600 flex items-center gap-1 group"
                       >
-                        더보기 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        더보기 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       </button>
                     )}
                   </div>
-                  <div className="divide-y divide-gray-50">
-                    {freeGatherings.slice(0, activeTab === '전체 모임' ? 3 : freeGatherings.length).map(gathering => (
-                      <GatheringItem key={gathering.id} item={gathering} isFestival={false} />
-                    ))}
-                  </div>
+
+                  {activeTab === '전체 모임' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-8 pt-4">
+                      {freeGatherings.slice(0, 4).map(gathering => (
+                        <FreeGridCard key={gathering.id} item={gathering} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-50">
+                      {freeGatherings.map(gathering => (
+                        <GatheringListItem key={gathering.id} item={gathering} isFestival={false} />
+                      ))}
+                    </div>
+                  )}
                 </section>
               )}
 
               {/* 참여중인 모임 섹션 */}
               {activeTab === '참여중인 모임' && (
-                <section className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-                  <div className="p-8 border-b border-gray-50 bg-gradient-to-r from-rose-50/50 to-transparent">
+                <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="p-8 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <div className="p-3 bg-rose-100 rounded-2xl text-rose-500">
                         <LayoutGrid className="w-6 h-6" />
                       </div>
-                      <div>
-                        <h3 className="text-xl font-black text-gray-900">참여중인 모임</h3>
-                        <p className="text-sm text-gray-500 font-medium">내가 현재 참여하고 있는 모임 목록입니다.</p>
-                      </div>
+                      <h3 className="text-xl font-black text-gray-900">참여중인 모임</h3>
+                    </div>
+                    
+                    {/* 토글 필터 */}
+                    <div className="flex p-1 bg-gray-50 rounded-xl border border-gray-100 self-start md:self-auto">
+                      {['전체', '축제별 모임', '자유 모임'].map(filter => (
+                        <button
+                          key={filter}
+                          onClick={() => setJoinedFilter(filter)}
+                          className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                            joinedFilter === filter 
+                            ? 'bg-white text-gray-900 shadow-sm' 
+                            : 'text-gray-400 hover:text-gray-600'
+                          }`}
+                        >
+                          {filter}
+                        </button>
+                      ))}
                     </div>
                   </div>
+                  
                   <div className="divide-y divide-gray-50">
-                    {[...festivalRooms, ...freeGatherings].filter(i => i.isJoined).map(item => (
-                      <GatheringItem key={item.id} item={item} isFestival={item.type === 'festival'} />
+                    {getJoinedItems().map(item => (
+                      <GatheringListItem 
+                        key={item.id} 
+                        item={item} 
+                        isFestival={item.type === 'festival'} 
+                        showTypeBadge={true} 
+                      />
                     ))}
+                    {getJoinedItems().length === 0 && (
+                      <div className="py-20 text-center">
+                        <Info className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                        <p className="text-gray-400 font-black">해당하는 참여 모임이 없습니다.</p>
+                      </div>
+                    )}
                   </div>
-                  {[...festivalRooms, ...freeGatherings].filter(i => i.isJoined).length === 0 && (
-                    <div className="p-20 text-center">
-                      <Info className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                      <p className="text-gray-400 font-black">아직 참여 중인 모임이 없습니다.</p>
-                    </div>
-                  )}
                 </section>
               )}
             </div>
