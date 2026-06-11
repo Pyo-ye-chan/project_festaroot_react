@@ -47,14 +47,15 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
         {item.room_title}
       </h4>
       <div className="flex items-center gap-4 mt-1.5">
-        {isFestival && (
-          <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
-            <MapPin className="w-3.5 h-3.5" /> {item.free_location}
+        <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
+          <CalendarDays className="w-3.5 h-3.5" /> {item.free_date || item.date}
+        </div>
+        {(item.free_location || item.location) && (
+          <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 overflow-hidden">
+            <MapPin className="w-3.5 h-3.5 shrink-0" /> 
+            <span className="truncate">{item.free_location || item.location}</span>
           </div>
         )}
-        <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
-          <CalendarDays className="w-3.5 h-3.5" /> {item.free_date}
-        </div>
         <div className={`flex items-center gap-1 text-[11px] font-black ${isFestival ? 'text-purple-600' : 'text-blue-600'}`}>
           {/* <Users className="w-3.5 h-3.5" /> {item.current}/{item.max_capacity}명 */}
           <Users className="w-3.5 h-3.5" /> {item.current_count || item.current || 1}/{item.max_capacity}명
