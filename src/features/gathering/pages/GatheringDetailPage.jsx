@@ -1,30 +1,33 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle } from 'lucide-react';
+import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle, Lock } from 'lucide-react';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import gatheringApi from '../../../api/gatheringApi'; // API 불러오기
+import useAuthStore from '../../../store/useAuthStore'; // 💡 Zustand 스토어 임포트
 
 const GatheringDetailPage = () => {
   const { id } = useParams(); // URL의 :room_id 값 추출
   const navigate = useNavigate();
+
+  // 💡 Zustand에서 로그인한 유저 정보 가져오기
+  const { user } = useAuthStore();
+  // 백엔드 세션/객체 구조에 따라 member_id 또는 id 중 맞는 것을 사용하세요.
+  const loggedInUserId = user?.member_id || user?.id; 
 
   // 💡 실제 백엔드 데이터를 담을 상태관리 정의
   const [gathering, setGathering] = useState(null);
   const [participants, setParticipants] = useState([]); // 방장을 제외한 순수 참여자 목록
   const [loading, setLoading] = useState(true);
 
-  // 💡 컴포넌트 로드시 백엔드 데이터 Fetch
+  // 컴포넌트 로드시 백엔드 데이터 Fetch (기존 로직과 동일)
   useEffect(() => {
     const fetchDetailAndParticipants = async () => {
       try {
         setLoading(true);
-
-        // 💡 방 정보와 참여자 명단(방장 제외)을 동시에 병렬로 조회
         const [roomData, participantData] = await Promise.all([
           gatheringApi.gatheringDetail(id),
           gatheringApi.gatheringParticipants(id)
         ]);
-
         setGathering(roomData);
         setParticipants(participantData || []);
       } catch (error) {
@@ -39,7 +42,6 @@ const GatheringDetailPage = () => {
     }
   }, [id]);
 
-  // 1. 로딩 중일 때 UI
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--warm-white)] flex justify-center items-center">
@@ -48,7 +50,6 @@ const GatheringDetailPage = () => {
     );
   }
 
-  // 2. 데이터를 찾지 못했을 때 UI
   if (!gathering) {
     return (
       <div className="min-h-screen bg-[var(--warm-white)] flex justify-center items-center">
@@ -56,6 +57,33 @@ const GatheringDetailPage = () => {
       </div>
     );
   }
+
+  // 💡 [Zustand 기반 UX 계산] 로그인 정보와 비교하여 상태 판별
+  const isOwner = loggedInUserId === gathering.owner_id;
+  const isJoined = isOwner || participants.some(p => p.MEMBER_ID === loggedInUserId);
+  const isFull = gathering.current_count >= gathering.max_capacity;
+
+  // 💡 버튼 클릭 핸들러
+  const handleActionClick = async () => {
+    if (!loggedInUserId) {
+      alert("로그인이 필요한 서비스입니다.");
+      navigate('/login'); // 로그인 페이지 경로 유의 (앞에 '/' 포함)
+      return;
+    }
+
+    if (isJoined) {
+      alert("채팅방으로 이동합니다!");
+      navigate(`/community/chat/${id}`); 
+    } else {
+      try {
+        // TODO: 백엔드 모임 참여 insert API 연동 예정 단계
+        alert("모임에 성공적으로 참여되었습니다. 채팅방으로 입장합니다!");
+        navigate(`/community/chat/${id}`);
+      } catch (error) {
+        alert("모임 참여에 실패했습니다.");
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[var(--warm-white)] font-['Pretendard'] pb-20">
@@ -75,14 +103,12 @@ const GatheringDetailPage = () => {
             </button>
 
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
-              {/* 모임 메인 이미지 (우선 만든 사람 프로필 주소 매핑, 없을시 기본 썸네일) */}
               <img
                 src={gathering.profile_image_url || 'https://picsum.photos/seed/gathering/800/400'}
                 alt={gathering.room_title}
                 className="w-full h-80 object-cover rounded-2xl mb-6"
               />
 
-              {/* 백엔드 스네이크 케이스 필드 매핑 완료 */}
               <h1 className="text-3xl font-black text-gray-900 mb-4">{gathering.room_title}</h1>
 
               <div className="flex flex-wrap items-center gap-4 text-gray-600 text-lg mb-6">
@@ -101,12 +127,12 @@ const GatheringDetailPage = () => {
                 <p>{gathering.room_description}</p>
               </div>
 
-              {/* 💡 참여자 명단 영역 (방장 고정 + 참여자 순회) */}
+              {/* 참여자 명단 영역 */}
               <div className="mb-8">
                 <h3 className="text-xl font-bold text-gray-800 mb-4">참여자 ({gathering.current_count || 1}명)</h3>
                 <div className="flex flex-wrap gap-3">
 
-                  {/* 1. 👑 방장(Host) 정보 - 모임 생성자 데이터로 최상단 고정 */}
+                  {/* 1. 👑 방장(Host) 정보 */}
                   <div className="flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm">
                     <img
                       src={gathering.profile_image_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=owner'}
@@ -119,9 +145,8 @@ const GatheringDetailPage = () => {
                     </div>
                   </div>
 
-                  {/* 2. 👥 일반 참여자 목록 - 백엔드에서 방장이 제외된 순수 리스트 출력 */}
+                  {/* 2. 👥 일반 참여자 목록 */}
                   {participants.map(participant => (
-                    // Oracle Map 특성에 맞게 전부 대문자로 매핑
                     <div key={participant.MEMBER_ID} className="flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100">
                       <img
                         src={participant.PROFILE_IMAGE_URL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'}
@@ -138,14 +163,33 @@ const GatheringDetailPage = () => {
                 </div>
               </div>
 
-              {/* 통합된 단일 참여 버튼 */}
+              {/* 동적 제어 버튼 스위치 */}
               <div className="flex justify-end">
-                <button
-                  className="inline-flex items-center px-8 py-3.5 border border-transparent text-white font-black rounded-full shadow-lg shadow-purple-100 bg-[var(--festival-purple)] hover:bg-[var(--festival-purple-soft)] transition-all active:scale-95 text-base group"
-                >
-                  <MessageCircle className="w-5 h-5 mr-2 animate-bounce group-hover:animate-none" />
-                  모임 참여 및 채팅방 입장하기
-                </button>
+                {isJoined ? (
+                  <button
+                    onClick={handleActionClick}
+                    className="inline-flex items-center px-8 py-3.5 border border-transparent text-white font-black rounded-full shadow-lg shadow-blue-100 bg-blue-600 hover:bg-blue-500 transition-all active:scale-95 text-base"
+                  >
+                    <MessageCircle className="w-5 h-5 mr-2" />
+                    채팅방 입장하기
+                  </button>
+                ) : isFull ? (
+                  <button
+                    disabled
+                    className="inline-flex items-center px-8 py-3.5 text-gray-400 font-black rounded-full bg-gray-100 cursor-not-allowed text-base"
+                  >
+                    <Lock className="w-5 h-5 mr-2" />
+                    모집이 마감되었습니다
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleActionClick}
+                    className="inline-flex items-center px-8 py-3.5 border border-transparent text-white font-black rounded-full shadow-lg shadow-purple-100 bg-[var(--festival-purple)] hover:bg-[var(--festival-purple-soft)] transition-all active:scale-95 text-base group"
+                  >
+                    <MessageCircle className="w-5 h-5 mr-2 animate-bounce group-hover:animate-none" />
+                    모임 참여 및 채팅방 입장하기
+                  </button>
+                )}
               </div>
 
             </div>
