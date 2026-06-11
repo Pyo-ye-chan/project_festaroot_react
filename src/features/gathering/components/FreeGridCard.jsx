@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Users } from 'lucide-react';
 
-const FreeGridCard = ({ item }) => (
+const FreeGridCard = ({ item }) => ( // 전체 자유 모임 목록 4개
   <Link
     to={`/community/gathering/${item.room_id}`}
     className="group bg-white rounded-2xl p-4 border border-gray-100 hover:shadow-xl hover:shadow-blue-100/50 transition-all flex items-center gap-3"
@@ -11,6 +11,11 @@ const FreeGridCard = ({ item }) => (
       <img src={item.profile_image_url} alt={item.nickname} className="w-full h-full object-cover" />
     </div>
     <div className="flex-grow min-w-0">
+      <div className="flex items-center gap-2 mb-0.5">
+        <span className="text-[10px] font-black text-blue-500/80">
+          {item.nickname}
+        </span>
+      </div>
       <h5 className="font-bold text-gray-900 text-sm truncate group-hover:text-blue-600 transition-colors">
         {item.room_title}
       </h5>
