@@ -19,7 +19,7 @@ const CreateGatheringModal = ({ onClose, festivalId = null }) => {
   const userId = user?.userId || user?.id || user?.member_id;
 
   useEffect(() => {
-    console.log("현재 모임 생성자 ID : ",userId);
+    console.log("현재 모임 생성자 ID : ", userId);
   }, [userId])
 
   const handleSubmit = async (e) => {
@@ -27,13 +27,13 @@ const CreateGatheringModal = ({ onClose, festivalId = null }) => {
 
     // 백엔드 GatheringCreateDTO 구조와 완벽히 일치하는 페이로드 구성
     const requestData = {
-      roomTitle,
-      roomDescription,
-      freeLocation,
-      freeDate, // yyyy-MM-dd 형태의 문자열은 자바의 LocalDate로 자동 파싱됩니다.
-      maxCapacity: Number(maxCapacity),
-      festivalId: festivalId, // 상위에서 전달받은 값이 있으면 id 입력, 없으면 null
-      ownerId: userId
+      room_title: roomTitle,
+      room_description: roomDescription,
+      free_location: freeLocation,
+      free_date: freeDate,
+      max_capacity: Number(maxCapacity),
+      festival_id: festivalId,
+      owner_id: userId
     };
 
     try {
