@@ -32,13 +32,13 @@ const FreeGatheringSection = ({ activeTab, freeGatherings, onTabChange }) => (
     {activeTab === '전체 모임' ? (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-8 pt-4">
         {freeGatherings.slice(0, 4).map(gathering => (
-          <FreeGridCard key={gathering.id} item={gathering} />
+          <FreeGridCard key={gathering.room_id} item={gathering} />
         ))}
       </div>
     ) : (
       <div className="divide-y divide-gray-50">
         {freeGatherings.map(gathering => (
-          <GatheringListItem key={gathering.id} item={gathering} isFestival={false} activeTab={activeTab} />
+          <GatheringListItem key={gathering.room_id} item={gathering} isFestival={false} activeTab={activeTab} />
         ))}
       </div>
     )}

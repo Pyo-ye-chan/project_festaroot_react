@@ -9,7 +9,13 @@ const gatheringApi = {
         const response = await maxios.post(BASE_PATH, gatheringData)
         return response.data;
     },
-    
+
+    // 자유 모임 목록 출력
+    freeGatheringList: async () => {
+        const response = await maxios.get(`${BASE_PATH}/list`)
+        return response.data;
+    },
+
 }
 
 export default gatheringApi;
