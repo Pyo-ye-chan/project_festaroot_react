@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Phone, Tent, Utensils, Music } from 'lucide-react';
+import { MapPin, Phone, Tent, Utensils, Music, Map as MapIcon } from 'lucide-react';
 import Carousel from '../components/Carousel';
 import DetailModal from '../components/DetailModal';
 import festivalService from '../../../api/festivalService';
@@ -8,7 +8,7 @@ const FestivalNearbyTab = ({
   nearbyLoading,
   nearbyTravel,
   nearbyFood,
-  nearbyEvents,
+  nearbyCultures, // nearbyEvents -> nearbyCultures
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -40,8 +40,8 @@ const FestivalNearbyTab = ({
         data = await festivalService.getFoodDetail(contentId);
       } else if (typeId === '12') {
         data = await festivalService.getTourDetail(contentId);
-      } else if (typeId === '15') {
-        data = await festivalService.getEventDetail(contentId);
+      } else if (typeId === '14') { // 15 -> 14
+        data = await festivalService.getCultureDetail(contentId);
       }
 
       setDetail(data);
@@ -119,8 +119,8 @@ const FestivalNearbyTab = ({
       />
 
       <Carousel
-        items={nearbyEvents}
-        title={<><Music size={24} className="text-blue-500" /> 주변 공연/행사</>}
+        items={nearbyCultures}
+        title={<><MapIcon size={24} className="text-blue-500" /> 주변 문화시설</>}
         renderItem={renderNearbyCard}
         onItemClick={handleItemClick}
       />

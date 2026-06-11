@@ -141,6 +141,44 @@ const EventDetailSection = ({ data }) => {
   );
 };
 
+const CultureDetailSection = ({ data }) => (
+  <section className="space-y-4">
+    <h4 className="text-base font-black text-blue-500">문화시설 상세 정보</h4>
+
+    <InfoBox label="이용시간">
+      <HtmlText value={data?.usetimeculture} />
+    </InfoBox>
+
+    <InfoBox label="쉬는날">
+      <HtmlText value={data?.restdateculture} />
+    </InfoBox>
+
+    <InfoBox label="이용요금">
+      <HtmlText value={data?.usefee} />
+    </InfoBox>
+
+    <InfoBox label="관람 소요시간">
+      {data?.spendtime || '정보 없음'}
+    </InfoBox>
+
+    <InfoBox label="주차 시설">
+      <HtmlText value={data?.parkingculture} />
+    </InfoBox>
+
+    <InfoBox label="문의 및 안내">
+      <HtmlText value={data?.infocenterculture} />
+    </InfoBox>
+
+    <InfoBox label="반려동물">
+      {data?.chkpetculture || '정보 없음'}
+    </InfoBox>
+
+    <InfoBox label="유모차 대여">
+      {data?.chkbabycarriageculture || '정보 없음'}
+    </InfoBox>
+  </section>
+);
+
 const DetailModal = ({ isOpen, onClose, item, detail, loading }) => {
   const modalRef = useRef(null); // Create a ref for the modal
 
@@ -208,6 +246,7 @@ const DetailModal = ({ isOpen, onClose, item, detail, loading }) => {
 
         {typeId === '39' && <FoodDetailSection data={specificInfo} />}
         {typeId === '12' && <TourDetailSection data={specificInfo} />}
+        {typeId === '14' && <CultureDetailSection data={specificInfo} />}
         {typeId === '15' && <EventDetailSection data={specificInfo} />}
       </div>
     );

@@ -148,12 +148,23 @@ const FestivalList = () => {
                     <p className="text-[11px] text-gray-500 font-bold flex items-center gap-1">
                       <span className="text-purple-400">📍</span> {formatRegion(region)}
                     </p>
-                    <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1">
+                    <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1.5">
                       <span>📅</span> {formatDate(startDate)} - {formatDate(endDate)}
                     </p>
-                  </div>
+                    </div>
 
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
+                    {/* 테마 정보 출력 */}
+                    {fest.themes && fest.themes.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-3">
+                      {fest.themes.map((theme, idx) => (
+                        <span key={idx} className="px-1.5 py-0.5 bg-purple-50 text-purple-600 text-[9px] font-bold rounded">
+                          #{theme.theme_name}
+                        </span>
+                      ))}
+                    </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
                     <div className="flex items-center gap-2.5">
                       {/* 별점 조건부 렌더링: rating이 0보다 클 때만 표시 */}
                       {rating > 0 && (

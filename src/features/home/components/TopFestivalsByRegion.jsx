@@ -158,6 +158,17 @@ const TopFestivalsByRegion = () => {
                         : '일정 정보 없음'}
                     </p>
                   </div>
+
+                  {/* 테마 정보 출력 */}
+                  {fest.themes && fest.themes.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {fest.themes.map((theme, idx) => (
+                        <span key={idx} className="px-1.5 py-0.5 bg-purple-50 text-purple-600 text-[8px] font-bold rounded">
+                          #{theme.theme_name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   
                   {/* 조회수 표시 컴포넌트 */}
                   {viewCount > 0 && (

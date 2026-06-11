@@ -60,7 +60,7 @@ const FestivalDetailPage = () => {
 
   const [nearbyTravel, setNearbyTravel] = useState([]);
   const [nearbyFood, setNearbyFood] = useState([]);
-  const [nearbyEvents, setNearbyEvents] = useState([]);
+  const [nearbyCultures, setNearbyCultures] = useState([]); // nearbyEvents -> nearbyCultures
   const [nearbyLoading, setNearbyLoading] = useState(false);
 
   const tabs = ['소개', '주변 정보', '오시는 길', '후기'];
@@ -115,20 +115,20 @@ const FestivalDetailPage = () => {
       try {
         setNearbyLoading(true);
 
-        const [travel, food, events] = await Promise.all([
+        const [travel, food, cultures] = await Promise.all([
           festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '12'),
           festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '39'),
-          festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '15'),
+          festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '14'), // 15 -> 14
         ]);
 
         setNearbyTravel(travel || []);
         setNearbyFood(food || []);
-        setNearbyEvents(events || []);
+        setNearbyCultures(cultures || []);
       } catch (error) {
         console.error('주변 정보 조회 실패:', error);
         setNearbyTravel([]);
         setNearbyFood([]);
-        setNearbyEvents([]);
+        setNearbyCultures([]);
       } finally {
         setNearbyLoading(false);
       }
@@ -252,9 +252,14 @@ const FestivalDetailPage = () => {
           <div className="absolute bottom-10 left-0 right-0 max-w-7xl mx-auto px-6">
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <span className={getStatusBadge(status)}>● {status}</span>
-              <span className="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-white border border-white/30">
-                #축제
-              </span>
+              {festival.themes.map((theme,index) => {
+                return(<span className="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-white border border-white/30"
+                key={index}>
+                #{theme.theme_name}
+              </span>)
+                
+              })}
+              
             </div>
 
             <h1 className="text-4xl md:text-6xl font-black text-white drop-shadow-md">
@@ -371,7 +376,7 @@ const FestivalDetailPage = () => {
                   nearbyLoading={nearbyLoading}
                   nearbyTravel={nearbyTravel}
                   nearbyFood={nearbyFood}
-                  nearbyEvents={nearbyEvents}
+                  nearbyCultures={nearbyCultures}
                 />
               )}
 
