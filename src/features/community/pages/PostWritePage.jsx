@@ -156,9 +156,11 @@ const PostWritePage = () => {
         })
       );
 
-      attachedFiles.forEach((file) => {
-        data.append('files', file);
-      });
+      if(attachedFiles.length > 0) {
+        attachedFiles.forEach((file) => {
+          data.append('files', file);
+        });
+      }
 
       await addPost(data);
 

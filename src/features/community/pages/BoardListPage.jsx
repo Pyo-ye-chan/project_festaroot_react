@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Search,
@@ -9,6 +9,7 @@ import {
   Heart,
 } from 'lucide-react';
 import CommunitySidebar from '../components/CommunitySidebar';
+import { getPosts } from '../../../api/boardApi';
 
 const BoardListPage = () => {
   const { category = 'all' } = useParams();
@@ -16,15 +17,18 @@ const BoardListPage = () => {
   const [sortBy, setSortBy] = useState('latest');
   const [searchType, setSearchType] = useState('title');
   const [keyword, setKeyword] = useState('');
+  const [posts, setPosts] = useState([]); // 게시물 목록 상태
+  const [totalCount, setTotalCount] = useState(0); // 총 게시물 수
+  const [currentPage, setCurrentPage] = useState(1); // 현재 페이지 번호
+  // const posts = [
+  //   { id: 1, category: '후기', title: '양평 딸기축제 다녀왔어요! 🍓 너무 재밌네요', author: '축제요정', date: '2026.05.25', views: 1240, likes: 45, comments: 12 },
+  //   { id: 2, category: '팁', title: '서울 밤거리 페스티벌 주차 꿀팁 공유합니다 (필독)', author: '베스트드라이버', date: '2026.05.24', views: 2500, likes: 120, comments: 28 },
+  //   { id: 3, category: '정보', title: '강릉 커피축제 웨이팅 실시간 현황 알려드려요', author: '커피러버', date: '2026.05.24', views: 980, likes: 32, comments: 5 },
+  //   { id: 4, category: '자유', title: '이번 주말에 비 온다는데 축제 취소될까요?', author: '걱정인형', date: '2026.05.23', views: 560, likes: 10, comments: 15 },
+  //   { id: 5, category: '후기', title: '경주 벚꽃 축제 교촌마을 근처 맛집 추천', author: '미식가', date: '2026.05.22', views: 1500, likes: 88, comments: 20 },
+  //   { id: 6, category: '꿀팁', title: '축제 사진 잘 찍는 보정법 공유합니다!', author: '포토그래퍼', date: '2026.05.21', views: 3200, likes: 450, comments: 62 },
+  // ];
 
-  const posts = [
-    { id: 1, category: '후기', title: '양평 딸기축제 다녀왔어요! 🍓 너무 재밌네요', author: '축제요정', date: '2026.05.25', views: 1240, likes: 45, comments: 12 },
-    { id: 2, category: '팁', title: '서울 밤거리 페스티벌 주차 꿀팁 공유합니다 (필독)', author: '베스트드라이버', date: '2026.05.24', views: 2500, likes: 120, comments: 28 },
-    { id: 3, category: '정보', title: '강릉 커피축제 웨이팅 실시간 현황 알려드려요', author: '커피러버', date: '2026.05.24', views: 980, likes: 32, comments: 5 },
-    { id: 4, category: '자유', title: '이번 주말에 비 온다는데 축제 취소될까요?', author: '걱정인형', date: '2026.05.23', views: 560, likes: 10, comments: 15 },
-    { id: 5, category: '후기', title: '경주 벚꽃 축제 교촌마을 근처 맛집 추천', author: '미식가', date: '2026.05.22', views: 1500, likes: 88, comments: 20 },
-    { id: 6, category: '꿀팁', title: '축제 사진 잘 찍는 보정법 공유합니다!', author: '포토그래퍼', date: '2026.05.21', views: 3200, likes: 450, comments: 62 },
-  ];
 
   const categoryNames = {
     all: '전체 게시판',
@@ -40,6 +44,22 @@ const BoardListPage = () => {
     { label: '좋아요순', value: 'likes' },
   ];
 
+  useEffect(() => {
+    loadPosts();
+  }, [currentPage]);
+
+  const loadPosts = async () => {
+    try {
+      const result = await getPosts(currentPage);
+      console.log(result.data);
+
+      setPosts(result.data.list);
+      setTotalCount(result.data.totalPostCount);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const getCategoryClasses = (postCategory) => {
     switch (postCategory) {
       case '후기':
@@ -51,7 +71,7 @@ const BoardListPage = () => {
       case '자유':
         return 'bg-gray-500 text-white';
       case '꿀팁': // Specific for '꿀팁공유'
-        return 'bg-blue-400 text-white'; 
+        return 'bg-blue-400 text-white';
       case '공지사항':
         return 'bg-red-500 text-white';
       default:
@@ -127,8 +147,8 @@ const BoardListPage = () => {
                       key={sort.value}
                       onClick={() => setSortBy(sort.value)}
                       className={`h-12 px-5 rounded-2xl text-sm font-black whitespace-nowrap transition-all ${sortBy === sort.value
-                          ? 'bg-[var(--festival-purple)] text-white shadow-md shadow-[var(--festival-purple)]/20'
-                          : 'bg-gray-50 text-gray-500 hover:bg-[var(--festival-purple-soft)]/20 hover:text-[var(--festival-purple)]'
+                        ? 'bg-[var(--festival-purple)] text-white shadow-md shadow-[var(--festival-purple)]/20'
+                        : 'bg-gray-50 text-gray-500 hover:bg-[var(--festival-purple-soft)]/20 hover:text-[var(--festival-purple)]'
                         }`}
                     >
                       {sort.label}
@@ -143,8 +163,8 @@ const BoardListPage = () => {
               <div className="divide-y divide-gray-100">
                 {posts.map((post) => (
                   <Link
-                    key={post.id}
-                    to={`/community/post/${post.id}`}
+                    key={post.post_id}
+                    to={`/community/post/${post.post_id}`}
                     className="block px-6 py-5 hover:bg-[var(--festival-purple-soft)]/20 transition-all group"
                   >
                     <div className="flex flex-col gap-3">
@@ -155,7 +175,7 @@ const BoardListPage = () => {
                         </span>
 
                         <span className="text-xs font-bold text-gray-400">
-                          {post.date}
+                          {post.created_at.split('T')[0].replace(/-/g, '. ')}
                         </span>
                       </div>
 
@@ -165,27 +185,27 @@ const BoardListPage = () => {
                           {post.title}
                         </h3>
 
-                        {post.comments > 0 && (
+                        {/* {post.comments > 0 && (
                           <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 text-rose-500 text-xs font-black">
                             <MessageSquare className="w-3 h-3" />
                             {post.comments}
                           </span>
-                        )}
+                        )} */}
                       </div>
 
                       {/* 하단 정보 */}
                       <div className="flex items-center justify-between gap-4 text-xs font-bold text-gray-400">
                         <span className="text-gray-500">
-                          {post.author}
+                          {post.nickname}
                         </span>
 
                         <div className="flex items-center gap-4">
                           <span className="flex items-center gap-1">
-                            조회 {post.views.toLocaleString()}
+                            조회 {(post.view_count??0).toLocaleString()}
                           </span>
 
                           <span className="flex items-center gap-1 text-rose-500">
-                            좋아요 {post.likes.toLocaleString()}
+                            좋아요 {(post.like_count??0).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -203,8 +223,8 @@ const BoardListPage = () => {
                 <button
                   key={page}
                   className={`w-10 h-10 rounded-xl text-xs font-black ${page === 1
-                      ? 'bg-[var(--festival-purple)] text-white'
-                      : 'bg-white border border-gray-100 text-gray-400 hover:text-[var(--festival-purple)]'
+                    ? 'bg-[var(--festival-purple)] text-white'
+                    : 'bg-white border border-gray-100 text-gray-400 hover:text-[var(--festival-purple)]'
                     }`}
                 >
                   {page}
