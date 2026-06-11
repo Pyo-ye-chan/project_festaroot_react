@@ -1,20 +1,55 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, CalendarDays, MapPin, Users, Tag, Info } from 'lucide-react';
+import gatheringApi from '../../../api/gatheringApi';
 
-const CreateGatheringModal = ({ onClose }) => {
-  const [title, setTitle] = useState('');
-  const [festival, setFestival] = useState('');
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState('');
-  const [location, setLocation] = useState('');
-  const [maxParticipants, setMaxParticipants] = useState(5);
+// 만약 축제 상세페이지에서 열었다면 props로 festivalId를 받아올 수 있도록 설계합니다.
+const CreateGatheringModal = ({ onClose, festivalId = null }) => {
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  // 💡 백엔드 DTO 필드명과 매핑하기 쉽게 상태명 변경
+  const [roomTitle, setRoomTitle] = useState('');
+  const [roomDescription, setRoomDescription] = useState('');
+  const [freeDate, setFreeDate] = useState('');
+  const [freeLocation, setFreeLocation] = useState('');
+  const [maxCapacity, setMaxCapacity] = useState(5);
+
+  const userName = localStorage.getItem("user");
+  const user = JSON.parse(userName);
+  const userId = user?.userId || user?.id || user?.member_id;
+
+  useEffect(() => {
+    console.log("현재 모임 생성자 ID : ",userId);
+  }, [userId])
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would typically send this data to a backend or a global state manager
-    console.log({ title, festival, description, date, location, maxParticipants });
-    alert('모임이 생성되었습니다! (실제 기능은 구현되지 않았습니다)');
-    onClose();
+
+    // 백엔드 GatheringCreateDTO 구조와 완벽히 일치하는 페이로드 구성
+    const requestData = {
+      roomTitle,
+      roomDescription,
+      freeLocation,
+      freeDate, // yyyy-MM-dd 형태의 문자열은 자바의 LocalDate로 자동 파싱됩니다.
+      maxCapacity: Number(maxCapacity),
+      festivalId: festivalId, // 상위에서 전달받은 값이 있으면 id 입력, 없으면 null
+      ownerId: userId
+    };
+
+    try {
+      // 백엔드 컨트롤러 주소로 POST 요청
+      const data = await gatheringApi.createGathering(requestData)
+
+      if (data.success) {
+        alert('모임이 성공적으로 생성되었습니다!');
+        onClose();
+        // 생성된 채팅방 번호(roomId)를 받아 해당 채팅방 화면으로 즉시 내비게이션
+        navigate(`/chat/${data.roomId}`);
+      }
+    } catch (error) {
+      console.error('모임 생성 에러:', error);
+      alert('모임 생성 중 오류가 발생했습니다. 다시 시도해 주세요.');
+    }
   };
 
   return (
@@ -26,43 +61,31 @@ const CreateGatheringModal = ({ onClose }) => {
         <h2 className="text-3xl font-black text-gray-900 mb-6 text-center">새 모임 만들기</h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* 1. 모임 제목 */}
           <div>
-            <label htmlFor="title" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+            <label htmlFor="roomTitle" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
               <Tag className="w-4 h-4 mr-2 text-[var(--festival-purple)]" /> 모임 제목
             </label>
             <input
               type="text"
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              id="roomTitle"
+              value={roomTitle}
+              onChange={(e) => setRoomTitle(e.target.value)}
               placeholder="예: 부산 록 페스티벌 같이 즐길 사람!"
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20 focus:border-[var(--festival-purple)] transition-all"
               required
             />
           </div>
 
+          {/* 2. 모임 설명 */}
           <div>
-            <label htmlFor="festival" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
-              <Info className="w-4 h-4 mr-2 text-[var(--festival-purple)]" /> 관련 축제 (선택 사항)
-            </label>
-            <input
-              type="text"
-              id="festival"
-              value={festival}
-              onChange={(e) => setFestival(e.target.value)}
-              placeholder="예: 부산 록 페스티벌"
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20 focus:border-[var(--festival-purple)] transition-all"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="description" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+            <label htmlFor="roomDescription" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
               <Info className="w-4 h-4 mr-2 text-[var(--festival-purple)]" /> 모임 설명
             </label>
             <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              id="roomDescription"
+              value={roomDescription}
+              onChange={(e) => setRoomDescription(e.target.value)}
               rows="4"
               placeholder="모임에 대한 자세한 내용을 작성해주세요. (예: 어떤 활동을 할 건지, 준비물 등)"
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20 focus:border-[var(--festival-purple)] transition-all resize-none"
@@ -70,29 +93,30 @@ const CreateGatheringModal = ({ onClose }) => {
             ></textarea>
           </div>
 
+          {/* 3. 날짜 및 장소 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="date" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+              <label htmlFor="freeDate" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
                 <CalendarDays className="w-4 h-4 mr-2 text-[var(--festival-purple)]" /> 날짜
               </label>
               <input
                 type="date"
-                id="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                id="freeDate"
+                value={freeDate}
+                onChange={(e) => setFreeDate(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20 focus:border-[var(--festival-purple)] transition-all"
                 required
               />
             </div>
             <div>
-              <label htmlFor="location" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+              <label htmlFor="freeLocation" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
                 <MapPin className="w-4 h-4 mr-2 text-[var(--festival-purple)]" /> 장소
               </label>
               <input
                 type="text"
-                id="location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                id="freeLocation"
+                value={freeLocation}
+                onChange={(e) => setFreeLocation(e.target.value)}
                 placeholder="예: 잠실 주경기장"
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20 focus:border-[var(--festival-purple)] transition-all"
                 required
@@ -100,15 +124,16 @@ const CreateGatheringModal = ({ onClose }) => {
             </div>
           </div>
 
+          {/* 4. 최대 인원 */}
           <div>
-            <label htmlFor="maxParticipants" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
+            <label htmlFor="maxCapacity" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
               <Users className="w-4 h-4 mr-2 text-[var(--festival-purple)]" /> 최대 인원
             </label>
             <input
               type="number"
-              id="maxParticipants"
-              value={maxParticipants}
-              onChange={(e) => setMaxParticipants(e.target.value)}
+              id="maxCapacity"
+              value={maxCapacity}
+              onChange={(e) => setMaxCapacity(e.target.value)}
               min="2"
               max="20"
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20 focus:border-[var(--festival-purple)] transition-all"
@@ -116,6 +141,7 @@ const CreateGatheringModal = ({ onClose }) => {
             />
           </div>
 
+          {/* 하단 버튼 제어 */}
           <div className="flex justify-end space-x-4">
             <button
               type="button"
