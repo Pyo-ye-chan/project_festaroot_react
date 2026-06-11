@@ -16,3 +16,7 @@ export const addPost = async (data) => maxios.post('board/post', data);
 export const getPosts = async (cpage=1) => await maxios.get(`board/posts?cpage=${cpage}`);
 
 export const getPostDetail = async (id) => await maxios.get(`board/post/${id}`);
+
+export const updatePost = async (id, data) => await maxios.put(`board/post/${id}`, data);
+
+export const deletePost = async (id) => await maxios.delete(`board/post/${id}`);

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   X,
   Image as ImageIcon,
@@ -13,24 +13,28 @@ import StarterKit from '@tiptap/starter-kit';
 import MenuBar from '../components/MenuBar';
 import Image from '@tiptap/extension-image';
 
-import { uploadImage } from '../../../api/boardApi';
-import { addPost } from '../../../api/boardApi';
+import { uploadImage, updatePost } from '../../../api/boardApi';
 
-const PostWritePage = () => {
+const PostUpdatePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { post: initialPost } = location.state || {}; // Get initial post data from navigation state
 
   const [uploading, setUploading] = useState(false);
-  const [attachedFiles, setAttachedFiles] = useState([]);
+
+  const [existingFiles, setExistingFiles] = useState(initialPost?.attachments || []); // 기존 첨부파일
+  const [attachedFiles, setAttachedFiles] = useState([]); // 새로 추가하는 첨부파일
+  const [deleteFileIds, setDeleteFileIds] = useState([]); // 삭제할 기존 첨부파일 ID 목록
 
   const [formData, setFormData] = useState({
-    category: 'free',
-    title: '',
-    content: '',
+    category: initialPost?.category || 'free',
+    title: initialPost?.title || '',
+    content: initialPost?.content || '',
   });
 
   const editor = useEditor({
     extensions: [StarterKit, Image],
-    content: '',
+    content: formData.content, // Initialize editor with existing content
     onUpdate: ({ editor }) => {
       setFormData((prev) => ({
         ...prev,
@@ -45,13 +49,22 @@ const PostWritePage = () => {
     },
   });
 
+  // Effect to ensure editor content updates if initialPost changes (e.g., if navigating to edit different post)
+  useEffect(() => {
+    if (editor && initialPost?.content && editor.getHTML() !== initialPost.content) {
+      editor.commands.setContent(initialPost.content);
+    }
+    // Handle existing attachments here if initialPost has them.
+    // For now, assuming attachments are handled separately or re-uploaded.
+  }, [editor, initialPost]);
+
   const formatFileSize = (size) => {
     if (size < 1024) return `${size}B`;
     if (size < 1024 * 1024) return `${Math.round(size / 1024)}KB`;
     return `${(size / 1024 / 1024).toFixed(1)}MB`;
   };
 
-  const addFilesWithoutDuplicate = (files) => {
+  const addFilesWithoutDuplicate = (files) => { // 중복되지 않는 파일만 추가
     setAttachedFiles((prev) => {
       const newFiles = files.filter(
         (file) =>
@@ -62,6 +75,14 @@ const PostWritePage = () => {
 
       return [...prev, ...newFiles];
     });
+  };
+
+  const handleRemoveExistingFile = (file) => { // 기존 첨부파일 제거
+    setExistingFiles((prev) =>
+      prev.filter((item) => item.attach_id !== file.attach_id)
+    );
+
+    setDeleteFileIds((prev) => [...prev, file.attach_id]);
   };
 
   const handleChange = (e) => {
@@ -140,6 +161,11 @@ const PostWritePage = () => {
       return;
     }
 
+    if (!initialPost?.post_id) {
+      alert('수정할 게시글 정보를 찾을 수 없습니다.');
+      return;
+    }
+
     try {
       const data = new FormData();
 
@@ -147,6 +173,7 @@ const PostWritePage = () => {
         category: formData.category,
         title: formData.title,
         content: formData.content,
+        deleteFileIds, // 삭제할 기존 첨부파일 ID 목록  
       };
 
       data.append(
@@ -156,24 +183,26 @@ const PostWritePage = () => {
         })
       );
 
-      if(attachedFiles.length > 0) {
+      // Existing attachments would need to be handled here too (e.g., send IDs of unremoved ones)
+      // For now, assuming new files are sent and old ones are implicitly replaced or handled by backend.
+      if (attachedFiles.length > 0) {
         attachedFiles.forEach((file) => {
           data.append('files', file);
         });
       }
+      console.log(data);
 
-      await addPost(data);
+      await updatePost(initialPost.post_id, data); // Call updatePost with ID and data
 
-      console.log('Post added successfully');
-      alert('등록 완료');
+      console.log('Post updated successfully');
+      alert('수정 완료');
 
-      navigate('/community/board/free');
+      navigate(`/community/post/${initialPost.post_id}`); // Navigate back to the detail page
     } catch (error) {
       console.error(error);
-      alert('등록 실패');
+      alert('수정 실패');
     }
   };
-
 
 
   return (
@@ -186,17 +215,17 @@ const PostWritePage = () => {
                 커뮤니티
               </Link>
               <ChevronRight className="w-3 h-3" />
-              <span>글쓰기</span>
+              <span>게시글 수정</span>
             </div>
 
             <h2 className="text-4xl font-black text-gray-900 tracking-tight">
-              게시글 작성
+              게시글 수정
             </h2>
           </div>
 
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(`/community/post/${initialPost?.post_id}`)} // Navigate back to detail page
             className="p-3 bg-white text-gray-400 hover:text-gray-600 rounded-full border border-gray-100 transition-all hover:shadow-md"
           >
             <X className="w-6 h-6" />
@@ -258,7 +287,7 @@ const PostWritePage = () => {
                 내용
               </label>
 
-              <div className="overflow-hidden bg-gray-50 border border-gray-200 rounded-2xl focus-within:ring-2 focus-within:ring-[var(--festival-purple)]/20 focus-within:border-[var(--festival-purple)]/30 transition-all">
+              <div className="overflow-hidden bg-gray-50 border border-gray-200 rounded-2xl focus-within:ring-2 focus-within:ring-[var(--festival-purple)]/20 focus-within:border-[var(--festival-purple)]/30 outline-none transition-all">
                 <MenuBar editor={editor} />
 
                 <div className="min-h-[450px] p-5">
@@ -305,8 +334,33 @@ const PostWritePage = () => {
                 </label>
               </div>
 
-              {attachedFiles.length > 0 && (
+              {(existingFiles.length > 0 || attachedFiles.length > 0) && (
                 <div className="mt-5 rounded-2xl border border-gray-100 bg-gray-50 p-4 space-y-2">
+
+                  {existingFiles.map((file) => (
+                    <div
+                      key={file.attach_id}
+                      className="flex items-center justify-between gap-4 rounded-xl bg-white border border-gray-100 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-700 truncate">
+                          {file.original_name}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          기존 첨부파일
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExistingFile(file)}
+                        className="shrink-0 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <XCircle className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+
                   {attachedFiles.map((file) => (
                     <div
                       key={`${file.name}-${file.size}`}
@@ -317,7 +371,7 @@ const PostWritePage = () => {
                           {file.name}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {formatFileSize(file.size)}
+                          새 첨부파일 · {formatFileSize(file.size)}
                         </p>
                       </div>
 
@@ -330,6 +384,7 @@ const PostWritePage = () => {
                       </button>
                     </div>
                   ))}
+
                 </div>
               )}
             </div>
@@ -352,7 +407,7 @@ const PostWritePage = () => {
           <div className="flex gap-4 pt-4 px-2">
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate(`/community/post/${initialPost?.post_id}`)} // Navigate back to detail page
               className="flex-1 py-5 bg-white text-gray-400 font-black rounded-[2rem] border border-gray-100 hover:bg-gray-50 transition-all active:scale-95 shadow-sm"
             >
               취소하기
@@ -362,7 +417,7 @@ const PostWritePage = () => {
               type="submit"
               className="flex-[2] py-5 bg-[var(--festival-purple)] text-white font-black rounded-[2rem] hover:bg-[var(--festival-purple-soft)] transition-all active:scale-95 shadow-lg shadow-[var(--festival-purple)]/30 flex items-center justify-center gap-2"
             >
-              게시글 등록하기
+              수정 완료
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -372,4 +427,4 @@ const PostWritePage = () => {
   );
 };
 
-export default PostWritePage;
+export default PostUpdatePage;

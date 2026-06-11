@@ -13,7 +13,7 @@ import {
   Edit3,
   Download // Added for attachments
 } from 'lucide-react';
-import { getPostDetail } from '../../../api/boardApi';
+import { getPostDetail, updatePost, deletePost } from '../../../api/boardApi';
 import useAuthStore from '../../../store/useAuthStore';
 
 const PostDetailPage = () => {
@@ -21,35 +21,6 @@ const PostDetailPage = () => {
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [commentText, setCommentText] = useState('');
-
-  //   // Mock Data
-  //   const post = {
-  //     id: 1,
-  //     category: '후기',
-  //     title: '양평 딸기축제 다녀왔어요! 🍓 너무 재밌네요',
-  //     author: '축제요정',
-  //     authorId: 'user123',
-  //     date: '2026.05.25 14:30',
-  //     views: 1240,
-  //     likes: 45,
-  //     content: `안녕하세요! 이번 주말에 가족들과 함께 양평 딸기축제에 다녀왔습니다.
-
-  // 생각보다 사람도 많고 체험할 거리도 풍성해서 정말 즐거운 시간이었어요.
-  // 특히 직접 딸기를 따서 바로 먹어보는 체험이 가장 기억에 남네요. 딸기가 정말 달고 싱싱해요!
-
-  // 점심으로는 근처 유명한 막국수집에 갔는데 웨이팅은 좀 있었지만 맛은 보장합니다.
-  // 주차 공간이 협조하니 가급적 일찍 가시는 걸 추천드려요.
-
-  // 다음에 또 기회가 된다면 다시 방문하고 싶네요. 
-  // 축제 정보 공유해주신 분들 모두 감사합니다!`,
-  //     images: ['https://picsum.photos/seed/post1/800/500'],
-  //     attachments: [
-  //       { name: '축제_일정표.pdf', url: '/mock-files/festival_schedule.pdf' },
-  //       { name: '축제_지도.jpg', url: '/mock-files/festival_map.jpg' },
-  //       { name: '참가신청서.hwp', url: '/mock-files/application_form.hwp' },
-  //     ]
-  //   };
-
   const [post, setPost] = useState(null);
 
 
@@ -84,6 +55,19 @@ const PostDetailPage = () => {
   ]);
 
   const currentUserId = useAuthStore((state) => state.user?.member_id);
+
+  const handleDeletePost = async () => {
+    if (window.confirm('정말로 게시글을 삭제하시겠습니까?')) {
+      try {
+        await deletePost(id);
+        alert('게시글이 성공적으로 삭제되었습니다.');
+        navigate('/community/board/all'); // Redirect to board list after deletion
+      } catch (error) {
+        console.error('게시글 삭제 실패:', error);
+        alert('게시글 삭제에 실패했습니다.');
+      }
+    }
+  };
 
   console.log('Current User from Auth Store:', currentUserId);
 
@@ -169,7 +153,6 @@ const PostDetailPage = () => {
                 </div>
                 <div>
                   <p className="font-black text-gray-900">{post.nickname}</p>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-tighter">Contributor</p>
                 </div>
               </div>
 
@@ -242,10 +225,16 @@ const PostDetailPage = () => {
               <div className="flex items-center gap-2">
                 {currentUserId === post.member_id && (
                   <>
-                    <button className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-[var(--festival-purple)] font-bold text-sm transition-colors">
+                    <button
+                      onClick={() => navigate(`/community/update/${post.post_id}`, { state: { post } })}
+                      className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-[var(--festival-purple)] font-bold text-sm transition-colors"
+                    >
                       <Edit3 className="w-4 h-4" /> 수정
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-rose-500 font-bold text-sm transition-colors">
+                    <button
+                      onClick={handleDeletePost}
+                      className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-rose-500 font-bold text-sm transition-colors"
+                    >
                       <Trash2 className="w-4 h-4" /> 삭제
                     </button>
                   </>
