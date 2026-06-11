@@ -16,6 +16,12 @@ const gatheringApi = {
         return response.data;
     },
 
+    // 자유 모임 상세 출력
+    gatheringDetail: async (room_id) => {
+        const response = await maxios.get(`${BASE_PATH}/${room_id}`);
+        return response.data;
+    }
+
 }
 
 export default gatheringApi;
