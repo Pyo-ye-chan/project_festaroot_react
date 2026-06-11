@@ -3,10 +3,11 @@ import { RotateCcw, X, Search } from 'lucide-react';
 import useMapStore from '../../../store/useMapStore';
 import FestivalSearchModal from './FestivalSearchModal';
 import {useNavigate} from 'react-router-dom'
+import festivalService from '../../../api/festivalService';
 
 
 function SidebarFilter() {
-  
+  const {increaseViewCount} = festivalService;
   const [isModalOpen, setIsModalOpen] = useState(false);
   // Zustand store에서 상태와 액션 가져오기
   const { 
@@ -55,11 +56,20 @@ function SidebarFilter() {
                 <h4 className="text-[13px] font-bold text-slate-800 truncate group-hover:text-[#6B46FE] transition-colors">{selectedFestival.title}</h4>
                 <p className="text-[11px] text-slate-500 mb-0.5">{selectedFestival.event_start_date} ~ {selectedFestival.event_end_date}</p>
                 <p className="text-[11px] text-slate-400 truncate">{selectedFestival.addr1}</p>
+                {selectedFestival.themes && selectedFestival.themes.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedFestival.themes.map((theme, idx) => (
+                      <span key={idx} className="px-1.5 py-0.5 bg-purple-50 text-[#6B46FE] text-[9px] font-bold rounded">
+                        #{theme.theme_name}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex gap-2">
               <button 
-              onClick={() => navi(`/festival/${selectedFestival.content_id}`)}
+              onClick={() => {navi(`/festival/${selectedFestival.content_id}`); increaseViewCount(selectedFestival.content_id); }}
               className="flex-1 py-1.5 bg-white border border-[#6B46FE] rounded-lg text-[#6B46FE] text-[11px] font-semibold hover:bg-purple-50 transition-colors">
                 축제 상세
               </button>

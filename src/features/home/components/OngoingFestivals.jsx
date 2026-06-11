@@ -130,6 +130,18 @@ const OngoingFestivals = () => {
                       📅 {formatDate(startDate)} - {formatDate(endDate)}
                     </p>
                   </div>
+                  
+                  {/* 테마 정보 출력 */}
+                  {fest.themes && fest.themes.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-3">
+                      {fest.themes.map((theme, idx) => (
+                        <span key={idx} className="px-1.5 py-0.5 bg-green-50 text-green-600 text-[9px] font-bold rounded">
+                          #{theme.theme_name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
                     <svg className="w-4 h-4 text-gray-300 group-hover:text-green-500 group-hover:translate-x-1 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />

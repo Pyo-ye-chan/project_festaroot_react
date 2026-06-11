@@ -72,6 +72,18 @@ const SearchContent = ({
                   <p className="text-[11px] text-gray-500 font-bold flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-purple-400" /> {fest.addr1 || '상세 주소 정보 없음'}</p>
                   <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-gray-400" /> {formatDate(fest.event_start_date)} ~ {formatDate(fest.event_end_date)}</p>
                 </div>
+
+                {/* 테마 정보 출력 */}
+                {fest.themes && fest.themes.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-4">
+                    {fest.themes.map((theme, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-purple-50 text-purple-600 text-[9px] font-black rounded-lg">
+                        #{theme.theme_name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-50">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
@@ -116,6 +128,17 @@ const SearchContent = ({
                     <p className="text-xs text-gray-500 font-bold flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-purple-400" /> {fest.addr1}</p>
                     <p className="text-xs text-gray-400 font-bold flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-gray-400" /> {formatDate(fest.event_start_date)} ~ {formatDate(fest.event_end_date)}</p>
                   </div>
+                  
+                  {/* 테마 정보 출력 (리스트 뷰) */}
+                  {fest.themes && fest.themes.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {fest.themes.map((theme, idx) => (
+                        <span key={idx} className="px-2 py-0.5 bg-purple-50 text-purple-600 text-[9px] font-black rounded-md">
+                          #{theme.theme_name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                   <div className="flex gap-4">
