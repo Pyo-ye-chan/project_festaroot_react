@@ -34,7 +34,7 @@ const GatheringPage = () => {
       id: 101, 
       type: 'festival',
       festivalName: '부산 록 페스티벌', 
-      title: '부산 록 페스티벌 공식 채팅방', 
+      title: '부산 록 페스티벌 채팅방', 
       location: '부산 삼락생태공원', 
       date: '2026.08.10 - 08.12',
       current: 156, 
@@ -317,7 +317,7 @@ const GatheringPage = () => {
                         <Sparkles className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-gray-900">축제별 공식 모임</h3>
+                        <h3 className="text-xl font-black text-gray-900">축제별 모임</h3>
                         {activeTab === '축제별 모임' && (
                           <p className="text-xs text-gray-400 font-medium mt-1">
                             축제 정보에 관심이 있다면, 모임에 참여해 채팅방으로 대화를 나눠보세요!
@@ -360,7 +360,7 @@ const GatheringPage = () => {
                         <Users className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-gray-900">자유 친목 모임</h3>
+                        <h3 className="text-xl font-black text-gray-900">자유 모임</h3>
                         {activeTab === '자유 모임' && (
                           <p className="text-xs text-gray-400 font-medium mt-1">
                             관심사가 비슷한 사람들을 찾아 자유롭게 소통하고 축제 메이트가 되어보세요!
