@@ -77,6 +77,16 @@ const festivalService = {
     }
   },
 
+  getCultureDetail: async (contentId) => {
+    try {
+      const response = await maxios.get(`${BASE_PATH}/culture/${contentId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching culture detail ${contentId}:`, error);
+      throw error;
+    }
+  },
+
   // 축제 정보 업데이트 코드
   upsertFestivals: async () => {
     try {

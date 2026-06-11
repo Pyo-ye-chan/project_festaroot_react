@@ -13,6 +13,7 @@ function FestivalSearchModal({ isOpen, onClose, onSelect }) {
   const [allThemes, setAllThemes] = useState([]);
   const [selectedThemes, setSelectedThemes] = useState([]);
   const [isThemePickerOpen, setIsThemePickerOpen] = useState(false);
+  const [showOngoingOnly, setShowOngoingOnly] = useState(false);
 
   const { isLoggedIn } = useAuthStore();
   const { 
@@ -24,6 +25,13 @@ function FestivalSearchModal({ isOpen, onClose, onSelect }) {
   } = useMapStore();
 
   const { startDate, endDate } = searchParams;
+
+  const resetAllFilters = () => {
+    setSearchTerm('');
+    setSelectedThemes([]);
+    setShowOngoingOnly(false);
+    setDates('', '');
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -66,8 +74,15 @@ function FestivalSearchModal({ isOpen, onClose, onSelect }) {
     const matchesTheme = selectedThemes.length === 0 || 
       (festival.themes && festival.themes.some(t => selectedThemes.includes(t.theme_name)));
 
-    // 3. 기간 검색 (기본적으로 비어있으면 모든 축제 표시)
-    if (!startDate && !endDate) return matchesSearch && matchesTheme;
+    // 3. 진행/예정 축제 필터링 (showOngoingOnly가 true일 때만 적용)
+    let matchesStatus = true;
+    if (showOngoingOnly) {
+      const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      matchesStatus = (festival.event_end_date >= today);
+    }
+
+    // 4. 기간 검색 (기본적으로 비어있으면 모든 축제 표시)
+    if (!startDate && !endDate) return matchesSearch && matchesTheme && matchesStatus;
 
     const festivalStart = festival.event_start_date;
     const festivalEnd = festival.event_end_date;
@@ -76,7 +91,7 @@ function FestivalSearchModal({ isOpen, onClose, onSelect }) {
 
     const matchesDate = (festivalStart <= filterEnd) && (festivalEnd >= filterStart);
 
-    return matchesSearch && matchesDate && matchesTheme;
+    return matchesSearch && matchesDate && matchesTheme && matchesStatus;
   });
 
   const modalContent = (
@@ -88,9 +103,17 @@ function FestivalSearchModal({ isOpen, onClose, onSelect }) {
             <h2 className="text-xl font-bold text-slate-800">축제 선택하기</h2>
             <p className="text-[12px] text-slate-500 mt-0.5">원하는 축제와 기간을 확인해보세요</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-            <X size={24} className="text-slate-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={resetAllFilters}
+              className="px-3 py-1.5 text-[11px] font-bold text-slate-400 hover:text-[#6B46FE] hover:bg-purple-50 rounded-lg transition-all"
+            >
+              초기화
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+              <X size={24} className="text-slate-400" />
+            </button>
+          </div>
         </div>
 
         {/* Search & Filter Section */}
@@ -182,6 +205,20 @@ function FestivalSearchModal({ isOpen, onClose, onSelect }) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Toggle Filter Section */}
+        <div className="px-6 py-3 bg-white border-b border-gray-50 flex items-center justify-between">
+          <div className="flex flex-col">
+            <span className="text-[12px] font-bold text-slate-700">진행 및 예정 축제만 보기</span>
+            <p className="text-[10px] text-slate-400">종료된 축제는 목록에서 제외합니다</p>
+          </div>
+          <button 
+            onClick={() => setShowOngoingOnly(!showOngoingOnly)}
+            className={`relative w-11 h-6 rounded-full transition-colors duration-200 outline-none ${showOngoingOnly ? 'bg-[#6B46FE]' : 'bg-slate-200'}`}
+          >
+            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${showOngoingOnly ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
         </div>
 
         {/* Festival List */}

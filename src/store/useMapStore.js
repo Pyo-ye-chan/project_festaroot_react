@@ -25,7 +25,7 @@ const useMapStore = create((set, get) => ({
     categories: {
       food: true,
       tour: true,
-      festival: true
+      culture: true // 'festival'에서 'culture'로 변경
     }
   },
 
@@ -118,7 +118,8 @@ const useMapStore = create((set, get) => ({
       const typeIds = [];
       if (categories.food) typeIds.push('39');
       if (categories.tour) typeIds.push('12');
-      if (categories.festival) typeIds.push('15');
+      if (categories.culture) typeIds.push('14'); // 문화시설 추가
+      // if (categories.festival) typeIds.push('15'); // 기존 축제/행사 주석 처리
       
       const requests = typeIds.map(id => 
         ktoService.getNearbyPlaces(selectedFestival.map_x, selectedFestival.map_y, radius * 1000, id)
@@ -132,14 +133,23 @@ const useMapStore = create((set, get) => ({
         id: item.contentid,
         contentTypeId: item.contenttypeid, // 백엔드 호출을 위한 ID 추가
         title: item.title,
-        category: item.contenttypeid === '39' ? '음식점' : item.contenttypeid === '12' ? '관광지' : '축제/행사',
+        category: 
+          item.contenttypeid === '39' ? '음식점' : 
+          item.contenttypeid === '12' ? '관광지' : 
+          item.contenttypeid === '14' ? '문화시설' : '추천 장소', 
+          // item.contenttypeid === '15' ? '축제/행사' : '추천 장소', // 기존 코드 주석 처리
         distance: item.dist > 1000 ? `${(item.dist / 1000).toFixed(1)}km` : `${Math.floor(item.dist)}m`,
         tag: item.addr1?.split(' ')[1] || '추천 장소',
         img: item.firstimage || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=200&q=80',
         thumbnail: item.firstimage2, // 썸네일 이미지 추가
-        type: item.contenttypeid === '39' ? 'food' : item.contenttypeid === '12' ? 'tour' : 'festival',
+        type: 
+          item.contenttypeid === '39' ? 'food' : 
+          item.contenttypeid === '12' ? 'tour' : 
+          item.contenttypeid === '14' ? 'culture' : 'festival', // type에 culture 추가
         lat: parseFloat(item.mapy),
-        lng: parseFloat(item.mapx)
+        lng: parseFloat(item.mapx),
+        eventStartDate: item.eventstartdate, // 축제 시작일 추가
+        eventEndDate: item.eventenddate      // 축제 종료일 추가
       }));
 
       set({ places: mappedPlaces, isLoading: false });
@@ -161,9 +171,14 @@ const useMapStore = create((set, get) => ({
         case '12': // 관광지
           data = await festivalService.getTourDetail(contentId);
           break;
+        case '14': // 문화시설
+          data = await festivalService.getCultureDetail(contentId);
+          break;
+        /* 
         case '15': // 축제/행사
           data = await festivalService.getEventDetail(contentId);
           break;
+        */
         default:
           data = null;
       }
@@ -205,7 +220,7 @@ const useMapStore = create((set, get) => ({
       categories: {
         food: true,
         tour: true,
-        festival: true
+        culture: true
       }
     },
     activeCategory: '전체',

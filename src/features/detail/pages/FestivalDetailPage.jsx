@@ -60,7 +60,7 @@ const FestivalDetailPage = () => {
 
   const [nearbyTravel, setNearbyTravel] = useState([]);
   const [nearbyFood, setNearbyFood] = useState([]);
-  const [nearbyEvents, setNearbyEvents] = useState([]);
+  const [nearbyCultures, setNearbyCultures] = useState([]); // nearbyEvents -> nearbyCultures
   const [nearbyLoading, setNearbyLoading] = useState(false);
 
   const tabs = ['소개', '주변 정보', '오시는 길', '후기'];
@@ -115,20 +115,20 @@ const FestivalDetailPage = () => {
       try {
         setNearbyLoading(true);
 
-        const [travel, food, events] = await Promise.all([
+        const [travel, food, cultures] = await Promise.all([
           festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '12'),
           festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '39'),
-          festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '15'),
+          festivalService.getNearbyPlaces(festival.map_y, festival.map_x, 5000, '14'), // 15 -> 14
         ]);
 
         setNearbyTravel(travel || []);
         setNearbyFood(food || []);
-        setNearbyEvents(events || []);
+        setNearbyCultures(cultures || []);
       } catch (error) {
         console.error('주변 정보 조회 실패:', error);
         setNearbyTravel([]);
         setNearbyFood([]);
-        setNearbyEvents([]);
+        setNearbyCultures([]);
       } finally {
         setNearbyLoading(false);
       }
@@ -376,7 +376,7 @@ const FestivalDetailPage = () => {
                   nearbyLoading={nearbyLoading}
                   nearbyTravel={nearbyTravel}
                   nearbyFood={nearbyFood}
-                  nearbyEvents={nearbyEvents}
+                  nearbyCultures={nearbyCultures}
                 />
               )}
 

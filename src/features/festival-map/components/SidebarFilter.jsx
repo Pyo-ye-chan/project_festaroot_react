@@ -135,7 +135,8 @@ function SidebarFilter() {
           {[
             { id: 'food', label: '음식점', icon: '🍽️' },
             { id: 'tour', label: '관광지', icon: '⛰️' },
-            { id: 'festival', label: '축제/행사', icon: '🎉' }
+            { id: 'culture', label: '문화시설', icon: '🏛️' },
+            /* { id: 'festival', label: '축제/행사', icon: '🎉' } */
           ].map((cat) => (
             <label key={cat.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full cursor-pointer hover:border-purple-200 transition-colors">
               <input 
