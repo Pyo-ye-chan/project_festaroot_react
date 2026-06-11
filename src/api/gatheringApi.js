@@ -20,7 +20,13 @@ const gatheringApi = {
     gatheringDetail: async (room_id) => {
         const response = await maxios.get(`${BASE_PATH}/${room_id}`);
         return response.data;
-    }
+    },
+
+    // 자유 모임 참여자 목록 조회
+    gatheringParticipants: async (room_id) => {
+        const response = await maxios.get(`${BASE_PATH}/${room_id}/participants`);
+        return response.data;
+    },
 
 }
 
