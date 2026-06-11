@@ -21,7 +21,9 @@ const PostDetailPage = () => {
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [commentText, setCommentText] = useState('');
-  const [post, setPost] = useState(null);
+  const [post, setPost] = useState(null); // 게시글 상세 정보 상태
+  const [attachments, setAttachments] = useState([]); // 첨부파일 상태
+  const [deleteFileIds, setDeleteFileIds] = useState([]); // 삭제할 기존 첨부파일 ID 목록
 
 
   useEffect(() => {
@@ -29,8 +31,10 @@ const PostDetailPage = () => {
     const fetchPostDetail = async () => {
       try {
         const postDetail = await getPostDetail(id);
-        console.log('Fetched post detail:', postDetail);
-        setPost(postDetail.data); // Assuming the API response has a 'data' field containing the post details
+        console.log('Fetched post detail:', postDetail.data);
+        setPost(postDetail.data.dto);
+        setAttachments(postDetail.data.list || []);
+
 
       } catch (error) {
         console.error('Error fetching post detail:', error);
@@ -57,6 +61,8 @@ const PostDetailPage = () => {
   const currentUserId = useAuthStore((state) => state.user?.member_id);
 
   const handleDeletePost = async () => {
+
+
     if (window.confirm('정말로 게시글을 삭제하시겠습니까?')) {
       try {
         await deletePost(id);
@@ -68,8 +74,9 @@ const PostDetailPage = () => {
       }
     }
   };
-
-  console.log('Current User from Auth Store:', currentUserId);
+  useEffect(() => {
+    console.log("attachments", attachments);
+  }, [attachments]);
 
   const getCategoryClasses = (postCategory) => {
     switch (postCategory) {
@@ -87,6 +94,34 @@ const PostDetailPage = () => {
         return 'bg-red-500 text-white';
       default:
         return 'bg-gray-200 text-gray-700';
+    }
+  };
+
+  const handleDownload = async (file) => {
+
+    try {
+      const response = await fetch(file.file_path);
+
+      const blob = await response.blob();
+
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+
+      a.href = url;
+      a.download = file.file_name;
+
+      document.body.appendChild(a);
+
+      a.click();
+
+      a.remove();
+
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error(error);
+      alert('파일 다운로드 실패');
     }
   };
 
@@ -184,20 +219,43 @@ const PostDetailPage = () => {
 
 
 
-            {post.attachments && post.attachments.length > 0 && (
-              <div className="mt-8 pt-8 border-t border-gray-50">
-                <h3 className="text-xl font-black text-gray-800 mb-4">첨부 파일</h3>
-                <div className="space-y-3">
-                  {post.attachments.map((file, index) => (
-                    <a
-                      key={index}
-                      href={file.url}
-                      download
-                      className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 hover:bg-gray-100 transition-colors group"
-                    >
-                      <Download className="w-5 h-5 text-gray-500 group-hover:text-[var(--festival-purple)]" />
-                      <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{file.name}</span>
-                    </a>
+            {attachments.length > 0 && (
+              <div className="mt-8 bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
+                <h3 className="text-lg font-black text-gray-900 mb-4">
+                  첨부파일
+                </h3>
+
+                <div className="space-y-2">
+
+                  {attachments.map((file) => (
+                    <button
+                      key={file.attach_id || file.file_path}
+                      type="button"
+                      onClick={() => {
+                        window.location.href = `http://localhost/storage/download/${file.attach_id}`;
+                      }}
+                      className="
+                        w-full
+                        flex
+                        items-center
+                        justify-between
+                        gap-4
+                        rounded-2xl
+                        bg-gray-50
+                        px-4
+                        py-3
+                        hover:bg-purple-50
+                        transition-all
+                      ">
+                      <span className="text-sm font-bold text-gray-700 truncate">
+                        {file.file_name}
+                      </span>
+
+                      <span className="flex items-center gap-1 text-xs font-black text-[var(--festival-purple)]">
+                        <Download className="w-4 h-4" />
+                        다운로드
+                      </span>
+                    </button>
                   ))}
                 </div>
               </div>
