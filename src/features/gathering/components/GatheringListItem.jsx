@@ -3,23 +3,37 @@ import { Link } from 'react-router-dom';
 import { MapPin, CalendarDays, Users, ChevronRight } from 'lucide-react';
 
 const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab }) => {
-  const currentCount = item.current_count || 0;
-  const maxCapacity = item.max_capacity || 500;
+  // 🌟 백엔드 데이터 필드 매핑 (대문자/소문자 대응)
+  const currentCount = item.current_count || item.CURRENT_COUNT || 0;
+  const maxCapacity = item.max_capacity || item.MAX_CAPACITY || 500;
   const isFull = currentCount >= maxCapacity;
+  
+  const roomTitle = item.room_title || item.ROOM_TITLE || '';
+  const freeLocation = item.free_location || item.FREE_LOCATION || '';
+  const freeDate = item.free_date || item.FREE_DATE || '';
+  const roomId = item.room_id || item.ROOM_ID;
+  const nickname = item.nickname || item.NICKNAME || '익명';
 
-  const festivalName = item.room_title ? item.room_title.replace(' 공식 모임', '') : '';
+  // 🌟 room_title에서 ' 공식 모임'을 제거한 순수 축제 이름 추출
+  const festivalName = roomTitle ? roomTitle.replace(' 공식 모임', '') : '';
+
+  // 🌟 이미지 우선순위 설정 (다양한 백엔드 필드 대응)
+  const gatheringImage = 
+    item.room_image_url || item.ROOM_IMAGE_URL || 
+    item.room_image || item.ROOM_IMAGE || 
+    item.profile_image_url || item.PROFILE_IMAGE_URL || 
+    (isFestival ? 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300' : 'https://picsum.photos/seed/gathering/100/100');
 
   return (
     <Link
-      to={`/community/gathering/${item.room_id}`}
+      to={`/community/gathering/${roomId}`}
       className="flex items-center gap-4 py-4 px-6 hover:bg-gray-50 transition-all group border-b border-gray-50 last:border-none"
     >
       <div className="w-16 h-16 flex-shrink-0">
         <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50">
-          {/* 🌟 벡엔드 MyBatis 앨리어스 매핑 결과 명칭인 room_image 로 변경 */}
           <img 
-            src={item.room_image || (isFestival ? 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300' : 'https://picsum.photos/seed/gathering/100/100')} 
-            alt={item.room_title} 
+            src={gatheringImage} 
+            alt={roomTitle} 
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
           />
         </div>
@@ -42,23 +56,23 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
             )
           ) : (
             <span className="text-xs font-black text-blue-500/80">
-              {item.nickname}
+              {nickname}
             </span>
           )}
         </div>
         <h4 className={`font-bold text-gray-900 truncate transition-colors text-base ${
           isFestival ? 'group-hover:text-[var(--festival-purple)]' : 'group-hover:text-blue-600'
         }`}>
-          {item.room_title}
+          {roomTitle}
         </h4>
         <div className="flex items-center gap-4 mt-1.5">
           <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
-            <CalendarDays className="w-3.5 h-3.5" /> {item.free_date}
+            <CalendarDays className="w-3.5 h-3.5" /> {freeDate}
           </div>
-          {item.free_location && (
+          {freeLocation && (
             <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 overflow-hidden">
               <MapPin className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">{item.free_location}</span>
+              <span className="truncate">{freeLocation}</span>
             </div>
           )}
           <div className={`flex items-center gap-1 text-[11px] font-black ${

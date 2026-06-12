@@ -140,9 +140,9 @@ const GatheringDetailPage = () => {
             </button>
 
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
-              {/* 🌟 gathering.room_image_url 에서 gathering.room_image 로 수정 */}
+              {/* 💡 사용자의 프로필 이미지가 아닌 모임 대표 이미지를 보여줍니다. (다양한 필드 대응) */}
               <img
-                src={gathering.room_image || 'https://picsum.photos/seed/gathering/800/400'}
+                src={gathering.room_image_url || gathering.ROOM_IMAGE_URL || gathering.room_image || gathering.ROOM_IMAGE || gathering.profile_image_url || 'https://picsum.photos/seed/gathering/800/400'}
                 alt={gathering.room_title}
                 className="w-full h-80 object-cover rounded-2xl mb-6"
               />

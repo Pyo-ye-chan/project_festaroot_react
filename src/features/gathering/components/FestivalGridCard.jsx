@@ -3,22 +3,34 @@ import { Link } from 'react-router-dom';
 import { MapPin, CalendarDays, Users } from 'lucide-react';
 
 const FestivalGridCard = ({ item }) => {
-  // 🌟 item.current_count와 item.max_capacity로 변경
-  const isFull = (item.current_count || 0) >= (item.max_capacity || 500);
+  // 🌟 데이터 필드 추출 (대문자/소문자 대응 및 우선순위 설정)
+  const currentCount = item.current_count || item.CURRENT_COUNT || 0;
+  const maxCapacity = item.max_capacity || item.MAX_CAPACITY || 500;
+  const isFull = currentCount >= maxCapacity;
+  
+  const roomTitle = item.room_title || item.ROOM_TITLE || '';
+  const freeLocation = item.free_location || item.FREE_LOCATION || '';
+  const freeDate = item.free_date || item.FREE_DATE || '';
+  const roomId = item.room_id || item.ROOM_ID;
+  
+  // 🌟 이미지 우선순위: 모임 대표 이미지 -> 프로필 이미지 -> 기본 축제 이미지
+  const festivalImage = 
+    item.room_image_url || item.ROOM_IMAGE_URL || 
+    item.room_image || item.ROOM_IMAGE || 
+    item.profile_image_url || item.PROFILE_IMAGE_URL || 
+    'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300';
   
   // 🌟 상단 타이틀에서 ' 공식 모임' 제거한 순수 축제명 추출
-  const festivalName = item.room_title ? item.room_title.replace(' 공식 모임', '') : '';
+  const festivalName = roomTitle ? roomTitle.replace(' 공식 모임', '') : '';
 
   return (
     <Link 
-      // 🌟 item.id -> item.room_id
-      to={`/community/gathering/${item.room_id}`}
+      to={`/community/gathering/${roomId}`}
       className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl hover:shadow-purple-100/50 transition-all flex flex-col"
     >
       <div className="relative h-32 overflow-hidden">
-        {/* 🌟 item.image -> item.profile_image_url (기본 이미지 썸네일 방어코드 포함) */}
         <img 
-          src={item.profile_image_url || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300'} 
+          src={festivalImage} 
           alt={festivalName} 
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
         />
@@ -32,22 +44,18 @@ const FestivalGridCard = ({ item }) => {
       </div>
       <div className="p-4 flex flex-col flex-grow">
         <h5 className="font-bold text-gray-900 text-sm mb-3 line-clamp-1 group-hover:text-[var(--festival-purple)] transition-colors">
-          {/* 🌟 item.title -> item.room_title */}
-          {item.room_title}
+          {roomTitle}
         </h5>
         <div className="mt-auto space-y-1.5">
           <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
-            {/* 🌟 item.location -> item.free_location */}
-            <MapPin className="w-3 h-3" /> {item.free_location}
+            <MapPin className="w-3 h-3" /> {freeLocation}
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400">
-              {/* 🌟 item.date -> item.free_date */}
-              <CalendarDays className="w-3 h-3" /> {item.free_date}
+              <CalendarDays className="w-3 h-3" /> {freeDate}
             </div>
             <div className={`flex items-center gap-1 text-[11px] font-black ${isFull ? 'text-red-500' : 'text-purple-600'}`}>
-              {/* 🌟 item.current / item.max -> item.current_count / item.max_capacity */}
-              <Users className="w-3 h-3" /> {item.current_count || 0}/{item.max_capacity || 500}
+              <Users className="w-3 h-3" /> {currentCount}/{maxCapacity}
             </div>
           </div>
         </div>

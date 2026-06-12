@@ -41,32 +41,44 @@ const GatheringPage = () => {
   // 🌟 DB 연동 페이징 메인 로직
   useEffect(() => {
     const fetchGatheringData = async () => {
-      if (!loggedInUserId) return;
+      // 💡 비로그인 상태여도 축제별/자유 모임 목록은 볼 수 있도록 guard 제거 (필요시 memberId를 빈값으로)
+      const currentUserId = loggedInUserId || '';
 
       try {
         if (activeTab === '전체 모임') {
           const [festivalData, freeData] = await Promise.all([
-            gatheringApi.festivalGatheringList(loggedInUserId, 1, 4),
+            gatheringApi.festivalGatheringList(currentUserId, 1, 4),
             gatheringApi.freeGatheringList(1, 4)
           ]);
-          setFestivalRooms(festivalData.list || festivalData);
-          setFreeGatherings(freeData.list || freeData);
-          setTotalItems(0);
-        }
-
+          
+          const fList = festivalData.content || festivalData.list || (Array.isArray(festivalData) ? festivalData : []);
+          const gList = freeData.content || freeData.list || (Array.isArray(freeData) ? freeData : []);
+          
+          setFestivalRooms(fList);
+          setFreeGatherings(gList);
+          setTotalItems(0); // 전체 모임 탭에서는 통합 뷰이므로 개별 페이징 숨김
+        } 
+        
         else if (activeTab === '축제별 모임') {
-          const res = await gatheringApi.festivalGatheringList(loggedInUserId, currentPage, ITEMS_PER_PAGE);
-          setFestivalRooms(res.list || []);
-          setTotalItems(res.total_count || 0);
-        }
-
+          const res = await gatheringApi.festivalGatheringList(currentUserId, currentPage, ITEMS_PER_PAGE);
+          const list = res.content || res.list || (Array.isArray(res) ? res : []);
+          const total = res.totalElements !== undefined ? res.totalElements : (res.total_count !== undefined ? res.total_count : (Array.isArray(res) ? res.length : 0));
+          
+          setFestivalRooms(list);
+          setTotalItems(total);
+        } 
+        
         else if (activeTab === '자유 모임') {
           const res = await gatheringApi.freeGatheringList(currentPage, ITEMS_PER_PAGE);
-          setFreeGatherings(res.list || []);
-          setTotalItems(res.total_count || 0);
+          const list = res.content || res.list || (Array.isArray(res) ? res : []);
+          const total = res.totalElements !== undefined ? res.totalElements : (res.total_count !== undefined ? res.total_count : (Array.isArray(res) ? res.length : 0));
+          
+          setFreeGatherings(list);
+          setTotalItems(total);
         }
       } catch (error) {
         console.error("데이터 로드 중 에러 발생:", error);
+        setTotalItems(0);
       }
     };
 
@@ -76,13 +88,19 @@ const GatheringPage = () => {
   // 🌟 참여중인 모임 전용 페이징/필터 이펙트
   useEffect(() => {
     const fetchJoinedData = async () => {
+      // 참여 중인 모임은 로그인이 반드시 필요
       if (!loggedInUserId || activeTab !== '참여중인 모임') return;
+
       try {
         const res = await gatheringApi.getJoinedGatherings(loggedInUserId, currentPage, ITEMS_PER_PAGE, joinedFilter);
-        setJoinedRooms(res.list || []);
-        setTotalItems(res.total_count || 0);
+        const list = res.content || res.list || (Array.isArray(res) ? res : []);
+        const total = res.totalElements !== undefined ? res.totalElements : (res.total_count !== undefined ? res.total_count : (Array.isArray(res) ? res.length : 0));
+        
+        setJoinedRooms(list);
+        setTotalItems(total);
       } catch (error) {
         console.error("참여중인 모임 로드 오류:", error);
+        setTotalItems(0);
       }
     };
 
