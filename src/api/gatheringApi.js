@@ -28,6 +28,18 @@ const gatheringApi = {
         return response.data;
     },
 
+    // 상세 모임 참여하기
+    joinGathering: async (room_id, member_id) => {
+        const response = await maxios.post(`${BASE_PATH}/${room_id}/join`, member_id)
+        return response.data;
+    },
+
+    // 모임 나가기
+    leaveGathering: async (room_id, member_id) => {
+        const response = await maxios.post(`${BASE_PATH}/${room_id}/leave`, member_id)
+        return response.data;
+    }
+
 }
 
 export default gatheringApi;

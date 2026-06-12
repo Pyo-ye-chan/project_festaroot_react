@@ -2,24 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle, Lock } from 'lucide-react';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
-import gatheringApi from '../../../api/gatheringApi'; // API 불러오기
-import useAuthStore from '../../../store/useAuthStore'; // 💡 Zustand 스토어 임포트
+import gatheringApi from '../../../api/gatheringApi';
+import useAuthStore from '../../../store/useAuthStore';
 
 const GatheringDetailPage = () => {
-  const { id } = useParams(); // URL의 :room_id 값 추출
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  // 💡 Zustand에서 로그인한 유저 정보 가져오기
   const { user } = useAuthStore();
-  // 백엔드 세션/객체 구조에 따라 member_id 또는 id 중 맞는 것을 사용하세요.
-  const loggedInUserId = user?.member_id || user?.id; 
+  const loggedInUserId = user?.member_id || user?.id;
 
-  // 💡 실제 백엔드 데이터를 담을 상태관리 정의
   const [gathering, setGathering] = useState(null);
-  const [participants, setParticipants] = useState([]); // 방장을 제외한 순수 참여자 목록
+  const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 컴포넌트 로드시 백엔드 데이터 Fetch (기존 로직과 동일)
   useEffect(() => {
     const fetchDetailAndParticipants = async () => {
       try {
@@ -58,31 +54,65 @@ const GatheringDetailPage = () => {
     );
   }
 
-  // 💡 [Zustand 기반 UX 계산] 로그인 정보와 비교하여 상태 판별
   const isOwner = loggedInUserId === gathering.owner_id;
   const isJoined = isOwner || participants.some(p => p.MEMBER_ID === loggedInUserId);
   const isFull = gathering.current_count >= gathering.max_capacity;
 
-  // 💡 버튼 클릭 핸들러
-  const handleActionClick = async () => {
+  // 💡 모임 참여 핸들러
+  const handleJoinClick = async () => {
     if (!loggedInUserId) {
       alert("로그인이 필요한 서비스입니다.");
-      navigate('/login'); // 로그인 페이지 경로 유의 (앞에 '/' 포함)
+      navigate('/login');
       return;
     }
 
-    if (isJoined) {
-      alert("채팅방으로 이동합니다!");
-      navigate(`/community/chat/${id}`); 
-    } else {
-      try {
-        // TODO: 백엔드 모임 참여 insert API 연동 예정 단계
-        alert("모임에 성공적으로 참여되었습니다. 채팅방으로 입장합니다!");
-        navigate(`/community/chat/${id}`);
-      } catch (error) {
-        alert("모임 참여에 실패했습니다.");
-      }
+    try {
+      await gatheringApi.joinGathering(id, loggedInUserId);
+
+      setGathering(prev => ({
+        ...prev,
+        current_count: (prev.current_count || 1) + 1
+      }));
+
+      const newParticipant = {
+        MEMBER_ID: loggedInUserId,
+        NICKNAME: user?.nickname || '새로운 멤버',
+        PROFILE_IMAGE_URL: user?.profile_image_url || user?.profileImageUrl || ''
+      };
+      setParticipants(prev => [...prev, newParticipant]);
+
+      alert("모임에 성공적으로 참여되었습니다! 채팅방으로 이동합니다.");
+      navigate(`/community/chat/${id}`);
+    } catch (error) {
+      console.error("모임 참여 중 오류 발생:", error);
+      alert(error.response?.data?.message || "모임 참여에 실패했습니다. 다시 시도해 주세요.");
     }
+  };
+
+  // 💡 모임 나가기 핸들러
+  const handleLeaveClick = async () => {
+    if (!window.confirm("정말로 이 모임에서 나가시겠습니까?")) return;
+
+    try {
+      await gatheringApi.leaveGathering(id, loggedInUserId);
+
+      // UI 상태 업데이트
+      setGathering(prev => ({
+        ...prev,
+        current_count: Math.max((prev.current_count || 1) - 1, 1)
+      }));
+      setParticipants(prev => prev.filter(p => p.MEMBER_ID !== loggedInUserId));
+
+      alert("모임에서 탈퇴되었습니다.");
+    } catch (error) {
+      console.error("모임 나가기 중 오류 발생:", error);
+      alert(error.response?.data?.message || "모임 나가기에 실패했습니다. 다시 시도해 주세요.");
+    }
+  };
+
+  // 💡 채팅방 입장 핸들러
+  const handleChatClick = () => {
+    navigate(`/community/chat/${id}`);
   };
 
   return (
@@ -118,8 +148,9 @@ const GatheringDetailPage = () => {
                 <span className="flex items-center gap-1">
                   <MapPin className="w-5 h-5 text-[var(--festival-purple)]" /> {gathering.free_location}
                 </span>
-                <span className="flex items-center gap-1">
-                  <Users className="w-5 h-5 text-[var(--festival-purple)]" /> {gathering.current_count || 1}/{gathering.max_capacity}명
+                <span className={`flex items-center gap-1 ${isFull ? 'text-red-500 font-black' : ''}`}>
+                  <Users className={`w-5 h-5 ${isFull ? 'text-red-500' : 'text-[var(--festival-purple)]'}`} />
+                  {gathering.current_count || 1}/{gathering.max_capacity}명
                 </span>
               </div>
 
@@ -164,15 +195,23 @@ const GatheringDetailPage = () => {
               </div>
 
               {/* 동적 제어 버튼 스위치 */}
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-3">
                 {isJoined ? (
-                  <button
-                    onClick={handleActionClick}
-                    className="inline-flex items-center px-8 py-3.5 border border-transparent text-white font-black rounded-full shadow-lg shadow-blue-100 bg-blue-600 hover:bg-blue-500 transition-all active:scale-95 text-base"
-                  >
-                    <MessageCircle className="w-5 h-5 mr-2" />
-                    채팅방 입장하기
-                  </button>
+                  <>
+                    <button
+                      onClick={handleLeaveClick}
+                      className="inline-flex items-center px-8 py-3.5 border border-red-200 text-red-600 font-black rounded-full shadow-sm bg-white hover:bg-red-50 transition-all active:scale-95 text-base"
+                    >
+                      모임 나가기
+                    </button>
+                    <button
+                      onClick={handleChatClick}
+                      className="inline-flex items-center px-8 py-3.5 border border-transparent text-white font-black rounded-full shadow-lg shadow-blue-100 bg-blue-600 hover:bg-blue-500 transition-all active:scale-95 text-base"
+                    >
+                      <MessageCircle className="w-5 h-5 mr-2" />
+                      채팅방 입장하기
+                    </button>
+                  </>
                 ) : isFull ? (
                   <button
                     disabled
@@ -183,11 +222,11 @@ const GatheringDetailPage = () => {
                   </button>
                 ) : (
                   <button
-                    onClick={handleActionClick}
+                    onClick={handleJoinClick}
                     className="inline-flex items-center px-8 py-3.5 border border-transparent text-white font-black rounded-full shadow-lg shadow-purple-100 bg-[var(--festival-purple)] hover:bg-[var(--festival-purple-soft)] transition-all active:scale-95 text-base group"
                   >
                     <MessageCircle className="w-5 h-5 mr-2 animate-bounce group-hover:animate-none" />
-                    모임 참여 및 채팅방 입장하기
+                    모임 참여하기
                   </button>
                 )}
               </div>
