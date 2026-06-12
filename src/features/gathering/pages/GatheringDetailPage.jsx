@@ -73,7 +73,7 @@ const GatheringDetailPage = () => {
 
     try {
       const response = await gatheringApi.joinGathering(id, loggedInUserId);
-      
+
       alert("모임에 성공적으로 참여되었습니다!");
 
       // 💡 백엔드 응답 본문에 있는 실제 발급 완료된 진짜 roomId 확보
@@ -140,8 +140,9 @@ const GatheringDetailPage = () => {
             </button>
 
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
+              {/* 🌟 gathering.room_image_url 에서 gathering.room_image 로 수정 */}
               <img
-                src={gathering.profile_image_url || 'https://picsum.photos/seed/gathering/800/400'}
+                src={gathering.room_image || 'https://picsum.photos/seed/gathering/800/400'}
                 alt={gathering.room_title}
                 className="w-full h-80 object-cover rounded-2xl mb-6"
               />
