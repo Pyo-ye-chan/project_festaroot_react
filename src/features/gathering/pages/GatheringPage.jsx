@@ -68,9 +68,9 @@ const GatheringPage = () => {
 
     const joinedFrees = freeGatherings.map(item => ({
       ...item,
-      id: item.room_id,      
+      id: item.room_id,
       type: 'free',
-      isJoined: true,        
+      isJoined: true,
       joinedAt: item.created_at || '2026-06-11'
     }));
 
@@ -79,6 +79,9 @@ const GatheringPage = () => {
 
     if (joinedFilter === '축제별 모임') return combined.filter(i => i.type === 'festival');
     if (joinedFilter === '자유 모임') return combined.filter(i => i.type === 'free');
+    if (joinedFilter === '개설한 모임') {
+      return combined.filter(i => String(i.owner_id) === String(loggedInUserId));
+    }
     return combined;
   };
 

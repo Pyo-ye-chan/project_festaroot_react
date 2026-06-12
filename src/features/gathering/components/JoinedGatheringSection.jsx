@@ -14,7 +14,7 @@ const JoinedGatheringSection = ({ joinedFilter, onFilterChange, joinedItems, act
       
       {/* 토글 필터 */}
       <div className="flex p-1 bg-gray-50 rounded-xl border border-gray-100 self-start md:self-auto">
-        {['전체', '축제별 모임', '자유 모임'].map(filter => (
+        {['전체', '축제별 모임', '자유 모임', '개설한 모임'].map(filter => (
           <button
             key={filter}
             onClick={() => onFilterChange(filter)}

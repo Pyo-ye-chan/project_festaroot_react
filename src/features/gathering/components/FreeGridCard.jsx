@@ -15,7 +15,7 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
       </div>
       <div className="flex-grow min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-[10px] font-black text-blue-500/80">
+          <span className="text-xs font-black text-blue-500/80">
             {item.nickname}
           </span>
         </div>

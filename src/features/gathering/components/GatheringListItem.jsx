@@ -35,12 +35,12 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
           )}
           {isFestival ? (
             activeTab !== '참여중인 모임' && (
-              <span className="text-[10px] font-black text-[var(--festival-purple)] bg-purple-50 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-black text-[var(--festival-purple)] bg-purple-50 px-2 py-0.5 rounded-md">
                 {item.festivalName}
               </span>
             )
           ) : (
-            <span className="text-[10px] font-black text-blue-500/80">
+            <span className="text-xs font-black text-blue-500/80">
               {/* {item.creator.name} */}
               {item.nickname}
             </span>
@@ -62,7 +62,7 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
           )}
           <div className={`flex items-center gap-1 text-[11px] font-black ${isFull ? 'text-red-500' : (isFestival ? 'text-purple-600' : 'text-blue-600')}`}>
             {/* <Users className="w-3.5 h-3.5" /> {item.current}/{item.max_capacity}명 */}
-            <Users className="w-3.5 h-3.5" /> {currentCount}/{item.max_capacity || item.max}명
+            <Users className="w-3.5 h-3.5" /> {item.current_count || item.current || 1}/{item.max_capacity || item.max}명
           </div>
         </div>
       </div>
