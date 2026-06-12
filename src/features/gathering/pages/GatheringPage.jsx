@@ -17,10 +17,10 @@ const GatheringPage = () => {
   // 💡 URL 파라미터에서 현재 탭과 페이지 정보를 가져옴
   const activeTab = searchParams.get('tab') || '전체 모임';
   const currentPage = parseInt(searchParams.get('page')) || 1;
+  const joinedFilter = searchParams.get('filter') || '전체';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [joinedFilter, setJoinedFilter] = useState('전체');
 
   // 🌟 페이지네이션 관련 상태
   const [totalItems, setTotalItems] = useState(0); // DB에서 받아올 전체 아이템 수
@@ -95,8 +95,7 @@ const GatheringPage = () => {
 
   // 참여중인 모임 필터 변경 핸들러
   const handleFilterChange = (filter) => {
-    setJoinedFilter(filter);
-    setSearchParams({ tab: activeTab, page: 1 }, { replace: true });
+    setSearchParams({ tab: activeTab, page: 1, filter }, { replace: true });
   };
 
   // 페이지 변경 핸들러
