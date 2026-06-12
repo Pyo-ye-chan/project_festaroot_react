@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import CreateGatheringModal from '../components/CreateGatheringModal';
 import GatheringHeader from '../components/GatheringHeader';
@@ -7,28 +6,32 @@ import GatheringFilters from '../components/GatheringFilters';
 import FestivalGatheringSection from '../components/FestivalGatheringSection';
 import FreeGatheringSection from '../components/FreeGatheringSection';
 import JoinedGatheringSection from '../components/JoinedGatheringSection';
-import Pagination from '../components/Pagination'; 
+import Pagination from '../components/Pagination';
 import gatheringApi from '../../../api/gatheringApi';
 import useAuthStore from '../../../store/useAuthStore';
+import useGatheringStore from '../../../store/useGatheringStore';
 
 const GatheringPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  
-  // 💡 URL 파라미터에서 현재 탭과 페이지 정보를 가져옴
-  const activeTab = searchParams.get('tab') || '전체 모임';
-  const currentPage = parseInt(searchParams.get('page')) || 1;
-  const joinedFilter = searchParams.get('filter') || '전체';
+  // 💡 전역 스토어 상태 구조 분해 할당
+  const {
+    activeTab,
+    currentPage,
+    joinedFilter,
+    setActiveTab,
+    setCurrentPage,
+    setJoinedFilter
+  } = useGatheringStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
 
   // 🌟 페이지네이션 관련 상태
-  const [totalItems, setTotalItems] = useState(0); // DB에서 받아올 전체 아이템 수
-  const ITEMS_PER_PAGE = 5; 
+  const [totalItems, setTotalItems] = useState(0); 
+  const ITEMS_PER_PAGE = 5;
 
-  const [festivalRooms, setFestivalRooms] = useState([]); 
-  const [freeGatherings, setFreeGatherings] = useState([]); 
-  const [joinedRooms, setJoinedRooms] = useState([]); 
+  const [festivalRooms, setFestivalRooms] = useState([]);
+  const [freeGatherings, setFreeGatherings] = useState([]);
+  const [joinedRooms, setJoinedRooms] = useState([]);
 
   const { user } = useAuthStore();
   const loggedInUserId = user?.member_id || user?.id;
@@ -42,22 +45,21 @@ const GatheringPage = () => {
 
       try {
         if (activeTab === '전체 모임') {
-          // 대시보드 형태의 전체 화면일 때는 페이징 없이 상위 4개씩만 요청해서 꽂아줌
           const [festivalData, freeData] = await Promise.all([
             gatheringApi.festivalGatheringList(loggedInUserId, 1, 4),
             gatheringApi.freeGatheringList(1, 4)
           ]);
           setFestivalRooms(festivalData.list || festivalData);
           setFreeGatherings(freeData.list || freeData);
-          setTotalItems(0); // 전체 모임 탭에서는 하단 네비게이션을 숨김
-        } 
-        
+          setTotalItems(0);
+        }
+
         else if (activeTab === '축제별 모임') {
           const res = await gatheringApi.festivalGatheringList(loggedInUserId, currentPage, ITEMS_PER_PAGE);
           setFestivalRooms(res.list || []);
-          setTotalItems(res.total_count || 0); // DB에서 받아온 실제 카운트 적용
-        } 
-        
+          setTotalItems(res.total_count || 0);
+        }
+
         else if (activeTab === '자유 모임') {
           const res = await gatheringApi.freeGatheringList(currentPage, ITEMS_PER_PAGE);
           setFreeGatherings(res.list || []);
@@ -69,7 +71,7 @@ const GatheringPage = () => {
     };
 
     fetchGatheringData();
-  }, [loggedInUserId, activeTab, currentPage]); // 🌟 탭이나 페이지 번호가 바뀌면 DB 자동 재요청
+  }, [loggedInUserId, activeTab, currentPage]);
 
   // 🌟 참여중인 모임 전용 페이징/필터 이펙트
   useEffect(() => {
@@ -85,22 +87,22 @@ const GatheringPage = () => {
     };
 
     fetchJoinedData();
-  }, [loggedInUserId, activeTab, currentPage, joinedFilter]); // 🌟 서브 필터 변경 시에도 DB 재요청
+  }, [loggedInUserId, activeTab, currentPage, joinedFilter]);
 
-  // 탭 변경 핸들러 (URL 파라미터 업데이트)
+  // 탭 변경 핸들러
   const handleTabChange = (tab) => {
-    setSearchParams({ tab, page: 1 }, { replace: true });
+    setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // 참여중인 모임 필터 변경 핸들러
   const handleFilterChange = (filter) => {
-    setSearchParams({ tab: activeTab, page: 1, filter }, { replace: true });
+    setJoinedFilter(filter);
   };
 
   // 페이지 변경 핸들러
   const handlePageChange = (page) => {
-    setSearchParams({ tab: activeTab, page }, { replace: true });
+    setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -128,7 +130,7 @@ const GatheringPage = () => {
               {(activeTab === '전체 모임' || activeTab === '축제별 모임') && (
                 <FestivalGatheringSection
                   activeTab={activeTab}
-                  festivalRooms={festivalRooms} // 🌟 이제 이미 DB에서 잘려온 데이터이므로 그대로 전달
+                  festivalRooms={festivalRooms}
                   onTabChange={handleTabChange}
                 />
               )}
@@ -137,7 +139,7 @@ const GatheringPage = () => {
               {(activeTab === '전체 모임' || activeTab === '자유 모임') && (
                 <FreeGatheringSection
                   activeTab={activeTab}
-                  freeGatherings={freeGatherings} // 🌟 그대로 전달
+                  freeGatherings={freeGatherings}
                   onTabChange={handleTabChange}
                 />
               )}
@@ -147,13 +149,13 @@ const GatheringPage = () => {
                 <JoinedGatheringSection
                   joinedFilter={joinedFilter}
                   onFilterChange={handleFilterChange}
-                  joinedItems={joinedRooms} // 🌟 그대로 전달
+                  joinedItems={joinedRooms}
                   activeTab={activeTab}
                 />
               )}
             </div>
 
-            {/* 🌟 하단 네비게이션바 바인딩 ('전체 모임'이 아니고 데이터가 존재할 때만 노출) */}
+            {/* 하단 네비게이션바 */}
             {activeTab !== '전체 모임' && totalItems > 0 && (
               <Pagination
                 currentPage={currentPage}
