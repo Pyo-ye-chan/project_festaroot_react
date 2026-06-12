@@ -22,6 +22,11 @@ import {
   addComment,
   deleteComment,
   updateComment,
+  togglePostLike,
+  getPostLikeStatus,
+  reportPost,
+  toggleCommentLike,
+  reportComment,
 } from '../../../api/boardApi';
 
 import useAuthStore from '../../../store/useAuthStore';
@@ -30,51 +35,44 @@ const PostDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // =============================
+
   // 게시글 관련 상태
-  // =============================
   const [post, setPost] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0); // 좋아요 상태 조회
 
-  // =============================
+
   // 댓글 관련 상태
-  // =============================
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
 
-  // =============================
+
   // 대댓글 관련 상태
-  // =============================
   const [replyText, setReplyText] = useState('');
   const [replyTargetId, setReplyTargetId] = useState(null);
 
-  // =============================
+
   // 댓글 수정 관련 상태
-  // =============================
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editedCommentText, setEditedCommentText] = useState('');
 
-  // =============================
+
   // 신고 모달 관련 상태
-  // =============================
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportTargetType, setReportTargetType] = useState('');
   const [reportTargetId, setReportTargetId] = useState(null);
 
-  // =============================
+
   // 댓글 좋아요 상태
   // key: comment_id
   // value: true / false
-  // =============================
   const [commentLikes, setCommentLikes] = useState({});
-
   // 현재 로그인한 사용자 id
   const currentUserId = useAuthStore((state) => state.user?.member_id);
 
-  // =============================
+
   // 게시글 상세 조회
-  // =============================
   useEffect(() => {
     const fetchPostDetail = async () => {
       try {
@@ -82,6 +80,7 @@ const PostDetailPage = () => {
 
         setPost(postDetail.data.dto);
         setAttachments(postDetail.data.list || []);
+        setLikeCount(postDetail.data.dto.like_count || 0);
       } catch (error) {
         console.error('게시글 상세 조회 실패:', error);
       }
@@ -90,9 +89,24 @@ const PostDetailPage = () => {
     fetchPostDetail();
   }, [id]);
 
-  // =============================
+  // 좋아요 상태 조회
+  useEffect(() => {
+    const fetchLikeStatus = async () => {
+      try {
+        const response = await getPostLikeStatus(id);
+
+        setIsLiked(response.data.liked);
+        setLikeCount(response.data.likeCount);
+      } catch (error) {
+        console.error('좋아요 상태 조회 실패:', error);
+      }
+    };
+
+    fetchLikeStatus();
+  }, [id]);
+
+
   // 댓글 목록 조회
-  // =============================
   const fetchComments = async () => {
     try {
       const response = await getComments(id);
@@ -108,18 +122,17 @@ const PostDetailPage = () => {
     fetchComments();
   }, [id]);
 
-  // =============================
+
   // 댓글 총 개수 계산
   // 부모 댓글 + 대댓글 children 개수 포함
-  // =============================
+
   const totalCommentCount = comments.reduce(
     (count, comment) => count + 1 + (comment.children?.length || 0),
     0
   );
 
-  // =============================
+
   // 게시글 삭제
-  // =============================
   const handleDeletePost = async () => {
     if (!window.confirm('정말로 게시글을 삭제하시겠습니까?')) return;
 
@@ -133,9 +146,21 @@ const PostDetailPage = () => {
     }
   };
 
-  // =============================
+
+  // 좋아요
+  const handleTogglePostLike = async () => {
+    try {
+      const response = await togglePostLike(id);
+
+      setIsLiked(response.data.liked);
+      setLikeCount(response.data.likeCount);
+    } catch (error) {
+      console.error('좋아요 처리 실패:', error);
+      alert('좋아요 처리에 실패했습니다.');
+    }
+  };
+
   // 댓글 작성
-  // =============================
   const handleAddComment = async () => {
     if (!commentText.trim()) return;
 
@@ -150,10 +175,9 @@ const PostDetailPage = () => {
     }
   };
 
-  // =============================
+
   // 대댓글 작성
   // parentCommentId가 parent_comment_id 역할
-  // =============================
   const handleAddReply = async (parentCommentId) => {
     if (!replyText.trim()) return;
 
@@ -169,9 +193,8 @@ const PostDetailPage = () => {
     }
   };
 
-  // =============================
+
   // 댓글 / 대댓글 삭제
-  // =============================
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
 
@@ -184,25 +207,22 @@ const PostDetailPage = () => {
     }
   };
 
-  // =============================
+
   // 댓글 수정 시작
-  // =============================
   const handleEditComment = (comment) => {
     setEditingCommentId(comment.comment_id);
     setEditedCommentText(comment.content);
   };
 
-  // =============================
+
   // 댓글 수정 취소
-  // =============================
   const handleCancelEdit = () => {
     setEditingCommentId(null);
     setEditedCommentText('');
   };
 
-  // =============================
+
   // 댓글 수정 저장
-  // =============================
   const handleSaveEditedComment = async (commentId) => {
     if (!editedCommentText.trim()) {
       alert('수정할 내용을 입력해 주세요.');
@@ -221,82 +241,92 @@ const PostDetailPage = () => {
     }
   };
 
-  // =============================
+
   // 댓글 / 대댓글 좋아요 토글
   // 현재는 프론트 임시 처리
   // 나중에 API 연결하면 이 함수 안에서 API 호출하면 됨
-  // =============================
-  const handleToggleCommentLike = async (commentId, currentLikes) => {
+
+  const handleToggleCommentLike = async (commentId) => {
     try {
-      const isCurrentlyLiked = commentLikes[commentId];
+      const response = await toggleCommentLike(commentId);
 
-      const newLikeCount = isCurrentlyLiked
-        ? Math.max(0, currentLikes - 1)
-        : currentLikes + 1;
+      const { liked, likeCount } = response.data;
 
-      // 좋아요 상태 변경
       setCommentLikes((prev) => ({
         ...prev,
-        [commentId]: !isCurrentlyLiked,
+        [commentId]: liked,
       }));
 
-      // 댓글 목록 안의 좋아요 수 변경
-      // 부모 댓글이면 부모 댓글 업데이트
-      // 대댓글이면 children 안에서 업데이트
       setComments((prevComments) =>
         prevComments.map((comment) =>
           comment.comment_id === commentId
             ? {
-                ...comment,
-                like_count: newLikeCount,
-              }
+              ...comment,
+              like_count: likeCount,
+            }
             : {
-                ...comment,
-                children: comment.children?.map((reply) =>
-                  reply.comment_id === commentId
-                    ? {
-                        ...reply,
-                        like_count: newLikeCount,
-                      }
-                    : reply
-                ),
-              }
+              ...comment,
+              children: comment.children?.map((reply) =>
+                reply.comment_id === commentId
+                  ? {
+                    ...reply,
+                    like_count: likeCount,
+                  }
+                  : reply
+              ),
+            }
         )
       );
     } catch (error) {
       console.error('댓글 좋아요/취소 실패:', error);
-      alert('댓글 좋아요/취소에 실패했습니다.');
+      alert('댓글 좋아요 처리에 실패했습니다.');
     }
   };
 
-  // =============================
   // 신고 제출
-  // =============================
-  const handleReportSubmit = ({
+  const handleReportSubmit = async ({
     targetType,
     targetId,
     reason,
     customReason,
   }) => {
-    console.log('Report submitted:', {
-      targetType,
-      targetId,
-      reason,
-      customReason,
-    });
+    try {
+      const finalReason = reason === '기타' ? customReason : reason;
 
-    alert(
-      `신고가 접수되었습니다!\n대상: ${targetType} ID: ${targetId}\n사유: ${reason}${
-        customReason ? ` (${customReason})` : ''
-      }`
-    );
+      if (!finalReason?.trim()) {
+        alert('신고 사유를 입력해 주세요.');
+        return;
+      }
 
-    setIsReportModalOpen(false);
+      // 게시글 신고
+      if (targetType === 'post') {
+        await reportPost(targetId, finalReason);
+        alert('게시글 신고가 접수되었습니다.');
+      }
+
+      // 댓글 / 대댓글 신고
+      if (targetType === 'comment' || targetType === 'reply') {
+        await reportComment(targetId, finalReason);
+        alert('댓글 신고가 접수되었습니다.');
+        fetchComments();
+      }
+
+      setIsReportModalOpen(false);
+      setReportTargetType('');
+      setReportTargetId(null);
+    } catch (error) {
+      console.error('신고 실패:', error);
+
+      if (error.response?.data === 'already_reported') {
+        alert('이미 신고한 대상입니다.');
+      } else {
+        alert('신고 처리에 실패했습니다.');
+      }
+    }
   };
 
-  // =============================
+
   // 카테고리별 스타일
-  // =============================
   const getCategoryClasses = (postCategory) => {
     switch (postCategory) {
       case '후기':
@@ -316,9 +346,8 @@ const PostDetailPage = () => {
     }
   };
 
-  // =============================
+
   // 날짜 표시
-  // =============================
   const formatDate = (dateValue) => {
     if (!dateValue) return '';
 
@@ -389,7 +418,7 @@ const PostDetailPage = () => {
               <div className="flex items-center gap-4 text-gray-400 text-sm font-bold">
                 <span>조회 {post.view_count}</span>
                 <span className="text-rose-500">
-                  좋아요 {post.like_count}
+                  좋아요 {likeCount}
                 </span>
               </div>
             </div>
@@ -460,17 +489,14 @@ const PostDetailPage = () => {
             <div className="flex flex-wrap items-center justify-between gap-4 mt-12 pt-8 border-t border-gray-50">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setIsLiked(!isLiked)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black transition-all active:scale-95 ${
-                    isLiked
-                      ? 'bg-rose-500 text-white shadow-lg shadow-rose-200'
-                      : 'bg-gray-50 text-gray-600 hover:bg-rose-50 hover:text-rose-500'
-                  }`}
+                  onClick={handleTogglePostLike}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black transition-all active:scale-95 ${isLiked
+                    ? 'bg-rose-500 text-white shadow-lg shadow-rose-200'
+                    : 'bg-gray-50 text-gray-600 hover:bg-rose-50 hover:text-rose-500'
+                    }`}
                 >
-                  <Heart
-                    className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`}
-                  />
-                  {post.like_count + (isLiked ? 1 : 0)}
+                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                  {likeCount}
                 </button>
 
                 <button className="flex items-center gap-2 px-6 py-3 bg-gray-50 text-gray-600 hover:bg-gray-100 rounded-2xl font-black transition-all active:scale-95">
@@ -538,9 +564,8 @@ const PostDetailPage = () => {
             <div className="flex gap-4 mb-10">
               <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
                 <img
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${
-                    currentUserId || 'currentUser'
-                  }`}
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUserId || 'currentUser'
+                    }`}
                   alt=""
                 />
               </div>
@@ -599,23 +624,18 @@ const PostDetailPage = () => {
                           <button
                             type="button"
                             onClick={() =>
-                              handleToggleCommentLike(
-                                comment.comment_id,
-                                comment.like_count || 0
-                              )
+                              handleToggleCommentLike(comment.comment_id)
                             }
-                            className={`flex items-center gap-1 text-xs font-bold transition-colors ${
-                              commentLikes[comment.comment_id]
-                                ? 'text-rose-500'
-                                : 'text-gray-400 hover:text-rose-500'
-                            }`}
+                            className={`flex items-center gap-1 text-xs font-bold transition-colors ${commentLikes[comment.comment_id]
+                              ? 'text-rose-500'
+                              : 'text-gray-400 hover:text-rose-500'
+                              }`}
                           >
                             <Heart
-                              className={`w-4 h-4 ${
-                                commentLikes[comment.comment_id]
-                                  ? 'fill-current'
-                                  : ''
-                              }`}
+                              className={`w-4 h-4 ${commentLikes[comment.comment_id]
+                                ? 'fill-current'
+                                : ''
+                                }`}
                             />
                             {comment.like_count || 0}
                           </button>
@@ -781,23 +801,19 @@ const PostDetailPage = () => {
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    handleToggleCommentLike(
-                                      reply.comment_id,
-                                      reply.like_count || 0
-                                    )
+                                    handleToggleCommentLike(reply.comment_id)
+
                                   }
-                                  className={`flex items-center gap-1 text-[11px] font-bold transition-colors ${
-                                    commentLikes[reply.comment_id]
-                                      ? 'text-rose-500'
-                                      : 'text-gray-400 hover:text-rose-500'
-                                  }`}
+                                  className={`flex items-center gap-1 text-[11px] font-bold transition-colors ${commentLikes[reply.comment_id]
+                                    ? 'text-rose-500'
+                                    : 'text-gray-400 hover:text-rose-500'
+                                    }`}
                                 >
                                   <Heart
-                                    className={`w-3.5 h-3.5 ${
-                                      commentLikes[reply.comment_id]
-                                        ? 'fill-current'
-                                        : ''
-                                    }`}
+                                    className={`w-3.5 h-3.5 ${commentLikes[reply.comment_id]
+                                      ? 'fill-current'
+                                      : ''
+                                      }`}
                                   />
                                   {reply.like_count || 0}
                                 </button>
