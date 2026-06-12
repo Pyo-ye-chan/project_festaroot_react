@@ -15,6 +15,7 @@ import CommunityMainPage from './features/community/pages/CommunityMainPage'
 import BoardListPage from './features/community/pages/BoardListPage'
 import PostDetailPage from './features/community/pages/PostDetailPage'
 import PostWritePage from './features/community/pages/PostWritePage'
+import PostUpdatePage from './features/community/pages/PostUpdatePage' // New import
 import MainLayout from './components/MainLayout'
 import ChatListPage from './features/chat/pages/ChatListPage'
 import FloatingChat from './features/chat/components/FloatingChat'
@@ -90,6 +91,7 @@ function App() {
           <Route path="/community" element={<CommunityMainPage />} />
           <Route path="/community/board/:category" element={<BoardListPage />} />
           <Route path="/community/post/:id" element={<PostDetailPage />} />
+          <Route path="/community/update/:id" element={<PostUpdatePage />} /> // New Route
           <Route path="/community/write" element={<PostWritePage />} />
           <Route path="/community/gathering" element={<GatheringPage />} />
           <Route path="/community/gathering/:id" element={<GatheringDetailPage />} />
