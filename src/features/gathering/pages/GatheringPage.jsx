@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import CreateGatheringModal from '../components/CreateGatheringModal';
 import GatheringHeader from '../components/GatheringHeader';
@@ -11,13 +12,17 @@ import gatheringApi from '../../../api/gatheringApi';
 import useAuthStore from '../../../store/useAuthStore';
 
 const GatheringPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // 💡 URL 파라미터에서 현재 탭과 페이지 정보를 가져옴
+  const activeTab = searchParams.get('tab') || '전체 모임';
+  const currentPage = parseInt(searchParams.get('page')) || 1;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('전체 모임');
   const [keyword, setKeyword] = useState('');
   const [joinedFilter, setJoinedFilter] = useState('전체');
 
   // 🌟 페이지네이션 관련 상태
-  const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0); // DB에서 받아올 전체 아이템 수
   const ITEMS_PER_PAGE = 5; 
 
@@ -82,17 +87,22 @@ const GatheringPage = () => {
     fetchJoinedData();
   }, [loggedInUserId, activeTab, currentPage, joinedFilter]); // 🌟 서브 필터 변경 시에도 DB 재요청
 
-  // 탭 변경 핸들러 (페이지 번호 초기화 필수)
+  // 탭 변경 핸들러 (URL 파라미터 업데이트)
   const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setCurrentPage(1); 
+    setSearchParams({ tab, page: 1 }, { replace: true });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // 참여중인 모임 필터 변경 핸들러
   const handleFilterChange = (filter) => {
     setJoinedFilter(filter);
-    setCurrentPage(1);
+    setSearchParams({ tab: activeTab, page: 1 }, { replace: true });
+  };
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (page) => {
+    setSearchParams({ tab: activeTab, page }, { replace: true });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -150,10 +160,7 @@ const GatheringPage = () => {
                 currentPage={currentPage}
                 totalItems={totalItems}
                 itemsPerPage={ITEMS_PER_PAGE}
-                onPageChange={(page) => {
-                  setCurrentPage(page);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
+                onPageChange={handlePageChange}
               />
             )}
           </main>

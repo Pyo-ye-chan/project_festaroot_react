@@ -132,7 +132,7 @@ const GatheringDetailPage = () => {
 
           <main className="lg:col-span-9 space-y-8">
             <button
-              onClick={() => navigate('/community/gathering')} // 명시적 목록 라우팅 처리 권장
+              onClick={() => navigate(-1)}
               className="inline-flex items-center text-gray-600 hover:text-[var(--festival-purple)] font-medium mb-4 transition-colors"
             >
               <ChevronLeft className="w-5 h-5 mr-1" />
