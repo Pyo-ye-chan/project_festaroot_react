@@ -7,6 +7,7 @@ import FestivalGatheringSection from '../components/FestivalGatheringSection';
 import FreeGatheringSection from '../components/FreeGatheringSection';
 import JoinedGatheringSection from '../components/JoinedGatheringSection';
 import gatheringApi from '../../../api/gatheringApi';
+import useAuthStore from '../../../store/useAuthStore';
 
 const GatheringPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,64 +15,47 @@ const GatheringPage = () => {
   const [keyword, setKeyword] = useState('');
   const [joinedFilter, setJoinedFilter] = useState('전체');
 
-  const categories = ['전체 모임', '축제별 모임', '자유 모임', '참여중인 모임'];
-
-  const festivalRooms = [
-    {
-      id: 101,
-      type: 'festival',
-      festivalName: '부산 록 페스티벌',
-      title: '부산 록 페스티벌 채팅방',
-      location: '부산 삼락생태공원',
-      date: '2026.08.10 - 08.12',
-      current: 156,
-      max: 500,
-      image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300',
-      isJoined: true,
-      joinedAt: '2026-06-01'
-    },
-    {
-      id: 102,
-      type: 'festival',
-      festivalName: '태안 세계 튤립 축제',
-      title: '튤립 축제 메이트 찾기',
-      location: '태안 코리아플라워파크',
-      date: '2026.04.10 - 05.10',
-      current: 84,
-      max: 200,
-      image: 'https://images.unsplash.com/photo-1554123168-b400f9c806ca?auto=format&fit=crop&q=80&w=300',
-      isJoined: false
-    },
-    {
-      id: 103,
-      type: 'festival',
-      festivalName: '서울 재즈 페스티벌',
-      title: '서재페 동행 모집방',
-      location: '서울 올림픽공원',
-      date: '2026.05.28 - 05.30',
-      current: 243,
-      max: 1000,
-      image: 'https://images.unsplash.com/photo-1514525253361-bee8a19744c1?auto=format&fit=crop&q=80&w=300',
-      isJoined: true,
-      joinedAt: '2026-06-05'
-    },
-  ];
-
+  const [festivalRooms, setFestivalRooms] = useState([]); // 💡 DB 연동 축제 모임 상태 관리
   const [freeGatherings, setFreeGatherings] = useState([]); // 자유 모임 목록
 
-  // 💡 올바른 비동기 useEffect 구조로 변경
+  const { user } = useAuthStore();
+  const loggedInUserId = user?.member_id || user?.id;
+
+  const categories = ['전체 모임', '축제별 모임', '자유 모임', '참여중인 모임'];
+
+  // 💡 축제 모임과 자유 모임을 통합하여 API 동적 조회 수행
   useEffect(() => {
-    const fetchFreeGatherings = async () => {
+    const fetchAllGatherings = async () => {
       try {
-        const data = await gatheringApi.freeGatheringList();
-        setFreeGatherings(data);
+        const [festivalData, freeData] = await Promise.all([
+          gatheringApi.festivalGatheringList(loggedInUserId),
+          gatheringApi.freeGatheringList()
+        ]);
+
+        // 💡 Oracle DB 대문자 Map 결과를 기존 프론트엔드 카멜/소문자 규격에 맞게 포맷팅 가공
+        const formattedFestivals = festivalData.map(item => ({
+          id: Number(item.ROOM_ID),
+          type: 'festival',
+          festivalName: item.ROOM_TITLE ? item.ROOM_TITLE.replace(' 공식 모임', '') : '',
+          title: item.ROOM_TITLE,
+          location: item.FREE_LOCATION,
+          date: item.FREE_DATE,
+          current: item.CURRENT_COUNT || 0,
+          max: item.MAX_CAPACITY || 500,
+          image: item.FIRST_IMAGE || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300',
+          isJoined: item.IS_JOINED_INT > 0,
+          joinedAt: item.CREATED_AT || '2026-06-12'
+        }));
+
+        setFestivalRooms(formattedFestivals);
+        setFreeGatherings(freeData);
       } catch (error) {
-        console.error("자유 모임 목록을 가져오는 중 오류가 발생했습니다 : ", error);
+        console.error("모임 목록 통합 로드 중 에러 발생:", error);
       }
     };
 
-    fetchFreeGatherings();
-  }, []);
+    fetchAllGatherings();
+  }, [loggedInUserId]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);

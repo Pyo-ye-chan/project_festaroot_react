@@ -16,6 +16,14 @@ const gatheringApi = {
         return response.data;
     },
 
+    // 축제별 모임 전체 목록 조회
+    festivalGatheringList: async (memberId) => {
+        const response = await maxios.get(`${BASE_PATH}/festival`, {
+            params: { memberId: memberId || '' }
+        });
+        return response.data;
+    },
+
     // 자유 모임 상세 출력
     gatheringDetail: async (room_id) => {
         const response = await maxios.get(`${BASE_PATH}/${room_id}`);

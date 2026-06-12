@@ -16,7 +16,7 @@ const GatheringDetailPage = () => {
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 💡 [핵심] 서버에서 최신 데이터를 다시 불러오는 공통 함수
+  // 서버에서 최신 데이터를 다시 불러오는 공통 함수
   const fetchDetailAndParticipants = async () => {
     try {
       const [roomData, participantData] = await Promise.all([
@@ -63,7 +63,7 @@ const GatheringDetailPage = () => {
   const isJoined = isOwner || participants.some(p => p.MEMBER_ID === loggedInUserId);
   const isFull = gathering.current_count >= gathering.max_capacity;
 
-  // 💡 모임 참여 핸들러 (재조회 방식 반영)
+  // 💡 모임 참여 핸들러 (Lazy-Creation 동적 주소 맵핑 고도화)
   const handleJoinClick = async () => {
     if (!loggedInUserId) {
       alert("로그인이 필요한 서비스입니다.");
@@ -72,26 +72,38 @@ const GatheringDetailPage = () => {
     }
 
     try {
-      await gatheringApi.joinGathering(id, loggedInUserId);
+      const response = await gatheringApi.joinGathering(id, loggedInUserId);
       
-      // 💡 가짜 계산 대신 서버에서 진짜 최신 데이터를 긁어옴!
-      await fetchDetailAndParticipants();
-
       alert("모임에 성공적으로 참여되었습니다!");
+
+      // 💡 백엔드 응답 본문에 있는 실제 발급 완료된 진짜 roomId 확보
+      if (response && response.roomId) {
+        const actualRoomId = response.roomId;
+
+        // 만약 기존 주소창 파라미터(id)가 음수였거나 신규 발급된 진짜 ID와 매칭되지 않는다면?
+        if (String(actualRoomId) !== String(id)) {
+          // 뒤로 가기를 누르는 유저 경험을 방해하지 않도록 replace 옵션을 주어 
+          // 가상의 음수 방 주소를 실제 생성된 양수 방 번호 주소로 스위칭시킵니다.
+          navigate(`/community/gathering/${actualRoomId}`, { replace: true });
+        } else {
+          // 이미 개설된 방에 그냥 일반 참여자로 붙은 케이스라면 화면 데이터만 갱신
+          await fetchDetailAndParticipants();
+        }
+      }
     } catch (error) {
       console.error("모임 참여 중 오류 발생:", error);
       alert(error.response?.data?.message || "모임 참여에 실패했습니다. 다시 시도해 주세요.");
     }
   };
 
-  // 💡 모임 나가기 핸들러 (재조회 방식 반영)
+  // 모임 나가기 핸들러
   const handleLeaveClick = async () => {
     if (!window.confirm("정말로 이 모임에서 나가시겠습니까?")) return;
 
     try {
       await gatheringApi.leaveGathering(id, loggedInUserId);
 
-      // 💡 서버 데이터와 완벽하게 싱크 맞추기
+      // 서버 데이터와 완벽하게 싱크 맞추기
       await fetchDetailAndParticipants();
 
       alert("모임에서 탈퇴되었습니다.");
@@ -102,6 +114,11 @@ const GatheringDetailPage = () => {
   };
 
   const handleChatClick = () => {
+    // 만약 음수 ID인 상태에서 예외적으로 흘러왔다면 양수 ID가 확보되었을 때 입장을 허용하는 것이 안전합니다.
+    if (Number(id) <= 0) {
+      alert("모임 참여를 완료한 뒤 채팅방 입장이 가능합니다.");
+      return;
+    }
     navigate(`/community/chat/${id}`);
   };
 
@@ -115,7 +132,7 @@ const GatheringDetailPage = () => {
 
           <main className="lg:col-span-9 space-y-8">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/community/gathering')} // 명시적 목록 라우팅 처리 권장
               className="inline-flex items-center text-gray-600 hover:text-[var(--festival-purple)] font-medium mb-4 transition-colors"
             >
               <ChevronLeft className="w-5 h-5 mr-1" />
@@ -140,7 +157,7 @@ const GatheringDetailPage = () => {
                 </span>
                 <span className={`flex items-center gap-1 ${isFull ? 'text-red-500 font-black' : ''}`}>
                   <Users className={`w-5 h-5 ${isFull ? 'text-red-500' : 'text-[var(--festival-purple)]'}`} />
-                  {gathering.current_count || 1}/{gathering.max_capacity}명
+                  {gathering.current_count || 0}/{gathering.max_capacity}명
                 </span>
               </div>
 
@@ -150,21 +167,23 @@ const GatheringDetailPage = () => {
 
               {/* 참여자 명단 영역 */}
               <div className="mb-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">참여자 ({gathering.current_count || 1}명)</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">참여자 ({gathering.current_count || 0}명)</h3>
                 <div className="flex flex-wrap gap-3">
 
-                  {/* 1. 👑 방장(Host) 정보 */}
-                  <div className="flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm">
-                    <img
-                      src={gathering.profile_image_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=owner'}
-                      alt={gathering.nickname}
-                      className="w-9 h-9 rounded-full object-cover border-2 border-[var(--festival-purple)]"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-[var(--festival-purple)] font-bold bg-purple-100 px-1.5 rounded w-max mb-0.5">방장 👑</span>
-                      <span className="text-sm font-black text-gray-800 leading-tight">{gathering.nickname || '방장'}</span>
+                  {/* 1. 👑 방장(Host) 정보 - 방장이 존재할 때만 렌더링 (공식 방장 없음 이슈 예방) */}
+                  {gathering.owner_id && (
+                    <div className="flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm">
+                      <img
+                        src={gathering.profile_image_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=owner'}
+                        alt={gathering.nickname}
+                        className="w-9 h-9 rounded-full object-cover border-2 border-[var(--festival-purple)]"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-[var(--festival-purple)] font-bold bg-purple-100 px-1.5 rounded w-max mb-0.5">방장 👑</span>
+                        <span className="text-sm font-black text-gray-800 leading-tight">{gathering.nickname || '방장'}</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* 2. 👥 일반 참여자 목록 */}
                   {participants.map(participant => (
@@ -180,6 +199,11 @@ const GatheringDetailPage = () => {
                       </div>
                     </div>
                   ))}
+
+                  {/* 방장도 없고 멤버도 없는 쌩 신규 축제 모임 안내멘트 */}
+                  {(!gathering.owner_id && participants.length === 0) && (
+                    <p className="text-sm text-gray-400 italic pl-1">가장 먼저 이 공식 모임방의 메이트가 되어보세요!</p>
+                  )}
 
                 </div>
               </div>
