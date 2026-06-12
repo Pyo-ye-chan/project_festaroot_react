@@ -16,25 +16,30 @@ const GatheringDetailPage = () => {
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // 💡 [핵심] 서버에서 최신 데이터를 다시 불러오는 공통 함수
+  const fetchDetailAndParticipants = async () => {
+    try {
+      const [roomData, participantData] = await Promise.all([
+        gatheringApi.gatheringDetail(id),
+        gatheringApi.gatheringParticipants(id)
+      ]);
+      setGathering(roomData);
+      setParticipants(participantData || []);
+    } catch (error) {
+      console.error("모임 정보 갱신 중 오류 발생:", error);
+    }
+  };
+
+  // 컴포넌트 최초 로드시 실행
   useEffect(() => {
-    const fetchDetailAndParticipants = async () => {
-      try {
-        setLoading(true);
-        const [roomData, participantData] = await Promise.all([
-          gatheringApi.gatheringDetail(id),
-          gatheringApi.gatheringParticipants(id)
-        ]);
-        setGathering(roomData);
-        setParticipants(participantData || []);
-      } catch (error) {
-        console.error("모임 상세 및 참여자 정보를 가져오는 중 오류 발생:", error);
-      } finally {
-        setLoading(false);
-      }
+    const initData = async () => {
+      setLoading(true);
+      await fetchDetailAndParticipants();
+      setLoading(false);
     };
 
     if (id) {
-      fetchDetailAndParticipants();
+      initData();
     }
   }, [id]);
 
@@ -58,7 +63,7 @@ const GatheringDetailPage = () => {
   const isJoined = isOwner || participants.some(p => p.MEMBER_ID === loggedInUserId);
   const isFull = gathering.current_count >= gathering.max_capacity;
 
-  // 💡 모임 참여 핸들러
+  // 💡 모임 참여 핸들러 (재조회 방식 반영)
   const handleJoinClick = async () => {
     if (!loggedInUserId) {
       alert("로그인이 필요한 서비스입니다.");
@@ -68,40 +73,26 @@ const GatheringDetailPage = () => {
 
     try {
       await gatheringApi.joinGathering(id, loggedInUserId);
+      
+      // 💡 가짜 계산 대신 서버에서 진짜 최신 데이터를 긁어옴!
+      await fetchDetailAndParticipants();
 
-      setGathering(prev => ({
-        ...prev,
-        current_count: (prev.current_count || 1) + 1
-      }));
-
-      const newParticipant = {
-        MEMBER_ID: loggedInUserId,
-        NICKNAME: user?.nickname || '새로운 멤버',
-        PROFILE_IMAGE_URL: user?.profile_image_url || user?.profileImageUrl || ''
-      };
-      setParticipants(prev => [...prev, newParticipant]);
-
-      alert("모임에 성공적으로 참여되었습니다! 채팅방으로 이동합니다.");
-      navigate(`/community/chat/${id}`);
+      alert("모임에 성공적으로 참여되었습니다!");
     } catch (error) {
       console.error("모임 참여 중 오류 발생:", error);
       alert(error.response?.data?.message || "모임 참여에 실패했습니다. 다시 시도해 주세요.");
     }
   };
 
-  // 💡 모임 나가기 핸들러
+  // 💡 모임 나가기 핸들러 (재조회 방식 반영)
   const handleLeaveClick = async () => {
     if (!window.confirm("정말로 이 모임에서 나가시겠습니까?")) return;
 
     try {
       await gatheringApi.leaveGathering(id, loggedInUserId);
 
-      // UI 상태 업데이트
-      setGathering(prev => ({
-        ...prev,
-        current_count: Math.max((prev.current_count || 1) - 1, 1)
-      }));
-      setParticipants(prev => prev.filter(p => p.MEMBER_ID !== loggedInUserId));
+      // 💡 서버 데이터와 완벽하게 싱크 맞추기
+      await fetchDetailAndParticipants();
 
       alert("모임에서 탈퇴되었습니다.");
     } catch (error) {
@@ -110,7 +101,6 @@ const GatheringDetailPage = () => {
     }
   };
 
-  // 💡 채팅방 입장 핸들러
   const handleChatClick = () => {
     navigate(`/community/chat/${id}`);
   };
