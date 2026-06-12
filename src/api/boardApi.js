@@ -42,3 +42,27 @@ export const updateComment = async (commentId, content) =>
 // 댓글 삭제
 export const deleteComment = async (commentId) =>
   await maxios.delete(`/board/comments/${commentId}`);
+
+// 게시글 좋아요 토글
+export const togglePostLike = async (postId) =>
+  await maxios.post(`/board/posts/${postId}/like`);
+
+// 게시글 좋아요 상태 조회
+export const getPostLikeStatus = async (postId) =>
+  await maxios.get(`/board/posts/${postId}/like`);
+
+// 게시글 신고
+export const reportPost = async (postId, reason) =>
+  await maxios.post(`/board/posts/${postId}/report`, {
+    reason,
+  });
+
+// 댓글 / 대댓글 좋아요 토글
+export const toggleCommentLike = async (commentId) =>
+  await maxios.post(`/board/comments/${commentId}/like`);
+
+// 댓글 / 대댓글 신고
+export const reportComment = async (commentId, reason) =>
+  await maxios.post(`/board/comments/${commentId}/report`, {
+    reason,
+  });  

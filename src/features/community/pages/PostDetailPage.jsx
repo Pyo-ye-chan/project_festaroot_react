@@ -13,13 +13,20 @@ import {
   Download,
 } from 'lucide-react';
 
+import ReportModal from '../components/ReportModal';
+
 import {
   getPostDetail,
   deletePost,
   getComments,
   addComment,
   deleteComment,
-  updateComment
+  updateComment,
+  togglePostLike,
+  getPostLikeStatus,
+  reportPost,
+  toggleCommentLike,
+  reportComment,
 } from '../../../api/boardApi';
 
 import useAuthStore from '../../../store/useAuthStore';
@@ -28,25 +35,42 @@ const PostDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
+
   // 게시글 관련 상태
   const [post, setPost] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0); // 좋아요 상태 조회
+
 
   // 댓글 관련 상태
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
 
+
   // 대댓글 관련 상태
   const [replyText, setReplyText] = useState('');
   const [replyTargetId, setReplyTargetId] = useState(null);
+
 
   // 댓글 수정 관련 상태
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editedCommentText, setEditedCommentText] = useState('');
 
+
+  // 신고 모달 관련 상태
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportTargetType, setReportTargetType] = useState('');
+  const [reportTargetId, setReportTargetId] = useState(null);
+
+
+  // 댓글 좋아요 상태
+  // key: comment_id
+  // value: true / false
+  const [commentLikes, setCommentLikes] = useState({});
   // 현재 로그인한 사용자 id
   const currentUserId = useAuthStore((state) => state.user?.member_id);
+
 
   // 게시글 상세 조회
   useEffect(() => {
@@ -54,10 +78,9 @@ const PostDetailPage = () => {
       try {
         const postDetail = await getPostDetail(id);
 
-        console.log('Fetched post detail:', postDetail.data);
-
         setPost(postDetail.data.dto);
         setAttachments(postDetail.data.list || []);
+        setLikeCount(postDetail.data.dto.like_count || 0);
       } catch (error) {
         console.error('게시글 상세 조회 실패:', error);
       }
@@ -66,12 +89,27 @@ const PostDetailPage = () => {
     fetchPostDetail();
   }, [id]);
 
+  // 좋아요 상태 조회
+  useEffect(() => {
+    const fetchLikeStatus = async () => {
+      try {
+        const response = await getPostLikeStatus(id);
+
+        setIsLiked(response.data.liked);
+        setLikeCount(response.data.likeCount);
+      } catch (error) {
+        console.error('좋아요 상태 조회 실패:', error);
+      }
+    };
+
+    fetchLikeStatus();
+  }, [id]);
+
+
   // 댓글 목록 조회
   const fetchComments = async () => {
     try {
       const response = await getComments(id);
-
-      console.log('댓글 목록:', response.data);
 
       setComments(response.data || []);
     } catch (error) {
@@ -84,12 +122,15 @@ const PostDetailPage = () => {
     fetchComments();
   }, [id]);
 
+
   // 댓글 총 개수 계산
-  // comments.length만 쓰면 부모 댓글만 계산되므로 대댓글 children까지 포함
+  // 부모 댓글 + 대댓글 children 개수 포함
+
   const totalCommentCount = comments.reduce(
     (count, comment) => count + 1 + (comment.children?.length || 0),
     0
   );
+
 
   // 게시글 삭제
   const handleDeletePost = async () => {
@@ -105,6 +146,20 @@ const PostDetailPage = () => {
     }
   };
 
+
+  // 좋아요
+  const handleTogglePostLike = async () => {
+    try {
+      const response = await togglePostLike(id);
+
+      setIsLiked(response.data.liked);
+      setLikeCount(response.data.likeCount);
+    } catch (error) {
+      console.error('좋아요 처리 실패:', error);
+      alert('좋아요 처리에 실패했습니다.');
+    }
+  };
+
   // 댓글 작성
   const handleAddComment = async () => {
     if (!commentText.trim()) return;
@@ -112,10 +167,7 @@ const PostDetailPage = () => {
     try {
       await addComment(id, commentText);
 
-      // 입력창 초기화
       setCommentText('');
-
-      // 댓글 재조회
       fetchComments();
     } catch (error) {
       console.error('댓글 작성 실패:', error);
@@ -123,19 +175,17 @@ const PostDetailPage = () => {
     }
   };
 
+
   // 대댓글 작성
+  // parentCommentId가 parent_comment_id 역할
   const handleAddReply = async (parentCommentId) => {
     if (!replyText.trim()) return;
 
     try {
-      // parentCommentId가 parent_comment_id로 서버에 전달됨
       await addComment(id, replyText, parentCommentId);
 
-      // 대댓글 입력 상태 초기화
       setReplyText('');
       setReplyTargetId(null);
-
-      // 댓글 재조회
       fetchComments();
     } catch (error) {
       console.error('대댓글 작성 실패:', error);
@@ -143,14 +193,13 @@ const PostDetailPage = () => {
     }
   };
 
+
   // 댓글 / 대댓글 삭제
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
 
     try {
       await deleteComment(commentId);
-
-      // 삭제 후 댓글 재조회
       fetchComments();
     } catch (error) {
       console.error('댓글 삭제 실패:', error);
@@ -158,17 +207,20 @@ const PostDetailPage = () => {
     }
   };
 
+
   // 댓글 수정 시작
   const handleEditComment = (comment) => {
     setEditingCommentId(comment.comment_id);
     setEditedCommentText(comment.content);
   };
 
+
   // 댓글 수정 취소
   const handleCancelEdit = () => {
     setEditingCommentId(null);
     setEditedCommentText('');
   };
+
 
   // 댓글 수정 저장
   const handleSaveEditedComment = async (commentId) => {
@@ -178,10 +230,8 @@ const PostDetailPage = () => {
     }
 
     try {
-      // Assuming updateComment API takes commentId and new content
       await updateComment(commentId, editedCommentText);
 
-      // 수정 후 상태 초기화 및 댓글 재조회
       setEditingCommentId(null);
       setEditedCommentText('');
       fetchComments();
@@ -191,8 +241,92 @@ const PostDetailPage = () => {
     }
   };
 
-  // 카테고리별 스타일
 
+  // 댓글 / 대댓글 좋아요 토글
+  // 현재는 프론트 임시 처리
+  // 나중에 API 연결하면 이 함수 안에서 API 호출하면 됨
+
+  const handleToggleCommentLike = async (commentId) => {
+    try {
+      const response = await toggleCommentLike(commentId);
+
+      const { liked, likeCount } = response.data;
+
+      setCommentLikes((prev) => ({
+        ...prev,
+        [commentId]: liked,
+      }));
+
+      setComments((prevComments) =>
+        prevComments.map((comment) =>
+          comment.comment_id === commentId
+            ? {
+              ...comment,
+              like_count: likeCount,
+            }
+            : {
+              ...comment,
+              children: comment.children?.map((reply) =>
+                reply.comment_id === commentId
+                  ? {
+                    ...reply,
+                    like_count: likeCount,
+                  }
+                  : reply
+              ),
+            }
+        )
+      );
+    } catch (error) {
+      console.error('댓글 좋아요/취소 실패:', error);
+      alert('댓글 좋아요 처리에 실패했습니다.');
+    }
+  };
+
+  // 신고 제출
+  const handleReportSubmit = async ({
+    targetType,
+    targetId,
+    reason,
+    customReason,
+  }) => {
+    try {
+      const finalReason = reason === '기타' ? customReason : reason;
+
+      if (!finalReason?.trim()) {
+        alert('신고 사유를 입력해 주세요.');
+        return;
+      }
+
+      // 게시글 신고
+      if (targetType === 'post') {
+        await reportPost(targetId, finalReason);
+        alert('게시글 신고가 접수되었습니다.');
+      }
+
+      // 댓글 / 대댓글 신고
+      if (targetType === 'comment' || targetType === 'reply') {
+        await reportComment(targetId, finalReason);
+        alert('댓글 신고가 접수되었습니다.');
+        fetchComments();
+      }
+
+      setIsReportModalOpen(false);
+      setReportTargetType('');
+      setReportTargetId(null);
+    } catch (error) {
+      console.error('신고 실패:', error);
+
+      if (error.response?.data === 'already_reported') {
+        alert('이미 신고한 대상입니다.');
+      } else {
+        alert('신고 처리에 실패했습니다.');
+      }
+    }
+  };
+
+
+  // 카테고리별 스타일
   const getCategoryClasses = (postCategory) => {
     switch (postCategory) {
       case '후기':
@@ -212,15 +346,15 @@ const PostDetailPage = () => {
     }
   };
 
-  // 날짜 표시용 함수
+
+  // 날짜 표시
   const formatDate = (dateValue) => {
     if (!dateValue) return '';
 
     return String(dateValue).replace('T', ' ');
   };
 
-  // post가 아직 null이면 렌더링 전에 로딩 처리
-  // 이거 없으면 post.category, post.title에서 에러 발생
+  // 게시글 로딩 처리
   if (!post) {
     return <div>게시글을 불러오는 중입니다.</div>;
   }
@@ -228,7 +362,6 @@ const PostDetailPage = () => {
   return (
     <div className="min-h-screen bg-[var(--warm-white)] font-['Pretendard'] pb-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-
         {/* 뒤로가기 */}
         <button
           onClick={() => navigate(-1)}
@@ -238,14 +371,17 @@ const PostDetailPage = () => {
           목록으로 돌아가기
         </button>
 
-        {/* 게시글 영역 */}
+        {/* =============================
+            게시글 영역
+        ============================= */}
         <article className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
-
           {/* 게시글 헤더 */}
           <div className="p-8 md:p-12 border-b border-gray-50">
             <div className="flex items-center gap-2 mb-4">
               <span
-                className={`px-3 py-1 rounded-lg text-[10px] font-black ${getCategoryClasses(post.category)}`}
+                className={`px-3 py-1 rounded-lg text-[10px] font-black ${getCategoryClasses(
+                  post.category
+                )}`}
               >
                 {post.category}
               </span>
@@ -275,16 +411,14 @@ const PostDetailPage = () => {
                 </div>
 
                 <div>
-                  <p className="font-black text-gray-900">
-                    {post.nickname}
-                  </p>
+                  <p className="font-black text-gray-900">{post.nickname}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-4 text-gray-400 text-sm font-bold">
                 <span>조회 {post.view_count}</span>
                 <span className="text-rose-500">
-                  좋아요 {post.like_count}
+                  좋아요 {likeCount}
                 </span>
               </div>
             </div>
@@ -321,8 +455,7 @@ const PostDetailPage = () => {
                       key={file.attach_id || file.file_path}
                       type="button"
                       onClick={() => {
-                        window.location.href =
-                          `http://localhost/storage/download/${file.attach_id}`;
+                        window.location.href = `http://localhost/storage/download/${file.attach_id}`;
                       }}
                       className="
                         w-full
@@ -356,15 +489,14 @@ const PostDetailPage = () => {
             <div className="flex flex-wrap items-center justify-between gap-4 mt-12 pt-8 border-t border-gray-50">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setIsLiked(!isLiked)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black transition-all active:scale-95 ${
-                    isLiked
-                      ? 'bg-rose-500 text-white shadow-lg shadow-rose-200'
-                      : 'bg-gray-50 text-gray-600 hover:bg-rose-50 hover:text-rose-500'
-                  }`}
+                  onClick={handleTogglePostLike}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black transition-all active:scale-95 ${isLiked
+                    ? 'bg-rose-500 text-white shadow-lg shadow-rose-200'
+                    : 'bg-gray-50 text-gray-600 hover:bg-rose-50 hover:text-rose-500'
+                    }`}
                 >
                   <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-                  {post.like_count + (isLiked ? 1 : 0)}
+                  {likeCount}
                 </button>
 
                 <button className="flex items-center gap-2 px-6 py-3 bg-gray-50 text-gray-600 hover:bg-gray-100 rounded-2xl font-black transition-all active:scale-95">
@@ -399,7 +531,14 @@ const PostDetailPage = () => {
                   </>
                 )}
 
-                <button className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-gray-600 font-bold text-sm transition-colors">
+                <button
+                  onClick={() => {
+                    setReportTargetType('post');
+                    setReportTargetId(post.post_id);
+                    setIsReportModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-gray-600 font-bold text-sm transition-colors"
+                >
                   <AlertCircle className="w-4 h-4" />
                   신고
                 </button>
@@ -408,7 +547,9 @@ const PostDetailPage = () => {
           </div>
         </article>
 
-        {/* 댓글 영역 */}
+        {/* =============================
+            댓글 영역
+        ============================= */}
         <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-8 border-b border-gray-50 flex items-center gap-3">
             <MessageSquare className="w-6 h-6 text-[var(--festival-purple)]" />
@@ -419,12 +560,12 @@ const PostDetailPage = () => {
           </div>
 
           <div className="p-8">
-
             {/* 댓글 입력창 */}
             <div className="flex gap-4 mb-10">
               <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
                 <img
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUserId || 'currentUser'}`}
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUserId || 'currentUser'
+                    }`}
                   alt=""
                 />
               </div>
@@ -452,7 +593,6 @@ const PostDetailPage = () => {
             <div className="space-y-8">
               {comments.map((comment) => (
                 <div key={comment.comment_id} className="space-y-5">
-
                   {/* 부모 댓글 */}
                   <div className="flex gap-4">
                     <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
@@ -463,6 +603,7 @@ const PostDetailPage = () => {
                     </div>
 
                     <div className="flex-grow">
+                      {/* 댓글 상단: 작성자 정보 + 액션 버튼 */}
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           <span className="font-black text-sm text-gray-900">
@@ -474,35 +615,81 @@ const PostDetailPage = () => {
                           </span>
                         </div>
 
-                        {/* 댓글 작성자만 수정/삭제 가능 */}
-                        {currentUserId === comment.member_id && (
-                          <div className="flex items-center gap-2">
+                        {/* 
+                          부모 댓글 액션 영역
+                          좋아요 버튼을 수정/삭제/신고 버튼 옆에 배치
+                        */}
+                        <div className="flex items-center gap-3">
+                          {/* 부모 댓글 좋아요 버튼 */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleToggleCommentLike(comment.comment_id)
+                            }
+                            className={`flex items-center gap-1 text-xs font-bold transition-colors ${commentLikes[comment.comment_id]
+                              ? 'text-rose-500'
+                              : 'text-gray-400 hover:text-rose-500'
+                              }`}
+                          >
+                            <Heart
+                              className={`w-4 h-4 ${commentLikes[comment.comment_id]
+                                ? 'fill-current'
+                                : ''
+                                }`}
+                            />
+                            {comment.like_count || 0}
+                          </button>
+
+                          {/* 작성자 본인 댓글이면 수정/삭제 */}
+                          {currentUserId === comment.member_id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleEditComment(comment)}
+                                className="text-gray-300 hover:text-[var(--festival-purple)]"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDeleteComment(comment.comment_id)
+                                }
+                                className="text-gray-300 hover:text-rose-500"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : (
+                            // 다른 사람 댓글이면 신고
                             <button
                               type="button"
-                              onClick={() => handleEditComment(comment)}
-                              className="text-gray-300 hover:text-[var(--festival-purple)]"
+                              onClick={() => {
+                                setReportTargetType('comment');
+                                setReportTargetId(comment.comment_id);
+                                setIsReportModalOpen(true);
+                              }}
+                              className="text-gray-300 hover:text-red-500"
                             >
-                              <Edit3 className="w-4 h-4" />
+                              <AlertCircle className="w-4 h-4" />
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteComment(comment.comment_id)}
-                              className="text-gray-300 hover:text-rose-500"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
 
+                      {/* 댓글 수정 중이면 textarea 표시 */}
                       {editingCommentId === comment.comment_id ? (
                         <div className="flex flex-col gap-2">
                           <textarea
                             value={editedCommentText}
-                            onChange={(e) => setEditedCommentText(e.target.value)}
+                            onChange={(e) =>
+                              setEditedCommentText(e.target.value)
+                            }
                             className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-[var(--festival-purple)]/20 outline-none resize-none"
                             rows="3"
                           />
+
                           <div className="flex gap-2 justify-end">
                             <button
                               type="button"
@@ -511,9 +698,12 @@ const PostDetailPage = () => {
                             >
                               취소
                             </button>
+
                             <button
                               type="button"
-                              onClick={() => handleSaveEditedComment(comment.comment_id)}
+                              onClick={() =>
+                                handleSaveEditedComment(comment.comment_id)
+                              }
                               disabled={!editedCommentText.trim()}
                               className="px-4 py-2 rounded-xl bg-[var(--festival-purple)] text-white text-sm font-bold disabled:opacity-50"
                             >
@@ -522,13 +712,13 @@ const PostDetailPage = () => {
                           </div>
                         </div>
                       ) : (
+                        // 댓글 일반 표시
                         <p className="text-sm text-gray-600 mb-3 font-medium">
                           {comment.content}
                         </p>
                       )}
 
-
-                      {/* 대댓글 입력창 열기 */}
+                      {/* 대댓글 입력창 열기 버튼 */}
                       <button
                         type="button"
                         onClick={() => {
@@ -574,7 +764,9 @@ const PostDetailPage = () => {
                     </div>
                   </div>
 
-                  {/* 대댓글 목록 */}
+                  {/* =============================
+                      대댓글 목록
+                  ============================= */}
                   {comment.children && comment.children.length > 0 && (
                     <div className="ml-14 space-y-5 border-l-2 border-gray-50 pl-6">
                       {comment.children.map((reply) => (
@@ -587,6 +779,7 @@ const PostDetailPage = () => {
                           </div>
 
                           <div className="flex-grow">
+                            {/* 대댓글 상단: 작성자 정보 + 액션 버튼 */}
                             <div className="flex items-center justify-between mb-1">
                               <div className="flex items-center gap-2">
                                 <span className="font-black text-xs text-gray-900">
@@ -598,35 +791,83 @@ const PostDetailPage = () => {
                                 </span>
                               </div>
 
-                              {/* 대댓글 작성자만 수정/삭제 가능 */}
-                              {currentUserId === reply.member_id && (
-                                <div className="flex items-center gap-2">
+                              {/* 
+                                대댓글 액션 영역
+                                여기서는 반드시 reply.comment_id 사용
+                                comment.comment_id 쓰면 부모 댓글 좋아요가 눌림
+                              */}
+                              <div className="flex items-center gap-3">
+                                {/* 대댓글 좋아요 버튼 */}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleToggleCommentLike(reply.comment_id)
+
+                                  }
+                                  className={`flex items-center gap-1 text-[11px] font-bold transition-colors ${commentLikes[reply.comment_id]
+                                    ? 'text-rose-500'
+                                    : 'text-gray-400 hover:text-rose-500'
+                                    }`}
+                                >
+                                  <Heart
+                                    className={`w-3.5 h-3.5 ${commentLikes[reply.comment_id]
+                                      ? 'fill-current'
+                                      : ''
+                                      }`}
+                                  />
+                                  {reply.like_count || 0}
+                                </button>
+
+                                {/* 작성자 본인 대댓글이면 수정/삭제 */}
+                                {currentUserId === reply.member_id ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditComment(reply)}
+                                      className="text-gray-300 hover:text-[var(--festival-purple)]"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleDeleteComment(reply.comment_id)
+                                      }
+                                      className="text-gray-300 hover:text-rose-500"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  // 다른 사람 대댓글이면 신고
                                   <button
                                     type="button"
-                                    onClick={() => handleEditComment(reply)}
-                                    className="text-gray-300 hover:text-[var(--festival-purple)]"
+                                    onClick={() => {
+                                      setReportTargetType('reply');
+                                      setReportTargetId(reply.comment_id);
+                                      setIsReportModalOpen(true);
+                                    }}
+                                    className="text-gray-300 hover:text-red-500"
                                   >
-                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <AlertCircle className="w-3.5 h-3.5" />
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteComment(reply.comment_id)}
-                                    className="text-gray-300 hover:text-rose-500"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
 
+                            {/* 대댓글 수정 중이면 textarea 표시 */}
                             {editingCommentId === reply.comment_id ? (
                               <div className="flex flex-col gap-2">
                                 <textarea
                                   value={editedCommentText}
-                                  onChange={(e) => setEditedCommentText(e.target.value)}
+                                  onChange={(e) =>
+                                    setEditedCommentText(e.target.value)
+                                  }
                                   className="w-full bg-gray-50 border-none rounded-xl p-2 text-xs focus:ring-2 focus:ring-[var(--festival-purple)]/20 outline-none resize-none"
                                   rows="2"
                                 />
+
                                 <div className="flex gap-2 justify-end">
                                   <button
                                     type="button"
@@ -635,9 +876,12 @@ const PostDetailPage = () => {
                                   >
                                     취소
                                   </button>
+
                                   <button
                                     type="button"
-                                    onClick={() => handleSaveEditedComment(reply.comment_id)}
+                                    onClick={() =>
+                                      handleSaveEditedComment(reply.comment_id)
+                                    }
                                     disabled={!editedCommentText.trim()}
                                     className="px-3 py-1 rounded-lg bg-[var(--festival-purple)] text-white text-xs font-bold disabled:opacity-50"
                                   >
@@ -646,6 +890,7 @@ const PostDetailPage = () => {
                                 </div>
                               </div>
                             ) : (
+                              // 대댓글 일반 표시
                               <p className="text-xs text-gray-600 font-medium">
                                 {reply.content}
                               </p>
@@ -668,6 +913,15 @@ const PostDetailPage = () => {
           </div>
         </section>
       </div>
+
+      {/* 신고 모달 */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onSubmit={handleReportSubmit}
+        targetType={reportTargetType}
+        targetId={reportTargetId}
+      />
     </div>
   );
 };
