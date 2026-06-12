@@ -28,3 +28,27 @@ export const getInquiryDetail = async (inquiryId) => {
   return await maxios.get(`/inquiry/detail/${inquiryId}`);
 };
 
+/**
+ * 문의 삭제
+ * @param {number} inquiryId 
+ * @param {string} memberId
+ */
+export const deleteInquiry = async (inquiryId, memberId) => {
+  return await maxios.delete(`/inquiry/delete/${inquiryId}`, {
+    params: { memberId }
+  });
+};
+
+/**
+ * 문의 수정
+ * @param {number} inquiryId 
+ * @param {FormData} formData 
+ */
+export const updateInquiry = async (inquiryId, formData) => {
+  return await maxios.put(`/inquiry/update/${inquiryId}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+

@@ -4,7 +4,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import MenuBar from '../../community/components/MenuBar';
 import { uploadImage } from '../../../api/boardApi';
-import { addInquiry, getMyInquiries, getInquiryDetail } from '../../../api/inquiryApi';
+import { addInquiry, getMyInquiries, getInquiryDetail, deleteInquiry, updateInquiry } from '../../../api/inquiryApi';
 import useAuthStore from '../../../store/useAuthStore';
 import { Image as ImageIcon, Paperclip, XCircle } from 'lucide-react';
 import InquiryDetail from './InquiryDetail';
@@ -22,6 +22,7 @@ const MyInquiryTab = () => {
   const [showAllInquiries, setShowAllInquiries] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [isWriting, setIsWriting] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -85,6 +86,7 @@ const MyInquiryTab = () => {
 
   const handleCancelWrite = () => {
     setIsWriting(false);
+    setEditingId(null);
     setFormData({
       category: 'SERVICE',
       title: '',
@@ -92,6 +94,32 @@ const MyInquiryTab = () => {
     });
     setAttachedFiles([]);
     if (editor) editor.commands.setContent('');
+  };
+
+  const handleDelete = async (inquiryId) => {
+    if (!window.confirm('정말로 이 문의를 삭제하시겠습니까?')) return;
+    try {
+      const memberId = user.member_id || user.id;
+      await deleteInquiry(inquiryId, memberId);
+      alert('문의가 삭제되었습니다.');
+      setSelectedInquiry(null);
+      fetchInquiryHistory();
+    } catch (error) {
+      console.error('삭제 실패:', error);
+      alert('삭제에 실패했습니다.');
+    }
+  };
+
+  const handleEdit = (inquiry) => {
+    setEditingId(inquiry.inquiry_id);
+    setFormData({
+      category: inquiry.category,
+      title: inquiry.title,
+      content: inquiry.content
+    });
+    if (editor) editor.commands.setContent(inquiry.content);
+    setIsWriting(true);
+    setSelectedInquiry(null);
   };
 
   useEffect(() => {
@@ -211,7 +239,6 @@ const MyInquiryTab = () => {
       const data = new FormData();
       const memberId = user.member_id || user.id;
       
-      // @ModelAttribute 호환을 위해 각 필드를 개별적으로 append 합니다.
       data.append('member_id', memberId);
       data.append('category', formData.category);
       data.append('title', formData.title);
@@ -224,23 +251,22 @@ const MyInquiryTab = () => {
         });
       }
 
-      await addInquiry(data);
-      alert('문의가 정상적으로 등록되었습니다.');
+      if (editingId) {
+        await updateInquiry(editingId, data);
+        alert('문의가 수정되었습니다.');
+      } else {
+        await addInquiry(data);
+        alert('문의가 정상적으로 등록되었습니다.');
+      }
       
       // 초기화
-      setFormData({
-        category: 'SERVICE',
-        title: '',
-        content: ''
-      });
-      setAttachedFiles([]);
-      editor.commands.setContent('');
+      handleCancelWrite();
       
       // 내역 새로고침
       fetchInquiryHistory();
     } catch (error) {
-      console.error('문의 등록 실패:', error);
-      alert('문의 등록에 실패했습니다. 다시 시도해 주세요.');
+      console.error('문의 저장 실패:', error);
+      alert('처리에 실패했습니다. 다시 시도해 주세요.');
     } finally {
       setIsSubmitting(false);
     }
@@ -272,6 +298,8 @@ const MyInquiryTab = () => {
       <InquiryDetail 
         inquiry={selectedInquiry}
         onBack={() => setSelectedInquiry(null)}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
         getStatusStyle={getStatusStyle}
         getStatusLabel={getStatusLabel}
         categoryMap={categoryMap}
