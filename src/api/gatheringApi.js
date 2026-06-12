@@ -46,6 +46,14 @@ const gatheringApi = {
     leaveGathering: async (room_id, member_id) => {
         const response = await maxios.post(`${BASE_PATH}/${room_id}/leave`, { member_id })
         return response.data;
+    },
+
+    // 내가 참여 중인 모임 목록 가져오기
+    getJoinedGatherings: async (member_id) => {
+        const response = await maxios.get(`${BASE_PATH}/joined`, {
+            params: { member_id }
+        });
+        return response.data;
     }
 
 }

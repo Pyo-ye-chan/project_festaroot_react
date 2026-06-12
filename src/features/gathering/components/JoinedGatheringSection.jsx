@@ -33,9 +33,9 @@ const JoinedGatheringSection = ({ joinedFilter, onFilterChange, joinedItems, act
     <div className="divide-y divide-gray-50">
       {joinedItems.map(item => (
         <GatheringListItem 
-          key={item.id} 
+          key={item.room_id} 
           item={item} 
-          isFestival={item.type === 'festival'} 
+          isFestival={item.room_type === 'festival'} 
           showTypeBadge={true} 
           activeTab={activeTab}
         />

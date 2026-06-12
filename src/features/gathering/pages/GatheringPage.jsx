@@ -15,70 +15,68 @@ const GatheringPage = () => {
   const [keyword, setKeyword] = useState('');
   const [joinedFilter, setJoinedFilter] = useState('전체');
 
-  const [festivalRooms, setFestivalRooms] = useState([]); // 💡 DB 연동 축제 모임 상태 관리
-  const [freeGatherings, setFreeGatherings] = useState([]); // 자유 모임 목록
+  const [festivalRooms, setFestivalRooms] = useState([]); 
+  const [freeGatherings, setFreeGatherings] = useState([]); 
+  const [joinedRooms, setJoinedRooms] = useState([]); 
 
   const { user } = useAuthStore();
   const loggedInUserId = user?.member_id || user?.id;
 
   const categories = ['전체 모임', '축제별 모임', '자유 모임', '참여중인 모임'];
 
-  // 💡 축제 모임과 자유 모임을 통합하여 API 동적 조회 수행
+  // 1️⃣ 메인 모임 목록 조회 (백엔드 날것의 데이터 그대로 직결)
   useEffect(() => {
-    const fetchAllGatherings = async () => {
+    const fetchMainGatherings = async () => {
       try {
         const [festivalData, freeData] = await Promise.all([
           gatheringApi.festivalGatheringList(loggedInUserId),
           gatheringApi.freeGatheringList()
         ]);
 
-        // 💡 Oracle DB 대문자 Map 결과를 기존 프론트엔드 카멜/소문자 규격에 맞게 포맷팅 가공
-        const formattedFestivals = festivalData.map(item => ({
-          id: Number(item.ROOM_ID),
-          type: 'festival',
-          festivalName: item.ROOM_TITLE ? item.ROOM_TITLE.replace(' 공식 모임', '') : '',
-          title: item.ROOM_TITLE,
-          location: item.FREE_LOCATION,
-          date: item.FREE_DATE,
-          current: item.CURRENT_COUNT || 0,
-          max: item.MAX_CAPACITY || 500,
-          image: item.FIRST_IMAGE || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300',
-          isJoined: item.IS_JOINED_INT > 0,
-          joinedAt: item.CREATED_AT || '2026-06-12'
-        }));
-
-        setFestivalRooms(formattedFestivals);
+        // 어떠한 가공문도 쓰지 않고 상태값에 그대로 밀어 넣습니다.
+        setFestivalRooms(festivalData);
         setFreeGatherings(freeData);
       } catch (error) {
-        console.error("모임 목록 통합 로드 중 에러 발생:", error);
+        console.error("메인 모임 목록 로드 중 에러 발생:", error);
       }
     };
 
-    fetchAllGatherings();
+    if (loggedInUserId) {
+      fetchMainGatherings();
+    }
   }, [loggedInUserId]);
+
+  // 2️⃣ 참여중인 모임 목록 조회 (가공문 전면 폐기)
+  useEffect(() => {
+    const fetchJoinedGatherings = async () => {
+      if (!loggedInUserId) return;
+      try {
+        if (typeof gatheringApi.getJoinedGatherings === 'function') {
+          const joinedData = await gatheringApi.getJoinedGatherings(loggedInUserId);
+          setJoinedRooms(joinedData);
+        }
+      } catch (error) {
+        console.error("참여중인 모임 로드 중 오류 발생:", error);
+      }
+    };
+
+    fetchJoinedGatherings();
+  }, [loggedInUserId, activeTab]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 참여중인 모임 필터링 로직
+  // 참여중인 모임 필터링 로직 (완전 스네이크 규격 적용)
   const getJoinedItems = () => {
-    const joinedFestivals = festivalRooms.filter(item => item.isJoined);
+    let combined = [...joinedRooms];
 
-    const joinedFrees = freeGatherings.map(item => ({
-      ...item,
-      id: item.room_id,
-      type: 'free',
-      isJoined: true,
-      joinedAt: item.created_at || '2026-06-11'
-    }));
+    // 가입한 날짜 최신순 정렬 (joined_at)
+    combined.sort((a, b) => new Date(b.joined_at) - new Date(a.joined_at));
 
-    let combined = [...joinedFestivals, ...joinedFrees];
-    combined.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
-
-    if (joinedFilter === '축제별 모임') return combined.filter(i => i.type === 'festival');
-    if (joinedFilter === '자유 모임') return combined.filter(i => i.type === 'free');
+    if (joinedFilter === '축제별 모임') return combined.filter(i => i.room_type === 'festival');
+    if (joinedFilter === '자유 모임') return combined.filter(i => i.room_type === 'free' || i.room_type === 'group');
     if (joinedFilter === '개설한 모임') {
       return combined.filter(i => String(i.owner_id) === String(loggedInUserId));
     }
