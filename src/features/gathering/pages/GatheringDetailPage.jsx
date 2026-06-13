@@ -364,7 +364,20 @@ const GatheringDetailPage = () => {
 
                   <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                     <button
-                      onClick={() => setIsEditing(false)}
+                      onClick={() => {
+                        setIsEditing(false);
+                        setImagePreview(null);
+                        setSelectedFile(null);
+                        // 폼 데이터도 원래 데이터로 복구 (필요시)
+                        setEditForm({
+                          room_title: gathering.room_title || '',
+                          free_date: gathering.free_date || '',
+                          free_location: gathering.free_location || '',
+                          max_capacity: gathering.max_capacity || 0,
+                          room_description: gathering.room_description || '',
+                          room_image_url: gathering.room_image_url || gathering.ROOM_IMAGE_URL || gathering.room_image || gathering.ROOM_IMAGE || ''
+                        });
+                      }}
                       className="flex items-center gap-2 px-6 py-2.5 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full transition-colors font-bold"
                     >
                       <X className="w-4 h-4" />
