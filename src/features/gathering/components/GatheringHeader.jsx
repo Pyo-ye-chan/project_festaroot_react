@@ -14,7 +14,7 @@ const GatheringHeader = ({ onOpenModal }) => {
 
     // 유저 정보가 없다면 (비로그인 상태)
     if (!storedUser) {
-      alert('로그인 후 이용 가능한 서비스입니다. 로그인 페이지로 이동합니다.');
+      alert('로그인이 필요한 서비스입니다.');
       navigate('/login');
       return;
     }

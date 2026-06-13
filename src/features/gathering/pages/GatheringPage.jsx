@@ -36,21 +36,32 @@ const GatheringPage = () => {
   const { user } = useAuthStore();
   const loggedInUserId = user?.member_id || user?.id;
 
-  const categories = ['전체 모임', '축제별 모임', '자유 모임', '참여중인 모임'];
+  // 🌟 [수정] 비회원일 경우 '참여중인 모임' 탭을 배열에서 제외하여 렌더링 차단
+  const categories = loggedInUserId 
+    ? ['전체 모임', '축제별 모임', '자유 모임', '참여중인 모임']
+    : ['전체 모임', '축제별 모임', '자유 모임'];
 
-// 🌟 DB 연동 페이징 메인 로직 수정
+  // 🌟 DB 연동 페이징 메인 로직 수정 (비회원 대응)
   useEffect(() => {
+    // 혹시라도 비회원이 전역 스토어 상태 등의 이유로 '참여중인 모임' 탭에 위치해 있다면 '전체 모임'으로 강제 이동
+    if (!loggedInUserId && activeTab === '참여중인 모임') {
+      setActiveTab('전체 모임');
+      return;
+    }
+
     const fetchGatheringData = async () => {
-      if (!loggedInUserId) return;
+      // ❌ [삭제] if (!loggedInUserId) return; -> 비회원도 아래 API 호출이 가능하도록 차단 해제
 
       try {
+        // 비회원일 때는 백엔드에 ID 값 대신 null 또는 빈 문자열이 넘어가도록 처리 (백엔드 스펙에 맞춤)
+        const currentUserId = loggedInUserId || null;
+
         if (activeTab === '전체 모임') {
           const [festivalData, freeData] = await Promise.all([
-            gatheringApi.festivalGatheringList(loggedInUserId, 1, 4),
-            gatheringApi.freeGatheringList(loggedInUserId, 1, 4)
+            gatheringApi.festivalGatheringList(currentUserId, 1, 4),
+            gatheringApi.freeGatheringList(currentUserId, 1, 4)
           ]);
           
-          // 백엔드가 { list: [...], pageInfo: {...} } 구조로 주므로 .list로 접근
           const fList = festivalData.list || [];
           const gList = freeData.list || [];
           
@@ -60,22 +71,20 @@ const GatheringPage = () => {
         } 
 
         else if (activeTab === '축제별 모임') {
-          const res = await gatheringApi.festivalGatheringList(loggedInUserId, currentPage, ITEMS_PER_PAGE, keyword);
+          const res = await gatheringApi.festivalGatheringList(currentUserId, currentPage, ITEMS_PER_PAGE, keyword);
           
-          // 🌟 백엔드 구조에 맞춰 정확하게 매핑
           const list = res.list || [];
-          const total = res.pageInfo?.totalCount || 0; // 👈 pageInfo 안의 totalCount 가져오기
+          const total = res.pageInfo?.totalCount || 0; 
           
           setFestivalRooms(list);
           setTotalItems(total);
         } 
 
         else if (activeTab === '자유 모임') {
-          const res = await gatheringApi.freeGatheringList(loggedInUserId, currentPage, ITEMS_PER_PAGE, keyword);
+          const res = await gatheringApi.freeGatheringList(currentUserId, currentPage, ITEMS_PER_PAGE, keyword);
           
-          // 🌟 백엔드 구조에 맞춰 정확하게 매핑
           const list = res.list || [];
-          const total = res.pageInfo?.totalCount || 0; // 👈 pageInfo 안의 totalCount 가져오기
+          const total = res.pageInfo?.totalCount || 0; 
           
           setFreeGatherings(list);
           setTotalItems(total);
@@ -86,19 +95,18 @@ const GatheringPage = () => {
     };
 
     fetchGatheringData();
-  }, [loggedInUserId, activeTab, currentPage, keyword]);
+  }, [loggedInUserId, activeTab, currentPage, keyword, setActiveTab]);
 
 
-  // 🌟 참여중인 모임 전용 페이징/필터 이펙트 수정
+  // 🌟 참여중인 모임 전용 페이징/필터 이펙트 (로그인 유저 전용 제어 유지)
   useEffect(() => {
     const fetchJoinedData = async () => {
       if (!loggedInUserId || activeTab !== '참여중인 모임') return;
       try {
         const res = await gatheringApi.getJoinedGatherings(loggedInUserId, currentPage, ITEMS_PER_PAGE, joinedFilter, keyword);
         
-        // 🌟 백엔드 구조에 맞춰 정확하게 매핑
         const list = res.list || [];
-        const total = res.pageInfo?.totalCount || 0; // 👈 pageInfo 안의 totalCount 가져오기
+        const total = res.pageInfo?.totalCount || 0; 
         
         setJoinedRooms(list);
         setTotalItems(total);
@@ -167,8 +175,8 @@ const GatheringPage = () => {
                 />
               )}
 
-              {/* 참여중인 모임 섹션 */}
-              {activeTab === '참여중인 모임' && (
+              {/* 참여중인 모임 섹션 (로그인했을 때만 보이도록 조건부 렌더링 보안 강화) */}
+              {loggedInUserId && activeTab === '참여중인 모임' && (
                 <JoinedGatheringSection
                   joinedFilter={joinedFilter}
                   onFilterChange={handleFilterChange}
@@ -178,7 +186,7 @@ const GatheringPage = () => {
               )}
             </div>
 
-            {/* 하단 네비게이션바 */}
+            {/* 하단 페이지네이션 바 */}
             {activeTab !== '전체 모임' && totalItems > 0 && (
               <Pagination
                 currentPage={currentPage}
