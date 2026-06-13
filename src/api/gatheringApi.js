@@ -21,25 +21,27 @@ const gatheringApi = {
         return response.data;
     },
 
-    // 자유 모임 목록 출력
-    freeGatheringList: async (member_id, page = 1, size = 5) => {
+    // 자유 모임 목록 출력 (검색 포함)
+    freeGatheringList: async (member_id, page = 1, size = 5, keyword = '') => {
         const response = await maxios.get(`${BASE_PATH}/list`, {
             params: { 
                 member_id: member_id || '',
                 page, 
-                size 
+                size,
+                keyword
             }
         })
         return response.data;
     },
 
-    // 축제별 모임 전체 목록 조회
-    festivalGatheringList: async (member_id, page = 1, size = 5) => {
+    // 축제별 모임 전체 목록 조회 (검색 포함)
+    festivalGatheringList: async (member_id, page = 1, size = 5, keyword = '') => {
         const response = await maxios.get(`${BASE_PATH}/festival`, {
             params: { 
                 member_id: member_id || '',
                 page,
-                size
+                size,
+                keyword
             }
         });
         return response.data;
@@ -70,20 +72,20 @@ const gatheringApi = {
     },
 
     // 내가 참여 중인 모임 목록 가져오기
-    getJoinedGatherings: async (member_id, page = 1, size = 5, filter = '전체') => {
+    getJoinedGatherings: async (member_id, page = 1, size = 5, filter = '전체', keyword = '') => {
         const response = await maxios.get(`${BASE_PATH}/joined`, {
-            params: { member_id, page, size, filter }
+            params: { member_id, page, size, filter, keyword }
         });
         return response.data;
     },
 
-    // [RESTful 수정] 모임 수정 (PUT)
+// [RESTful] 모임 수정 (PUT)
     updateGathering: async (room_id, gatheringData) => {
         const response = await maxios.put(`${BASE_PATH}/${room_id}`, gatheringData);
         return response.data;
     },
 
-    // [RESTful 수정] 모임 삭제 (DELETE + Query Params)
+    // [RESTful] 모임 삭제 (DELETE + Query Params)
     deleteGathering: async (room_id, owner_id) => {
         const response = await maxios.delete(`${BASE_PATH}/${room_id}`, {
             params: { owner_id }
@@ -91,7 +93,7 @@ const gatheringApi = {
         return response.data;
     },
 
-    // [RESTful 수정] 방장 위임 (PUT)
+    // [RESTful] 방장 위임 (PUT)
     delegateOwner: async (room_id, current_owner_id, new_owner_id) => {
         const response = await maxios.put(`${BASE_PATH}/${room_id}/host`, { 
             current_owner_id, 
@@ -100,7 +102,7 @@ const gatheringApi = {
         return response.data;
     },
 
-    // [RESTful 수정] 참가자 강퇴 (DELETE + 하위 경로 + Query Params)
+    // [RESTful] 참가자 강퇴 (DELETE + Query Params)
     kickParticipant: async (room_id, owner_id, target_member_id) => {
         const response = await maxios.delete(`${BASE_PATH}/${room_id}/participants/${target_member_id}`, {
             params: { owner_id }

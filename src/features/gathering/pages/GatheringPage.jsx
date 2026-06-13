@@ -60,7 +60,7 @@ const GatheringPage = () => {
         } 
 
         else if (activeTab === '축제별 모임') {
-          const res = await gatheringApi.festivalGatheringList(loggedInUserId, currentPage, ITEMS_PER_PAGE);
+          const res = await gatheringApi.festivalGatheringList(loggedInUserId, currentPage, ITEMS_PER_PAGE, keyword);
           
           // 🌟 백엔드 구조에 맞춰 정확하게 매핑
           const list = res.list || [];
@@ -71,7 +71,7 @@ const GatheringPage = () => {
         } 
 
         else if (activeTab === '자유 모임') {
-          const res = await gatheringApi.freeGatheringList(loggedInUserId, currentPage, ITEMS_PER_PAGE);
+          const res = await gatheringApi.freeGatheringList(loggedInUserId, currentPage, ITEMS_PER_PAGE, keyword);
           
           // 🌟 백엔드 구조에 맞춰 정확하게 매핑
           const list = res.list || [];
@@ -86,7 +86,7 @@ const GatheringPage = () => {
     };
 
     fetchGatheringData();
-  }, [loggedInUserId, activeTab, currentPage]);
+  }, [loggedInUserId, activeTab, currentPage, keyword]);
 
 
   // 🌟 참여중인 모임 전용 페이징/필터 이펙트 수정
@@ -94,7 +94,7 @@ const GatheringPage = () => {
     const fetchJoinedData = async () => {
       if (!loggedInUserId || activeTab !== '참여중인 모임') return;
       try {
-        const res = await gatheringApi.getJoinedGatherings(loggedInUserId, currentPage, ITEMS_PER_PAGE, joinedFilter);
+        const res = await gatheringApi.getJoinedGatherings(loggedInUserId, currentPage, ITEMS_PER_PAGE, joinedFilter, keyword);
         
         // 🌟 백엔드 구조에 맞춰 정확하게 매핑
         const list = res.list || [];
@@ -108,11 +108,13 @@ const GatheringPage = () => {
     };
 
     fetchJoinedData();
-  }, [loggedInUserId, activeTab, currentPage, joinedFilter]);
+  }, [loggedInUserId, activeTab, currentPage, joinedFilter, keyword]);
 
   // 탭 변경 핸들러
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+    setKeyword(''); // 탭 변경 시 검색어 초기화
+    setCurrentPage(1); // 탭 변경 시 1페이지로 이동
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

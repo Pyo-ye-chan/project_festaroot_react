@@ -18,16 +18,18 @@ const GatheringFilters = ({ categories, activeTab, onTabChange, keyword, onKeywo
         </button>
       ))}
     </div>
-    <div className="relative w-full xl:w-80 group">
-      <input 
-        type="text" 
-        value={keyword}
-        onChange={(e) => onKeywordChange(e.target.value)}
-        placeholder="모임 제목 검색..." 
-        className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-6 text-sm font-medium focus:ring-2 focus:ring-[var(--festival-purple)]/20 transition-all"
-      />
-      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[var(--festival-purple)] w-5 h-5" />
-    </div>
+    {activeTab !== '전체 모임' && (
+      <div className="relative w-full xl:w-80 group">
+        <input 
+          type="text" 
+          value={keyword}
+          onChange={(e) => onKeywordChange(e.target.value)}
+          placeholder="모임 제목 검색..." 
+          className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-6 text-sm font-medium focus:ring-2 focus:ring-[var(--festival-purple)]/20 transition-all"
+        />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[var(--festival-purple)] w-5 h-5" />
+      </div>
+    )}
   </div>
 );
 
