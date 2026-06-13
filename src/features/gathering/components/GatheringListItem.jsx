@@ -18,8 +18,7 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
   const festivalName = roomTitle ? roomTitle.replace(' 공식 모임', '') : '';
 
   // 🌟 이미지 우선순위 설정 (다양한 백엔드 필드 대응)
-  const gatheringImage = item.room_image ||
-    (isFestival ? 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300' : 'https://picsum.photos/seed/gathering/100/100');
+  const gatheringImage = item.room_image || 'https://picsum.photos/seed/gathering/100/100'
 
   return (
     <Link
