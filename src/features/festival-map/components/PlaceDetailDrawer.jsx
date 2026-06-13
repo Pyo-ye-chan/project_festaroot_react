@@ -259,6 +259,59 @@ const FestivalDetailSection = ({ data }) => {
   );
 };
 
+const CultureDetailSection = ({ data }) => (
+  <section className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <div>
+      <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+        문화시설 안내
+      </h3>
+      <div className="bg-blue-50/30 border border-blue-100 rounded-2xl p-4 space-y-4">
+        <div>
+          <span className="text-[11px] text-blue-600 font-bold block mb-1">이용시간</span>
+          <p className="text-sm text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: data?.usetimeculture || '정보 없음' }} />
+        </div>
+        <div className="pt-3 border-t border-blue-100/50">
+          <span className="text-[11px] text-blue-600 font-bold block mb-1">쉬는날</span>
+          <p className="text-sm text-slate-700" dangerouslySetInnerHTML={{ __html: data?.restdateculture || '정보 없음' }} />
+        </div>
+        {data?.usefee && (
+          <div className="pt-3 border-t border-blue-100/50">
+            <span className="text-[11px] text-blue-600 font-bold block mb-1">이용요금</span>
+            <p className="text-sm text-slate-700" dangerouslySetInnerHTML={{ __html: data.usefee }} />
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Convenience and Accessibility */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+        <span className="text-[11px] text-slate-400 font-bold block mb-1">주차 시설</span>
+        <p className="text-sm text-slate-700 font-medium" dangerouslySetInnerHTML={{ __html: data?.parkingculture || '정보 없음' }} />
+      </div>
+      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+        <span className="text-[11px] text-slate-400 font-bold block mb-1">반려동물</span>
+        <p className="text-sm text-slate-700 font-medium">{data?.chkpetculture || '정보 없음'}</p>
+      </div>
+      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+        <span className="text-[11px] text-slate-400 font-bold block mb-1">유모차 대여</span>
+        <p className="text-sm text-slate-700 font-medium">{data?.chkbabycarriageculture || '불가'}</p>
+      </div>
+    </div>
+
+    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+      <span className="text-[11px] text-slate-400 font-bold block mb-1">관람 소요시간</span>
+      <p className="text-sm text-slate-700">{data?.spendtime || '정보 없음'}</p>
+    </div>
+
+    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+      <span className="text-[11px] text-slate-400 font-bold block mb-1">문의 및 안내</span>
+      <p className="text-sm text-slate-700" dangerouslySetInnerHTML={{ __html: data?.infocenterculture || '정보 없음' }} />
+    </div>
+  </section>
+);
+
 // --- Main Drawer Component ---
 
 function PlaceDetailDrawer() {
@@ -295,6 +348,7 @@ function PlaceDetailDrawer() {
       switch (selectedPlace?.contentTypeId) {
         case '39': return <FoodDetailSection data={specificData} />;
         case '12': return <TourDetailSection data={specificData} />;
+        case '14': return <CultureDetailSection data={specificData} />;
         case '15': return <FestivalDetailSection data={specificData} />;
         default: return (
           <p className="text-sm text-slate-500 italic p-6 bg-slate-50 rounded-xl">
@@ -360,14 +414,14 @@ function PlaceDetailDrawer() {
               {renderDetailSection()}
 
               {/* Common Action Buttons */}
-              <div className="grid grid-cols-2 gap-3 mt-8">
+              {/* <div className="grid grid-cols-2 gap-3 mt-8">
                 <button className="flex items-center justify-center gap-2 py-3.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all active:scale-95">
                   <span>📤</span> 공유하기
                 </button>
                 <button className="flex items-center justify-center gap-2 py-3.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all active:scale-95">
                   <span>🤍</span> 즐겨찾기
                 </button>
-              </div>
+              </div> */}
             </div>
 
             <div className="p-6 border-t border-slate-100 bg-white/80 backdrop-blur-md">

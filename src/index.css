@@ -3,6 +3,7 @@
 @import "tailwindcss";
 
 :root {
+  /* 기존 이름 유지 (기존 컴포넌트 호환용) */
   --festival-yellow: #FFD23F;
   --festival-purple: #5B21B6;
   --festival-purple-soft: #8B5CF6;
@@ -10,15 +11,25 @@
   --dark-gray: #374151;
 }
 
+@theme {
+  /* Tailwind v4 유틸리티 클래스 생성용 (--color- 접두사 필요) */
+  --color-festival-yellow: var(--festival-yellow);
+  --color-festival-purple: var(--festival-purple);
+  --color-festival-purple-soft: var(--festival-purple-soft);
+  --color-warm-white: var(--warm-white);
+  --color-dark-gray: var(--dark-gray);
+}
+
 body {
   background-color: var(--warm-white);
   color: #1F2937;
 }
 
-
 * {
   font-family: 'Pretendard', sans-serif;
 }
+
+
 
 /* tiptap */
 .ProseMirror {
@@ -42,4 +53,6 @@ body {
 
 .ProseMirror img {
   max-width: 100%;
+  border-radius: 1.5rem;
 }
+

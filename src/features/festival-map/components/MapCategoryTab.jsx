@@ -7,7 +7,7 @@ function MapCategoryTab() {
     { name: '전체', icon: '📍' },
     { name: '음식점', icon: '🍽️' },
     { name: '관광지', icon: '⛰️' },
-    { name: '축제/행사', icon: '🎉' }
+    { name: '문화시설', icon: '🏛️' }
   ];
 
   return (

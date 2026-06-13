@@ -13,7 +13,11 @@ const ReviewModal = ({ isOpen, onClose, onSubmit, initialReview, festivalId, mem
       setRating(initialReview.rating || 0);
       setContent(initialReview.content || '');
       setVisitDate(initialReview.visit_date || ''); // Initialize visitDate
-      setExistingImageUrls(initialReview.image_urls || []);
+      setExistingImageUrls(
+        initialReview.images
+          ? initialReview.images.map((image) => image.image_url)
+          : []
+      );
       setImages([]);
     } else {
       setRating(0);
@@ -101,11 +105,10 @@ const ReviewModal = ({ isOpen, onClose, onSubmit, initialReview, festivalId, mem
                 key={star}
                 size={38}
                 onClick={() => setRating(star)}
-                className={`cursor-pointer transition ${
-                  rating >= star
-                    ? 'text-yellow-400 fill-yellow-400'
-                    : 'text-gray-300'
-                }`}
+                className={`cursor-pointer transition ${rating >= star
+                  ? 'text-yellow-400 fill-yellow-400'
+                  : 'text-gray-300'
+                  }`}
               />
             ))}
 
