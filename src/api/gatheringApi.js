@@ -71,6 +71,30 @@ const gatheringApi = {
             params: { member_id, page, size, filter }
         });
         return response.data;
+    },
+
+    // 모임 수정
+    updateGathering: async (room_id, gatheringData) => {
+        const response = await maxios.put(`${BASE_PATH}/${room_id}`, gatheringData);
+        return response.data;
+    },
+
+    // 모임 삭제
+    deleteGathering: async (room_id) => {
+        const response = await maxios.delete(`${BASE_PATH}/${room_id}`);
+        return response.data;
+    },
+
+    // 방장 위임
+    delegateOwner: async (room_id, new_owner_id) => {
+        const response = await maxios.put(`${BASE_PATH}/${room_id}/delegate`, { new_owner_id });
+        return response.data;
+    },
+
+    // 참가자 강퇴 (방장 권한)
+    kickParticipant: async (room_id, member_id) => {
+        const response = await maxios.delete(`${BASE_PATH}/${room_id}/kick/${member_id}`);
+        return response.data;
     }
 }
 
