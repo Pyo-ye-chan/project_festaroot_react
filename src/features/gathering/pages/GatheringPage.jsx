@@ -47,7 +47,7 @@ const GatheringPage = () => {
         if (activeTab === '전체 모임') {
           const [festivalData, freeData] = await Promise.all([
             gatheringApi.festivalGatheringList(loggedInUserId, 1, 4),
-            gatheringApi.freeGatheringList(1, 4)
+            gatheringApi.freeGatheringList(loggedInUserId, 1, 4)
           ]);
           
           // 백엔드가 { list: [...], pageInfo: {...} } 구조로 주므로 .list로 접근
@@ -71,7 +71,7 @@ const GatheringPage = () => {
         } 
 
         else if (activeTab === '자유 모임') {
-          const res = await gatheringApi.freeGatheringList(currentPage, ITEMS_PER_PAGE);
+          const res = await gatheringApi.freeGatheringList(loggedInUserId, currentPage, ITEMS_PER_PAGE);
           
           // 🌟 백엔드 구조에 맞춰 정확하게 매핑
           const list = res.list || [];

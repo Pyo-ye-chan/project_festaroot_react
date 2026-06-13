@@ -1,17 +1,25 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, CalendarDays, Users } from 'lucide-react';
+import useAuthStore from '../../../store/useAuthStore';
 
 const FestivalGridCard = ({ item }) => {
+  const { user } = useAuthStore();
+  const loggedInUserId = user?.member_id || user?.id;
+
   // 🌟 데이터 필드 추출 (대문자/소문자 대응 및 우선순위 설정)
-  const currentCount = item.current_count || item.CURRENT_COUNT || 0;
-  const maxCapacity = item.max_capacity || item.MAX_CAPACITY || 500;
+  const currentCount = item.current_count || 0;
+  const maxCapacity = item.max_capacity || 500;
   const isFull = currentCount >= maxCapacity;
   
-  const roomTitle = item.room_title || item.ROOM_TITLE || '';
-  const freeLocation = item.free_location || item.FREE_LOCATION || '';
-  const freeDate = item.free_date || item.FREE_DATE || '';
-  const roomId = item.room_id || item.ROOM_ID;
+  const roomTitle = item.room_title || '';
+  const freeLocation = item.free_location || '';
+  const freeDate = item.free_date || '';
+  const roomId = item.room_id;
+  const ownerId = item.owner_id;
+
+  // 참여 여부 확인 (백엔드에서 넘겨주는 is_joined 필드 혹은 방장 여부)
+  const isJoined = item.is_joined || (loggedInUserId && loggedInUserId === ownerId);
   
   // 🌟 이미지 우선순위: 모임 대표 이미지 -> 프로필 이미지 -> 기본 축제 이미지
   const festivalImage = item.room_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300';
@@ -32,10 +40,17 @@ const FestivalGridCard = ({ item }) => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
         <div className="absolute bottom-3 left-4">
-          <span className="text-[10px] font-black text-white bg-purple-600 px-2 py-0.5 rounded-md uppercase tracking-wider">
-            Official
-          </span>
-          <h4 className="text-white font-black text-sm mt-1">{festivalName}</h4>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-[10px] font-black text-white bg-purple-600 px-2 py-0.5 rounded-md uppercase tracking-wider">
+              Official
+            </span>
+            {isJoined && (
+              <span className="px-2 py-0.5 bg-green-500 text-white text-[9px] font-black rounded-md shadow-sm">
+                참여 중
+              </span>
+            )}
+          </div>
+          <h4 className="text-white font-black text-sm">{festivalName}</h4>
         </div>
       </div>
       <div className="p-4 flex flex-col flex-grow">

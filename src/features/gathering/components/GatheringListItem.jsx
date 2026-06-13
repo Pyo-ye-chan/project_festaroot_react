@@ -20,7 +20,7 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
   const ownerId = item.owner_id || item.OWNER_ID;
 
   // 참여 여부 확인 (백엔드에서 넘겨주는 is_joined 필드 혹은 방장 여부)
-  const isJoined = item.is_joined || item.IS_JOINED || (loggedInUserId && loggedInUserId === ownerId);
+  const isJoined = item.is_joined || (loggedInUserId && loggedInUserId === ownerId);
 
   // 🌟 room_title에서 ' 공식 모임'을 제거한 순수 축제 이름 추출
   const festivalName = roomTitle ? roomTitle.replace(' 공식 모임', '') : '';
@@ -63,7 +63,7 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
               {nickname}
             </span>
           )}
-          {isJoined && (
+          {isJoined && activeTab !== '참여중인 모임' && (
             <span className="px-1.5 py-0.5 bg-green-100 text-green-600 text-[9px] font-black rounded-md border border-green-200">
               참여 중
             </span>

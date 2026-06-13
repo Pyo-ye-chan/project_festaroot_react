@@ -22,18 +22,22 @@ const gatheringApi = {
     },
 
     // 자유 모임 목록 출력
-    freeGatheringList: async (page = 1, size = 5) => {
+    freeGatheringList: async (member_id, page = 1, size = 5) => {
         const response = await maxios.get(`${BASE_PATH}/list`, {
-            params: { page, size }
+            params: { 
+                member_id: member_id || '',
+                page, 
+                size 
+            }
         })
         return response.data;
     },
 
     // 축제별 모임 전체 목록 조회
-    festivalGatheringList: async (memberId, page = 1, size = 5) => {
+    festivalGatheringList: async (member_id, page = 1, size = 5) => {
         const response = await maxios.get(`${BASE_PATH}/festival`, {
             params: { 
-                memberId: memberId || '',
+                member_id: member_id || '',
                 page,
                 size
             }
