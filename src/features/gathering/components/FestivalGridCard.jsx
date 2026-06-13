@@ -27,6 +27,8 @@ const FestivalGridCard = ({ item }) => {
   // 🌟 상단 타이틀에서 ' 공식 모임' 제거한 순수 축제명 추출
   const festivalName = roomTitle ? roomTitle.replace(' 공식 모임', '') : '';
 
+  const formattedDate = freeDate ? freeDate.replace(/-/g, '.') : '';
+
   return (
     <Link 
       to={`/community/gathering/${roomId}`}
@@ -63,7 +65,7 @@ const FestivalGridCard = ({ item }) => {
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400">
-              <CalendarDays className="w-3 h-3" /> {freeDate}
+              <CalendarDays className="w-3 h-3" /> {formattedDate}
             </div>
             <div className={`flex items-center gap-1 text-[11px] font-black ${isFull ? 'text-red-500' : 'text-purple-600'}`}>
               <Users className="w-3 h-3" /> {currentCount}/{maxCapacity}

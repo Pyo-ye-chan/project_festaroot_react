@@ -26,6 +26,8 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
   // 프로필 이미지가 아닌 모임 생성 시 등록한 이미지를 우선적으로 보여줍니다.
   const gatheringImage = item.room_image ||'https://picsum.photos/seed/gathering/300/200'; // 지정 이미지
 
+  const formattedDate = freeDate ? freeDate.replace(/-/g, '.') : '';
+
   return (
     <Link
       to={`/community/gathering/${roomId}`}
@@ -66,7 +68,7 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
           <div className="flex items-center gap-2 overflow-hidden">
             <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 shrink-0">
               <CalendarDays className="w-3 h-3" />
-              {freeDate}
+              {formattedDate}
             </div>
             {freeLocation && (
               <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 truncate">

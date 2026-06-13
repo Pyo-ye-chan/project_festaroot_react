@@ -117,7 +117,6 @@ const CreateGatheringModal = ({ onClose, festivalId = null, initialData = null }
                 <div className="flex flex-col items-center justify-center h-full text-gray-400">
                   <Camera className="w-10 h-10 mb-2 group-hover:scale-110 transition-transform" />
                   <span className="text-sm font-bold">모임 대표 이미지 선택</span>
-                  <span className="text-xs mt-1">GCP에 안전하게 업로드됩니다</span>
                 </div>
               )}
               <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-10 transition-opacity" />
@@ -173,6 +172,7 @@ const CreateGatheringModal = ({ onClose, festivalId = null, initialData = null }
                 type="date"
                 id="freeDate"
                 value={freeDate}
+                min={new Date().toISOString().split('T')[0]}
                 onChange={(e) => setFreeDate(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20 focus:border-[var(--festival-purple)] transition-all"
                 required

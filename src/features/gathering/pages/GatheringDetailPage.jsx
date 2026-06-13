@@ -327,12 +327,12 @@ const GatheringDetailPage = () => {
                     <div>
                       <label className="block text-sm font-bold text-gray-500 mb-1">일시</label>
                       <input
-                        type="text"
+                        type="date"
                         name="free_date"
                         value={editForm.free_date}
+                        min={new Date().toISOString().split('T')[0]}
                         onChange={handleInputChange}
                         className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-purple-100 focus:border-[var(--festival-purple)] outline-none"
-                        placeholder="예: 2024-10-15"
                       />
                     </div>
                     <div>
@@ -428,7 +428,7 @@ const GatheringDetailPage = () => {
 
                   <div className="flex flex-wrap items-center gap-4 text-gray-600 text-lg mb-6">
                     <span className="flex items-center gap-1">
-                      <CalendarDays className="w-5 h-5 text-[var(--festival-purple)]" /> {gathering.free_date}
+                      <CalendarDays className="w-5 h-5 text-[var(--festival-purple)]" /> {gathering.free_date ? gathering.free_date.replace(/-/g, '.') : ''}
                     </span>
                     <span className="flex items-center gap-1">
                       <MapPin className="w-5 h-5 text-[var(--festival-purple)]" /> {gathering.free_location}

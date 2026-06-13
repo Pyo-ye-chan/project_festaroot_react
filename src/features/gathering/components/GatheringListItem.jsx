@@ -28,6 +28,8 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
   // 🌟 이미지 우선순위 설정 (다양한 백엔드 필드 대응)
   const gatheringImage = item.room_image || 'https://picsum.photos/seed/gathering/100/100'
 
+  const formattedDate = freeDate ? freeDate.replace(/-/g, '.') : '';
+
   return (
     <Link
       to={`/community/gathering/${roomId}`}
@@ -76,7 +78,7 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
         </h4>
         <div className="flex items-center gap-4 mt-1.5">
           <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
-            <CalendarDays className="w-3.5 h-3.5" /> {freeDate}
+            <CalendarDays className="w-3.5 h-3.5" /> {formattedDate}
           </div>
           {freeLocation && (
             <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 overflow-hidden">
