@@ -4,18 +4,18 @@ const BASE_PATH = '/api/gathering';
 
 const gatheringApi = {
 
-    // 🌟 1. 백엔드 @RequestParam("file") 구조에 맞게 이미지 업로드 추가
+    // 이미지 업로드
     uploadImage: async (file) => {
         const formData = new FormData();
-        formData.append('file', file); // 백엔드 변수명 "file"과 일치 필수
+        formData.append('file', file);
         
         const response = await maxios.post(`${BASE_PATH}/image`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
-        return response.data; // { success: true, imageUrl: "..." }
+        return response.data;
     },
 
-    // 🌟 2. 모임 생성 (백엔드 @RequestBody 구조에 맞게 순수 JSON 전송)
+    // 자유 모임 생성
     createGathering: async (gatheringData) => {
         const response = await maxios.post(BASE_PATH, gatheringData);
         return response.data;
@@ -73,27 +73,34 @@ const gatheringApi = {
         return response.data;
     },
 
-    // 모임 수정
+    // [RESTful 수정] 모임 수정 (PUT)
     updateGathering: async (room_id, gatheringData) => {
         const response = await maxios.put(`${BASE_PATH}/${room_id}`, gatheringData);
         return response.data;
     },
 
-    // 모임 삭제
-    deleteGathering: async (room_id) => {
-        const response = await maxios.delete(`${BASE_PATH}/${room_id}`);
+    // [RESTful 수정] 모임 삭제 (DELETE + Query Params)
+    deleteGathering: async (room_id, owner_id) => {
+        const response = await maxios.delete(`${BASE_PATH}/${room_id}`, {
+            params: { owner_id }
+        });
         return response.data;
     },
 
-    // 방장 위임
-    delegateOwner: async (room_id, new_owner_id) => {
-        const response = await maxios.put(`${BASE_PATH}/${room_id}/delegate`, { new_owner_id });
+    // [RESTful 수정] 방장 위임 (PUT)
+    delegateOwner: async (room_id, current_owner_id, new_owner_id) => {
+        const response = await maxios.put(`${BASE_PATH}/${room_id}/host`, { 
+            current_owner_id, 
+            new_owner_id 
+        });
         return response.data;
     },
 
-    // 참가자 강퇴 (방장 권한)
-    kickParticipant: async (room_id, member_id) => {
-        const response = await maxios.delete(`${BASE_PATH}/${room_id}/kick/${member_id}`);
+    // [RESTful 수정] 참가자 강퇴 (DELETE + 하위 경로 + Query Params)
+    kickParticipant: async (room_id, owner_id, target_member_id) => {
+        const response = await maxios.delete(`${BASE_PATH}/${room_id}/participants/${target_member_id}`, {
+            params: { owner_id }
+        });
         return response.data;
     }
 }
