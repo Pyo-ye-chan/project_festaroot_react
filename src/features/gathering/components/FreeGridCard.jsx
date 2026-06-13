@@ -1,8 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Users, MapPin, CalendarDays } from 'lucide-react';
+import useAuthStore from '../../../store/useAuthStore';
 
 const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
+  const { user } = useAuthStore();
+  const loggedInUserId = user?.member_id || user?.id;
+
   // 🌟 데이터 필드 추출 (대문자/소문자 대응)
   const currentCount = item.current_count || item.CURRENT_COUNT || 0;
   const maxCapacity = item.max_capacity || item.MAX_CAPACITY || 5;
@@ -13,7 +17,11 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
   const freeDate = item.free_date || item.FREE_DATE || '';
   const roomId = item.room_id || item.ROOM_ID;
   const nickname = item.nickname || item.NICKNAME || '익명';
+  const ownerId = item.owner_id || item.OWNER_ID;
   const profileImage = item.profile_image_url || item.PROFILE_IMAGE_URL;
+
+  // 참여 여부 확인 (백엔드에서 넘겨주는 is_joined 필드 혹은 방장 여부)
+  const isJoined = item.is_joined || item.IS_JOINED || (loggedInUserId && loggedInUserId === ownerId);
 
   // 프로필 이미지가 아닌 모임 생성 시 등록한 이미지를 우선적으로 보여줍니다.
   const gatheringImage = item.room_image ||'https://picsum.photos/seed/gathering/300/200'; // 지정 이미지
@@ -29,7 +37,7 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
           alt={roomTitle} 
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
         />
-        <div className="absolute top-2 left-2">
+        <div className="absolute top-2 left-2 flex flex-col gap-1.5 items-start">
           <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur px-2 py-1 rounded-full shadow-sm">
             {profileImage && (
               <img 
@@ -42,6 +50,11 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
               {nickname}
             </span>
           </div>
+          {isJoined && (
+            <div className="px-2 py-0.5 bg-green-500/90 text-white text-[9px] font-black rounded-full shadow-sm backdrop-blur-sm">
+              참여 중
+            </div>
+          )}
         </div>
       </div>
       

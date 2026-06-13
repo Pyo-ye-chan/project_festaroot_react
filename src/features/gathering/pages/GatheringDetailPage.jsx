@@ -183,7 +183,7 @@ const GatheringDetailPage = () => {
 
   // 강퇴 핸들러
   const handleKickMember = async (memberId, nickname) => {
-    if (!window.confirm(`${nickname}님을 정말로 강퇴하시겠습니까?`)) return;
+    if (!window.confirm(`${nickname}님을 정말로 퇴장시키겠습니까?`)) return;
     try {
       await gatheringApi.kickParticipant(id, loggedInUserId, memberId);
       alert("강퇴 처리가 완료되었습니다.");
@@ -216,17 +216,26 @@ const GatheringDetailPage = () => {
     }
 
     try {
-      let finalForm = { ...editForm };
+      let uploadedImageUrl = editForm.room_image;
 
       // 이미지 파일이 선택된 경우 먼저 업로드
       if (selectedFile) {
         const uploadRes = await gatheringApi.uploadImage(selectedFile);
         if (uploadRes && uploadRes.imageUrl) {
-          finalForm.room_image_url = uploadRes.imageUrl;
+          uploadedImageUrl = uploadRes.imageUrl;
         }
       }
 
-      await gatheringApi.updateGathering(id, finalForm);
+      // 백엔드 스펙에 맞춘 최종 페이로드 구성
+      const finalPayload = {
+        ...editForm,
+        room_image: uploadedImageUrl,
+        owner_id: gathering.owner_id,
+        room_type: gathering.room_type || 'GROUP',
+        festival_id: gathering.festival_id || null
+      };
+
+      await gatheringApi.updateGathering(id, finalPayload);
       alert("모임 정보가 성공적으로 수정되었습니다.");
       setIsEditing(false);
       await fetchDetailAndParticipants();
@@ -395,7 +404,14 @@ const GatheringDetailPage = () => {
               ) : (
                 <>
                   <div className="flex justify-between items-center mb-4">
-                    <h1 className="text-3xl font-black text-gray-900 flex-1">{gathering.room_title}</h1>
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <h1 className="text-3xl font-black text-gray-900 truncate">{gathering.room_title}</h1>
+                      {isJoined && (
+                        <span className="shrink-0 px-3 py-1 bg-green-100 text-green-600 text-xs font-black rounded-full border border-green-200">
+                          참여 중
+                        </span>
+                      )}
+                    </div>
                     {isOwner && !isDelegating && (
                       <button
                         onClick={() => {

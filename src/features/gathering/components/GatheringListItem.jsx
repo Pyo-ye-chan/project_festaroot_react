@@ -1,8 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, CalendarDays, Users, ChevronRight } from 'lucide-react';
+import useAuthStore from '../../../store/useAuthStore';
 
 const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab }) => {
+  const { user } = useAuthStore();
+  const loggedInUserId = user?.member_id || user?.id;
+
   // 🌟 백엔드 데이터 필드 매핑 (대문자/소문자 대응)
   const currentCount = item.current_count || item.CURRENT_COUNT || 0;
   const maxCapacity = item.max_capacity || item.MAX_CAPACITY || 500;
@@ -13,6 +17,10 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
   const freeDate = item.free_date || item.FREE_DATE || '';
   const roomId = item.room_id || item.ROOM_ID;
   const nickname = item.nickname || item.NICKNAME || '익명';
+  const ownerId = item.owner_id || item.OWNER_ID;
+
+  // 참여 여부 확인 (백엔드에서 넘겨주는 is_joined 필드 혹은 방장 여부)
+  const isJoined = item.is_joined || item.IS_JOINED || (loggedInUserId && loggedInUserId === ownerId);
 
   // 🌟 room_title에서 ' 공식 모임'을 제거한 순수 축제 이름 추출
   const festivalName = roomTitle ? roomTitle.replace(' 공식 모임', '') : '';
@@ -53,6 +61,11 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
           ) : (
             <span className="text-xs font-black text-blue-500/80">
               {nickname}
+            </span>
+          )}
+          {isJoined && (
+            <span className="px-1.5 py-0.5 bg-green-100 text-green-600 text-[9px] font-black rounded-md border border-green-200">
+              참여 중
             </span>
           )}
         </div>
