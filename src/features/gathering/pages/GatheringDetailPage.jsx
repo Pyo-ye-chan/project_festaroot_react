@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle, Lock, Settings, Save, X, Trash2, Camera } from 'lucide-react';
+import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle, Settings, Save, X, Trash2, Camera } from 'lucide-react';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import gatheringApi from '../../../api/gatheringApi';
 import useAuthStore from '../../../store/useAuthStore';
@@ -127,7 +127,9 @@ const GatheringDetailPage = () => {
       }
     } catch (error) {
       console.error("모임 참여 중 오류 발생:", error);
-      alert(error.response?.data?.message || "모임 참여에 실패했습니다. 다시 시도해 주세요.");
+      // 🔥 서버에서 튕겨낸 블랙리스트(403) 문구가 여기에 동적으로 출력됩니다.
+      const errorMsg = error.response?.data?.message || "모임 참여에 실패했습니다. 다시 시도해 주세요.";
+      alert(errorMsg);
     }
   };
 
@@ -181,12 +183,12 @@ const GatheringDetailPage = () => {
     await handleDelegateAndLeave(oldestMember.member_id);
   };
 
-  // 강퇴 핸들러
+  // 강퇴 핸들러 (서버에서 User 테이블 Delete 및 Ban 테이블 Insert 수행)
   const handleKickMember = async (memberId, nickname) => {
     if (!window.confirm(`${nickname}님을 정말로 퇴장시키겠습니까?`)) return;
     try {
       await gatheringApi.kickParticipant(id, loggedInUserId, memberId);
-      alert("강퇴 처리가 완료되었습니다.");
+      alert("강퇴 및 영구 추방 처리가 완료되었습니다.");
       await fetchDetailAndParticipants();
     } catch (error) {
       alert("강퇴 처리 중 오류가 발생했습니다.");
@@ -218,7 +220,6 @@ const GatheringDetailPage = () => {
     try {
       let uploadedImageUrl = editForm.room_image;
 
-      // 이미지 파일이 선택된 경우 먼저 업로드
       if (selectedFile) {
         const uploadRes = await gatheringApi.uploadImage(selectedFile);
         if (uploadRes && uploadRes.imageUrl) {
@@ -226,7 +227,6 @@ const GatheringDetailPage = () => {
         }
       }
 
-      // 백엔드 스펙에 맞춘 최종 페이로드 구성
       const finalPayload = {
         ...editForm,
         room_image: uploadedImageUrl,
@@ -275,7 +275,6 @@ const GatheringDetailPage = () => {
             </button>
 
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
-              {/* 모임 대표 이미지 (수정 모드일 때는 클릭하여 변경 가능) */}
               <div className="relative group/img mb-6">
                 <img
                   src={imagePreview || gathering.room_image || 'https://picsum.photos/seed/gathering/800/400'}
@@ -284,9 +283,7 @@ const GatheringDetailPage = () => {
                   onClick={() => isEditing && fileInputRef.current?.click()}
                 />
                 {isEditing && (
-                  <div 
-                    className="absolute inset-0 flex flex-col items-center justify-center text-white opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none"
-                  >
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
                     <Camera className="w-12 h-12 mb-2" />
                     <span className="font-bold">대표 이미지 변경</span>
                   </div>
@@ -377,14 +374,13 @@ const GatheringDetailPage = () => {
                         setIsEditing(false);
                         setImagePreview(null);
                         setSelectedFile(null);
-                        // 폼 데이터도 원래 데이터로 복구 (필요시)
                         setEditForm({
                           room_title: gathering.room_title || '',
                           free_date: gathering.free_date || '',
                           free_location: gathering.free_location || '',
                           max_capacity: gathering.max_capacity || 0,
                           room_description: gathering.room_description || '',
-                          room_image_url: gathering.room_image_url || gathering.ROOM_IMAGE_URL || gathering.room_image || gathering.ROOM_IMAGE || ''
+                          room_image: gathering.room_image || ''
                         });
                       }}
                       className="flex items-center gap-2 px-6 py-2.5 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full transition-colors font-bold"

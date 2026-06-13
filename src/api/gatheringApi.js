@@ -30,7 +30,7 @@ const gatheringApi = {
                 size,
                 keyword
             }
-        })
+        });
         return response.data;
     },
 
@@ -59,15 +59,15 @@ const gatheringApi = {
         return response.data;
     },
 
-    // 상세 모임 참여하기
+    // 상세 모임 참여하기 (※ 백엔드 내부 검증로직에서 블랙리스트 체크 후 403 에러 반환하도록 설계)
     joinGathering: async (room_id, member_id) => {
-        const response = await maxios.post(`${BASE_PATH}/${room_id}/join`, { member_id })
+        const response = await maxios.post(`${BASE_PATH}/${room_id}/join`, { member_id });
         return response.data;
     },
 
     // 모임 나가기
     leaveGathering: async (room_id, member_id) => {
-        const response = await maxios.post(`${BASE_PATH}/${room_id}/leave`, { member_id })
+        const response = await maxios.post(`${BASE_PATH}/${room_id}/leave`, { member_id });
         return response.data;
     },
 
@@ -79,7 +79,7 @@ const gatheringApi = {
         return response.data;
     },
 
-// [RESTful] 모임 수정 (PUT)
+    // [RESTful] 모임 수정 (PUT)
     updateGathering: async (room_id, gatheringData) => {
         const response = await maxios.put(`${BASE_PATH}/${room_id}`, gatheringData);
         return response.data;
@@ -102,13 +102,13 @@ const gatheringApi = {
         return response.data;
     },
 
-    // [RESTful] 참가자 강퇴 (DELETE + Query Params)
+    // [RESTful] 참가자 강퇴 (DELETE + Query Params ※ 백엔드 내부에서 BAN 테이블 인서트 연동)
     kickParticipant: async (room_id, owner_id, target_member_id) => {
         const response = await maxios.delete(`${BASE_PATH}/${room_id}/participants/${target_member_id}`, {
             params: { owner_id }
         });
         return response.data;
     }
-}
+};
 
 export default gatheringApi;
