@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle, Lock, Settings, Save, X, Trash2 } from 'lucide-react';
+import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle, Lock, Settings, Save, X, Trash2, Camera } from 'lucide-react';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import gatheringApi from '../../../api/gatheringApi';
 import useAuthStore from '../../../store/useAuthStore';
@@ -8,6 +8,7 @@ import useAuthStore from '../../../store/useAuthStore';
 const GatheringDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
   const { user } = useAuthStore();
   const loggedInUserId = user?.member_id || user?.id;
@@ -19,12 +20,18 @@ const GatheringDetailPage = () => {
   // 수정 모드 및 위임 모드 상태
   const [isEditing, setIsEditing] = useState(false);
   const [isDelegating, setIsDelegating] = useState(false);
+  
+  // 이미지 업로드 관련 상태
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+
   const [editForm, setEditForm] = useState({
     room_title: '',
     free_date: '',
     free_location: '',
     max_capacity: 0,
-    room_description: ''
+    room_description: '',
+    room_image: ''
   });
 
   // 서버에서 최신 데이터를 다시 불러오는 공통 함수
@@ -43,8 +50,11 @@ const GatheringDetailPage = () => {
         free_date: roomData.free_date || '',
         free_location: roomData.free_location || '',
         max_capacity: roomData.max_capacity || 0,
-        room_description: roomData.room_description || ''
+        room_description: roomData.room_description || '',
+        room_image: roomData.room_image || ''
       });
+      setSelectedFile(null);
+      setImagePreview(null);
     } catch (error) {
       console.error("모임 정보 갱신 중 오류 발생:", error);
     }
@@ -82,6 +92,19 @@ const GatheringDetailPage = () => {
   const isOwner = loggedInUserId === gathering.owner_id;
   const isJoined = isOwner || participants.some(p => p.member_id === loggedInUserId);
   const isFull = gathering.current_count >= gathering.max_capacity;
+
+  // 이미지 변경 핸들러
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // 모임 참여 핸들러
   const handleJoinClick = async () => {
@@ -193,7 +216,17 @@ const GatheringDetailPage = () => {
     }
 
     try {
-      await gatheringApi.updateGathering(id, editForm);
+      let finalForm = { ...editForm };
+
+      // 이미지 파일이 선택된 경우 먼저 업로드
+      if (selectedFile) {
+        const uploadRes = await gatheringApi.uploadImage(selectedFile);
+        if (uploadRes && uploadRes.imageUrl) {
+          finalForm.room_image_url = uploadRes.imageUrl;
+        }
+      }
+
+      await gatheringApi.updateGathering(id, finalForm);
       alert("모임 정보가 성공적으로 수정되었습니다.");
       setIsEditing(false);
       await fetchDetailAndParticipants();
@@ -233,11 +266,30 @@ const GatheringDetailPage = () => {
             </button>
 
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
-              <img
-                src={gathering.room_image || 'https://picsum.photos/seed/gathering/800/400'}
-                alt={gathering.room_title}
-                className="w-full h-80 object-cover rounded-2xl mb-6"
-              />
+              {/* 모임 대표 이미지 (수정 모드일 때는 클릭하여 변경 가능) */}
+              <div className="relative group/img mb-6">
+                <img
+                  src={imagePreview || gathering.room_image || 'https://picsum.photos/seed/gathering/800/400'}
+                  alt={gathering.room_title}
+                  className={`w-full h-80 object-cover rounded-2xl transition-all ${isEditing ? 'cursor-pointer hover:brightness-75' : ''}`}
+                  onClick={() => isEditing && fileInputRef.current?.click()}
+                />
+                {isEditing && (
+                  <div 
+                    className="absolute inset-0 flex flex-col items-center justify-center text-white opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none"
+                  >
+                    <Camera className="w-12 h-12 mb-2" />
+                    <span className="font-bold">대표 이미지 변경</span>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  className="hidden"
+                  accept="image/*"
+                />
+              </div>
 
               {isEditing ? (
                 <div className="space-y-6">
