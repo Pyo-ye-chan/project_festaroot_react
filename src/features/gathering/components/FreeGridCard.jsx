@@ -13,13 +13,10 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
   const freeDate = item.free_date || item.FREE_DATE || '';
   const roomId = item.room_id || item.ROOM_ID;
   const nickname = item.nickname || item.NICKNAME || '익명';
+  const profileImage = item.profile_image_url || item.PROFILE_IMAGE_URL;
 
-  // 💡 프로필 이미지가 아닌 모임 생성 시 등록한 이미지를 우선적으로 보여줍니다. (대소문자 및 MyBatis 앨리어스 모두 대응)
-  const gatheringImage = 
-    item.room_image_url || item.ROOM_IMAGE_URL || 
-    item.room_image || item.ROOM_IMAGE || 
-    item.profile_image_url || item.PROFILE_IMAGE_URL || 
-    'https://picsum.photos/seed/gathering/300/200';
+  // 프로필 이미지가 아닌 모임 생성 시 등록한 이미지를 우선적으로 보여줍니다.
+  const gatheringImage = item.room_image ||'https://picsum.photos/seed/gathering/300/200'; // 지정 이미지
 
   return (
     <Link
@@ -33,9 +30,18 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
         />
         <div className="absolute top-2 left-2">
-          <span className="text-[10px] font-black bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-blue-600 shadow-sm">
-            {nickname}
-          </span>
+          <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur px-2 py-1 rounded-full shadow-sm">
+            {profileImage && (
+              <img 
+                src={profileImage} 
+                alt={nickname} 
+                className="w-5 h-5 rounded-full object-cover border border-blue-100" 
+              />
+            )}
+            <span className="text-[10px] font-black text-blue-600">
+              {nickname}
+            </span>
+          </div>
         </div>
       </div>
       

@@ -3,18 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { X, CalendarDays, MapPin, Users, Tag, Info, Camera } from 'lucide-react';
 import gatheringApi from '../../../api/gatheringApi';
 
-const CreateGatheringModal = ({ onClose, festivalId = null }) => {
+const CreateGatheringModal = ({ onClose, festivalId = null, initialData = null }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const isEditMode = !!initialData;
 
-  const [roomTitle, setRoomTitle] = useState('');
-  const [roomDescription, setRoomDescription] = useState('');
-  const [freeDate, setFreeDate] = useState('');
-  const [freeLocation, setFreeLocation] = useState('');
-  const [maxCapacity, setMaxCapacity] = useState(5);
+  const [roomTitle, setRoomTitle] = useState(initialData?.room_title || '');
+  const [roomDescription, setRoomDescription] = useState(initialData?.room_description || '');
+  const [freeDate, setFreeDate] = useState(initialData?.free_date || '');
+  const [freeLocation, setFreeLocation] = useState(initialData?.free_location || '');
+  const [maxCapacity, setMaxCapacity] = useState(initialData?.max_capacity || 5);
 
   const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  const [imagePreview, setImagePreview] = useState(initialData?.room_image || null);
 
   const userName = localStorage.getItem("user");
   const user = JSON.parse(userName);
@@ -36,7 +37,7 @@ const CreateGatheringModal = ({ onClose, festivalId = null }) => {
     }
   };
 
-  // 🌟 이미지 업로드 후 JSON으로 모임 생성 요청 연쇄 처리
+  // 🌟 이미지 업로드 후 JSON으로 모임 생성/수정 요청 처리
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -46,9 +47,9 @@ const CreateGatheringModal = ({ onClose, festivalId = null }) => {
     }
 
     try {
-      let uploadedImageUrl = null;
+      let uploadedImageUrl = imagePreview; // 기본값은 기존 이미지 (수정 시 변경 없을 수 있음)
 
-      // [Step 1] 이미지 파일이 있다면 백엔드 /image 엔드포인트로 먼저 업로드
+      // [Step 1] 새 이미지 파일이 선택되었다면 백엔드 /image 엔드포인트로 먼저 업로드
       if (imageFile) {
         const uploadResult = await gatheringApi.uploadImage(imageFile);
         if (uploadResult.success) {
@@ -59,7 +60,7 @@ const CreateGatheringModal = ({ onClose, festivalId = null }) => {
         }
       }
 
-      // [Step 2] 백엔드 GatheringCreateDTO 스펙에 맞춘 순수 JSON 객체 생성
+      // [Step 2] 백엔드 GatheringDTO 스펙에 맞춘 객체 생성
       const requestPayload = {
         room_title: roomTitle,
         room_description: roomDescription,
@@ -67,32 +68,41 @@ const CreateGatheringModal = ({ onClose, festivalId = null }) => {
         free_date: freeDate,
         max_capacity: Number(maxCapacity),
         owner_id: userId,
-        room_type: 'GROUP', // 자유 모임이므로 GROUP 고정
-        festival_id: festivalId ? Number(festivalId) : null,
-        room_image: uploadedImageUrl // 🌟 업로드 완료된 이미지 주소 매핑
+        room_type: initialData?.room_type || 'GROUP',
+        festival_id: festivalId ? Number(festivalId) : (initialData?.festival_id ? Number(initialData.festival_id) : null),
+        room_image: uploadedImageUrl
       };
 
-      // [Step 3] JSON 데이터로 전송 (@RequestBody 수용 가능)
-      const data = await gatheringApi.createGathering(requestPayload);
-
-      if (data.success) {
-        alert('모임이 성공적으로 생성되었습니다!');
-        onClose();
-        navigate(`/community/chat/${data.roomId}`);
+      // [Step 3] 데이터 전송 (수정 또는 생성)
+      if (isEditMode) {
+        const data = await gatheringApi.updateGathering(initialData.room_id, requestPayload);
+        if (data.success) {
+          alert('모임 정보가 성공적으로 수정되었습니다!');
+          onClose(true); // 수정 성공 신호를 보냄
+        }
+      } else {
+        const data = await gatheringApi.createGathering(requestPayload);
+        if (data.success) {
+          alert('모임이 성공적으로 생성되었습니다!');
+          onClose();
+          navigate(`/community/chat/${data.roomId}`);
+        }
       }
     } catch (error) {
-      console.error('모임 생성 에러:', error);
-      alert('모임 생성 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      console.error('모임 처리 에러:', error);
+      alert('요청 처리 중 오류가 발생했습니다. 다시 시도해 주세요.');
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-2xl shadow-lg relative my-8">
-        <button onClick={onClose} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600">
+        <button onClick={() => onClose(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600">
           <X className="w-6 h-6" />
         </button>
-        <h2 className="text-3xl font-black text-gray-900 mb-6 text-center">새 모임 만들기</h2>
+        <h2 className="text-3xl font-black text-gray-900 mb-6 text-center">
+          {isEditMode ? '모임 정보 수정하기' : '새 모임 만들기'}
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 이미지 업로드 섹션 */}
@@ -205,7 +215,7 @@ const CreateGatheringModal = ({ onClose, festivalId = null }) => {
           <div className="flex justify-end space-x-4 pt-4">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => onClose(false)}
               className="px-6 py-3 border border-gray-300 text-gray-700 font-bold rounded-full hover:bg-gray-100 transition-colors active:scale-95"
             >
               취소
@@ -214,7 +224,7 @@ const CreateGatheringModal = ({ onClose, festivalId = null }) => {
               type="submit"
               className="px-8 py-3 text-white font-bold rounded-full shadow-lg bg-[var(--festival-purple)] hover:bg-[var(--festival-purple-soft)] transition-colors active:scale-95"
             >
-              모임 생성하기
+              {isEditMode ? '수정 완료하기' : '모임 생성하기'}
             </button>
           </div>
         </form>

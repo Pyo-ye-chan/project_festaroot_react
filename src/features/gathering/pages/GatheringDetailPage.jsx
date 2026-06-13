@@ -34,13 +34,6 @@ const GatheringDetailPage = () => {
         gatheringApi.gatheringDetail(id),
         gatheringApi.gatheringParticipants(id)
       ]);
-
-      // ✨ [강력 추천 디버깅 스포트] 브라우저 콘솔에 찍어서 구조 확인
-      console.log("=========================================");
-      console.log("1. 서버에서 넘어온 방 상세 데이터(roomData):", roomData);
-      console.log("2. 프로필 이미지 Key가 존재하는가?:", roomData ? Object.keys(roomData) : "데이터 없음");
-      console.log("=========================================");
-
       setGathering(roomData);
       setParticipants(participantData || []);
 
@@ -241,7 +234,7 @@ const GatheringDetailPage = () => {
 
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
               <img
-                src={gathering.room_image || gathering.profile_image_url || 'https://picsum.photos/seed/gathering/800/400'}
+                src={gathering.room_image || 'https://picsum.photos/seed/gathering/800/400'}
                 alt={gathering.room_title}
                 className="w-full h-80 object-cover rounded-2xl mb-6"
               />

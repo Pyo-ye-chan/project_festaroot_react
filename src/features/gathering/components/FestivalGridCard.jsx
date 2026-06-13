@@ -14,11 +14,7 @@ const FestivalGridCard = ({ item }) => {
   const roomId = item.room_id || item.ROOM_ID;
   
   // 🌟 이미지 우선순위: 모임 대표 이미지 -> 프로필 이미지 -> 기본 축제 이미지
-  const festivalImage = 
-    item.room_image_url || item.ROOM_IMAGE_URL || 
-    item.room_image || item.ROOM_IMAGE || 
-    item.profile_image_url || item.PROFILE_IMAGE_URL || 
-    'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300';
+  const festivalImage = item.room_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300';
   
   // 🌟 상단 타이틀에서 ' 공식 모임' 제거한 순수 축제명 추출
   const festivalName = roomTitle ? roomTitle.replace(' 공식 모임', '') : '';
