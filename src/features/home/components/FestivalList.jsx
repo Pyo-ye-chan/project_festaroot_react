@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import festivalService from '../../../api/festivalService';
+import useAuthStore from '../../../store/useAuthStore'; 
+import { maxios } from '../../../api/axiosApi'; 
 
 const FestivalList = () => {
   const [popularList, setPopularList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [likedIds, setLikedIds] = useState([]); 
+
+  const { isLoggedIn } = useAuthStore(); 
 
   useEffect(() => {
     const fetchPopularFestivals = async () => {
       try {
         setIsLoading(true);
 
-        // 진행 중인 축제만 가져오도록 ongoingOnly 속성 추가
         const params = {
           page: 1,
           size: 4,
@@ -20,7 +24,6 @@ const FestivalList = () => {
         };
 
         const response = await festivalService.getFestivals(params);
-
         const data = Array.isArray(response) ? response : (response.list || []);
         setPopularList(data);
       } catch (error) {
@@ -30,10 +33,28 @@ const FestivalList = () => {
       }
     };
 
-    fetchPopularFestivals();
-  }, []);
+    const fetchLikedFestivals = async () => {
+      if (!isLoggedIn) {
+        setLikedIds([]); 
+        return;
+      }
 
-  // 상세보기 이동 시 조회수를 상승시키는 클릭 핸들러 함수
+      try {
+        const response = await maxios.get('/api/festivals/likeList');
+        const resData = response.data || response;
+        const dataArray = Array.isArray(resData) ? resData : (resData.list || []);
+        
+        const ids = dataArray.map(fest => (typeof fest === 'object' ? (fest.contentId || fest.content_id) : fest));
+        setLikedIds(ids);
+      } catch (error) {
+        console.error("사용자의 찜 목록을 불러오는 데 실패했습니다:", error);
+      }
+    };
+
+    fetchPopularFestivals();
+    fetchLikedFestivals();
+  }, [isLoggedIn]); 
+
   const handleFestivalClick = async (contentId) => {
     try {
       if (festivalService.increaseViewCount) {
@@ -42,7 +63,6 @@ const FestivalList = () => {
         console.warn("festivalService에 increaseViewCount 메소드가 정의되어 있지 않습니다.");
       }
     } catch (error) {
-      // 조회수 카운트 실패가 페이지 이동을 방해하지 않도록 에러만 출력
       console.error("인기 축제 목록 조회수 상승 실패:", error);
     }
   };
@@ -106,6 +126,8 @@ const FestivalList = () => {
             const rating = fest.rating || 0.0;
             const likes = fest.likes || fest.likeCount || fest.like_count || 0;
 
+            const isLiked = likedIds.includes(contentId);
+
             return (
               <Link 
                 to={`/festival/${contentId}`} 
@@ -127,19 +149,25 @@ const FestivalList = () => {
                       TOP {index + 1}
                     </span>
                   </div>
-                  <button 
-                    className="absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-400 hover:text-rose-500 transition-colors duration-300 shadow-sm active:scale-90"
-                    onClick={(e) => {
-                      // 찜 버튼은 상세 이동/조회수 증가와 별개로 처리되어야 하므로 버블링을 방지합니다.
-                      e.stopPropagation(); 
-                      e.preventDefault();
-                    }}
-                  >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001z" />
-                    </svg>
-                  </button>
+                  
+                  {/* 변경된 핵심 파트: 로그인한 유저(isLoggedIn === true)에게만 찜 버튼 렌더링 */}
+                  {isLoggedIn && (
+                    <button 
+                      className={`absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center transition-colors duration-300 shadow-sm active:scale-90 ${
+                        isLiked ? 'text-rose-500' : 'text-gray-400 hover:text-rose-500'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation(); 
+                        e.preventDefault();
+                      }}
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001z" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
+                
                 <div className="mt-4 px-1">
                   <h4 className="text-lg font-black text-gray-900 leading-tight group-hover:text-purple-600 transition-colors duration-300 line-clamp-1">
                     {title}
@@ -151,10 +179,9 @@ const FestivalList = () => {
                     <p className="text-[11px] text-gray-400 font-bold flex items-center gap-1.5">
                       <span>📅</span> {formatDate(startDate)} - {formatDate(endDate)}
                     </p>
-                    </div>
+                  </div>
 
-                    {/* 테마 정보 출력 */}
-                    {fest.themes && fest.themes.length > 0 && (
+                  {fest.themes && fest.themes.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-3">
                       {fest.themes.map((theme, idx) => (
                         <span key={idx} className="px-1.5 py-0.5 bg-purple-50 text-purple-600 text-[9px] font-bold rounded">
@@ -162,11 +189,10 @@ const FestivalList = () => {
                         </span>
                       ))}
                     </div>
-                    )}
+                  )}
 
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
                     <div className="flex items-center gap-2.5">
-                      {/* 별점 조건부 렌더링: rating이 0보다 클 때만 표시 */}
                       {rating > 0 && (
                         <div className="flex items-center gap-0.5">
                           <span className="text-yellow-400 text-xs">★</span>
@@ -174,7 +200,6 @@ const FestivalList = () => {
                         </div>
                       )}
 
-                      {/* 좋아요 조건부 렌더링: likes가 0보다 클 때만 표시 */}
                       {likes > 0 && (
                         <div className="flex items-center gap-0.5 text-rose-500">
                           <span className="text-xs">❤️</span>
