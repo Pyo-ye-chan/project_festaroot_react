@@ -22,38 +22,48 @@ const useChatStore = create((set, get) => ({
   setChatRooms: (chatRooms) => set({ chatRooms }),
   setFocusedFloatingId: (focusedFloatingId) => set({ focusedFloatingId }),
 
-  // 💡 플로팅 창 열기 (접혀있었다면 접힘 해제 + 포커스 부여)
+  // 플로팅 창 열기 정규화 (Number 타입으로 통일)
   openFloatingChat: (chatId) => set((state) => {
-    const nextIds = state.floatingChatIds.includes(chatId)
+    const numericId = Number(chatId); // 안전하게 숫자로 변환
+    const nextIds = state.floatingChatIds.map(Number).includes(numericId)
       ? state.floatingChatIds
-      : [...state.floatingChatIds, chatId];
-    const nextMinimized = state.minimizedChatIds.filter(id => id !== chatId);
-    return { 
-      floatingChatIds: nextIds, 
+      : [...state.floatingChatIds, numericId];
+    const nextMinimized = state.minimizedChatIds.filter(id => Number(id) !== numericId);
+    return {
+      floatingChatIds: nextIds,
       minimizedChatIds: nextMinimized,
-      focusedFloatingId: chatId 
+      focusedFloatingId: numericId
     };
   }),
 
-  // 💡 플로팅 창 완전히 닫기 (오픈 목록 및 접힘 목록 동시 제거)
-  closeFloatingChat: (chatId) => set((state) => ({
-    floatingChatIds: state.floatingChatIds.filter(id => id !== chatId),
-    minimizedChatIds: state.minimizedChatIds.filter(id => id !== chatId),
-    focusedFloatingId: state.focusedFloatingId === chatId ? null : state.focusedFloatingId
-  })),
+  // 플로팅 창 완전히 닫기 (Number 타입 강제 변환 후 비교)
+  closeFloatingChat: (chatId) => set((state) => {
+    const numericId = Number(chatId); // 닫으려는 ID를 숫자로 통일
+    return {
+      floatingChatIds: state.floatingChatIds.filter(id => Number(id) !== numericId),
+      minimizedChatIds: state.minimizedChatIds.filter(id => Number(id) !== numericId),
+      focusedFloatingId: Number(state.focusedFloatingId) === numericId ? null : state.focusedFloatingId
+    };
+  }),
 
-  // 💡 플로팅 창 접기 액션 추가
-  minimizeFloatingChat: (chatId) => set((state) => ({
-    minimizedChatIds: state.minimizedChatIds.includes(chatId)
-      ? state.minimizedChatIds
-      : [...state.minimizedChatIds, chatId]
-  })),
+  // 플로팅 창 접기 액션 정규화
+  minimizeFloatingChat: (chatId) => set((state) => {
+    const numericId = Number(chatId);
+    return {
+      minimizedChatIds: state.minimizedChatIds.map(Number).includes(numericId)
+        ? state.minimizedChatIds
+        : [...state.minimizedChatIds, numericId]
+    };
+  }),
 
-  // 💡 접힌 창 다시 열기 액션 추가
-  restoreFloatingChat: (chatId) => set((state) => ({
-    minimizedChatIds: state.minimizedChatIds.filter(id => id !== chatId),
-    focusedFloatingId: chatId
-  })),
+  // 접힌 창 다시 열기 액션 정규화
+  restoreFloatingChat: (chatId) => set((state) => {
+    const numericId = Number(chatId);
+    return {
+      minimizedChatIds: state.minimizedChatIds.filter(id => Number(id) !== numericId),
+      focusedFloatingId: numericId
+    };
+  }),
 
   stompClient: null,
   connected: false,

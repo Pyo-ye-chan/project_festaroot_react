@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Footer from './components/Footer'
 import './App.css'
 import SidebarFilter from './features/festival-map/components/SidebarFilter'
-import { Routes, Route, useNavigate } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import FestivalMapPage from './features/festival-map/pages/FestivalMapPage'
 import KakaoMapContainer from './components/map/KakaoMapContainer'
 import LoginPage from './features/auth/pages/LoginPage'
@@ -40,9 +40,24 @@ import { MessageCircle } from 'lucide-react';
 
 function App() {
   const navigate = useNavigate();
-  const { floatingChatIds, minimizedChatIds, chatRooms, restoreFloatingChat, openFloatingChat } = useChatStore();
+  const location = useLocation();
+
+  const { floatingChatIds, minimizedChatIds, chatRooms, restoreFloatingChat, openFloatingChat, clearChatStore } = useChatStore();
   const isLoading = useLoadingStore(state => state.isLoading);
   const { setInitialLikes } = useFestivalLikeStore();
+
+  // 전역 로그아웃 감시 훅 기용
+  // 사용자가 로그아웃 버튼을 눌러 localStorage가 비워지거나 페이지가 바뀔 때 전역 스토어를 즉시 청소합니다.
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    const storedUser = localStorage.getItem("user");
+
+    if (!token || !storedUser) {
+      if (floatingChatIds.length > 0 || minimizedChatIds.length > 0) {
+        clearChatStore(); // 플로팅 및 접힌 창 상태 전부 초기화 (끈 효과)
+      }
+    }
+  }, [location.pathname, floatingChatIds, minimizedChatIds, clearChatStore]);
 
   useEffect(() => {
     const restoreLikes = async () => {

@@ -43,7 +43,12 @@ const ChatWindow = ({
               }}
             />
           </div>
-          <h2 className="text-xl font-black text-gray-900 truncate group-hover:text-purple-600">{selectedChat?.title}</h2>
+          <h2
+            className="cursor-pointer hover:text-purple-600 transition-colors"
+            onClick={() => toggleSidebar('details')}
+          >
+            {selectedChat.title}
+          </h2>
         </div>
         <div className="flex items-center gap-3">
           <button

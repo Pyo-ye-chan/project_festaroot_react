@@ -9,6 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 const ChatListPage = () => {
   const [participants, setParticipants] = useState([]);
+  const [roomDetail, setRoomDetail] = useState(null); // 💡 백엔드에서 긁어올 리얼 상세정보 보관소 추가
   const { roomId } = useParams();
   const navigate = useNavigate();
 
@@ -30,24 +31,13 @@ const ChatListPage = () => {
   const [displayChatId, setDisplayChatId] = useState(null);
   const [message, setMessage] = useState('');
 
-  const user = JSON.parse(localStorage.getItem('user'));
-  const userId = user?.userId || user?.id || user?.member_id;
-
-  useEffect(() => {
-    if (!userId && floatingChatIds.length > 0) {
-      [...floatingChatIds].forEach(id => closeFloatingChat(id));
-    }
-  }, [userId, floatingChatIds, closeFloatingChat]);
-
-  useEffect(() => {
-    connectWebSocket();
-  }, [connectWebSocket]);
-
+  // 💡 방 변경 시, 참여자뿐만 아니라 실제 "모임 소개글/규칙"이 포함된 상세 데이터도 패치
   useEffect(() => {
     if (activeChatId) {
       fetchChatHistory(activeChatId);
       subscribeToRoom(activeChatId);
 
+      // 참여자 목록 패치
       const fetchParticipants = async () => {
         try {
           const res = await gatheringApi.gatheringParticipants(activeChatId);
@@ -56,7 +46,19 @@ const ChatListPage = () => {
           console.error("참여자 목록 로드 실패", e);
         }
       };
+
+      // ✨ 모임 상세 원격 내용 패치 (오른쪽 레이어에 띄울 핵심 알맹이)
+      const fetchRoomDetail = async () => {
+        try {
+          const res = await gatheringApi.gatheringDetail(activeChatId);
+          setRoomDetail(res); // 백엔드 내부의 room_description 등이 완벽하게 탑재됨
+        } catch (e) {
+          console.error("모임 상세 내용 패치 실패", e);
+        }
+      };
+
       fetchParticipants();
+      fetchRoomDetail();
     }
   }, [activeChatId, fetchChatHistory, subscribeToRoom]);
 
@@ -102,7 +104,7 @@ const ChatListPage = () => {
       setShowParticipants(!showParticipants);
       setShowDetails(false);
     } else {
-      if (selectedChat?.type === 'private') return;
+      if (selectedChat?.type?.toUpperCase() === 'PRIVATE') return;
       setShowDetails(!showDetails);
       setShowParticipants(false);
     }
@@ -139,6 +141,11 @@ const ChatListPage = () => {
   }, [setChatRooms]);
 
   const selectedChat = chatRooms.find(c => c.id === (activeChatId || displayChatId));
+
+  // 실시간으로 들고온 상세 정보를 깔끔하게 덧씌웁니다.
+  const detailedChat = selectedChat
+    ? { ...selectedChat, ...roomDetail }
+    : null;
 
   const sections = [
     { id: 'festival', label: '축제 채팅' },
@@ -198,7 +205,7 @@ const ChatListPage = () => {
                 {selectedChat && (
                   <div className="w-full h-full flex">
                     <ChatWindow
-                      selectedChat={selectedChat}
+                      selectedChat={detailedChat}
                       setSelectedChatId={setActiveChatId}
                       openFloatingChat={openFloatingChat}
                       toggleSidebar={toggleSidebar}
@@ -217,7 +224,7 @@ const ChatListPage = () => {
                       showParticipants={showParticipants}
                       showDetails={showDetails}
                       participants={participants}
-                      selectedChat={selectedChat}
+                      selectedChat={detailedChat}
                       customScrollbarClass={customScrollbarClass}
                       toggleSidebar={toggleSidebar}
                     />

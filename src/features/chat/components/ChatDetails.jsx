@@ -1,5 +1,5 @@
 import React from 'react';
-import { Ban, MapPin, X } from 'lucide-react';
+import { Ban, MapPin, X, Calendar } from 'lucide-react';
 
 const ChatDetails = ({
   showParticipants,
@@ -10,6 +10,18 @@ const ChatDetails = ({
   toggleSidebar
 }) => {
   const isOpen = showParticipants || showDetails;
+
+  // 💡 Oracle 대소문자 이슈 방어를 위한 데이터 정규화 추출
+  const chatType = selectedChat?.type?.toUpperCase() || selectedChat?.room_type?.toUpperCase();
+
+  // 시작일 / 모임일 추출
+  const startDate = selectedChat?.free_date;
+
+  // 종료일 추출
+  const endDate = selectedChat?.event_end_date;
+
+  // 위치 정보 추출
+  const locationText = selectedChat?.free_location;
 
   return (
     <>
@@ -38,14 +50,10 @@ const ChatDetails = ({
           {showParticipants && (
             <div className="p-4 space-y-2">
               {participants.map(p => {
-                // 💡 1. Oracle 대문자 이슈 및 id/member_id 통합 방어 조치
                 const memberId = p.member_id || p.MEMBER_ID || p.id;
                 const nickname = p.nickname || p.NICKNAME || '이름 없음';
-
-                // 💡 2. 구글 프로필 URL 우선 적용 -> 없으면 이니셜 아바타로 대체
                 const profileImg = p.profile_image_url || p.PROFILE_IMAGE_URL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(nickname)}`;
 
-                {/* 💡 대소문자 속성 및 선택한 방의 개설자 ID 정보를 비교하여 방장 판별 */ }
                 const isHost =
                   p.is_host === 'Y' || p.IS_HOST === 'Y' ||
                   p.role === 'HOST' || p.ROLE === 'HOST' ||
@@ -75,18 +83,52 @@ const ChatDetails = ({
               })}
             </div>
           )}
+
           {showDetails && (
             <div className="p-6 space-y-6">
-              {selectedChat?.type === 'festival' && (
+              {/* 💡 축제(FESTIVAL) 및 일반 모임(GROUP) 정보 레이아웃 다변화 노출 */}
+              {(chatType === 'FESTIVAL' || chatType === 'GROUP') && (
                 <>
-                  <div><p className="text-sm font-black text-gray-400">축제 기간</p><p className="text-base font-bold">{selectedChat.date}</p></div>
-                  <div><p className="text-sm font-black text-gray-400">위치</p><p className="text-base font-bold flex items-center gap-1"><MapPin className="w-5 h-5" />{selectedChat.location}</p></div>
+                  {/* 일정 정보 매핑 */}
+                  {startDate ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-gray-400 flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4 text-purple-600" />
+                        {chatType === 'FESTIVAL' ? '축제 기간' : '모임 일정'}
+                      </p>
+                      <p className="text-base font-bold text-gray-800 pl-5.5">
+                        {startDate} {endDate ? `~ ${endDate}` : ''}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-gray-400 flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4 text-purple-600" />
+                        일정 정보
+                      </p>
+                      <p className="text-sm font-medium text-gray-400 pl-5.5">상시 진행 또는 정보 없음</p>
+                    </div>
+                  )}
+
+                  {/* 위치 정보 매핑 */}
+                  <div className="space-y-1">
+                    <p className="text-sm font-black text-gray-400 flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-purple-600" />
+                      위치
+                    </p>
+                    <p className="text-base font-bold text-gray-800 pl-5.5 leading-snug">
+                      {locationText || "등록된 위치 정보가 없습니다."}
+                    </p>
+                  </div>
                 </>
               )}
-              <div className="pt-4 border-t border-gray-50">
-                <p className="text-sm font-black text-gray-400 mb-2">설명</p>
-                <p className="text-base text-gray-600 leading-relaxed">
-                  이 채팅방은 {selectedChat?.title}에 대한 정보를 공유하고 함께 방문할 메이트를 찾는 공간입니다. 매너 있는 대화 부탁드립니다.
+
+              {/* 하단 설명 영역 */}
+              <div className="pt-4 border-t border-gray-100">
+                <p className="text-sm font-black text-gray-400 mb-2">소개글 및 규칙</p>
+                <p className="text-base text-gray-600 leading-relaxed whitespace-pre-wrap">
+                  {selectedChat?.room_description || selectedChat?.description ||
+                    `${selectedChat?.title || '이'} 채팅방은 자유롭게 소통하는 공간입니다. 매너 있는 대화 부탁드립니다.`}
                 </p>
               </div>
             </div>

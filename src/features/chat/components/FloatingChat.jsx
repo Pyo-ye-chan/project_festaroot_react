@@ -94,13 +94,13 @@ const FloatingChat = ({ roomId, index }) => {
           <div className="flex items-center gap-1">
             {/* 💡 전역 스토어 액션으로 안정적으로 전환 */}
             <button 
-              onClick={(e) => { e.stopPropagation(); minimizeFloatingChat(roomId); }} 
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); minimizeFloatingChat(roomId); }} 
               className="p-1 hover:bg-white/10 rounded"
             >
               <Minimize2 className="w-3.5 h-3.5" />
             </button>
             <button 
-              onClick={(e) => { e.stopPropagation(); closeFloatingChat(roomId); }} 
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); closeFloatingChat(roomId); }} 
               className="p-1 hover:bg-rose-500 rounded"
             >
               <X className="w-3.5 h-3.5" />
