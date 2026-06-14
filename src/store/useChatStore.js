@@ -2,98 +2,113 @@ import { create } from 'zustand';
 import { Client } from '@stomp/stompjs';
 import { maxios } from '../api/axiosApi';
 
-const useChatStore = create((set, get) => ({
-  // 1. 기존 UI 상태 관리 유지
-  isFloating: false,
-  activeChatId: null,
-  setFloating: (isFloating) => set({ isFloating }),
-  setActiveChatId: (activeChatId) => set({ activeChatId }),
-  openFloatingChat: (chatId) => set({ isFloating: true, activeChatId: chatId }),
-  closeFloatingChat: () => set({ isFloating: false, activeChatId: null }),
+// 💡 LocalStorage에서 유저 정보를 안전하고 일관되게 추출하는 헬퍼 함수
+const getLocalUser = () => {
+  const user = JSON.parse(localStorage.getItem('user')) || {};
+  return {
+    id: user.userId || user.id || user.memberId || user.member_id || 'system',
+    name: user.nickname || user.id || user.member_id || '사용자',
+    profileImg: user.profile_image_url || user.profileImg || ''
+  };
+};
 
-  // 2. 실시간 상태값
+const useChatStore = create((set, get) => ({
+  activeChatId: null,
+  floatingChatIds: [],
+  chatRooms: [],
+
+  setActiveChatId: (activeChatId) => set({ activeChatId }),
+  setChatRooms: (chatRooms) => set({ chatRooms }),
+
+  openFloatingChat: (chatId) => set((state) => {
+    const nextIds = state.floatingChatIds.includes(chatId)
+      ? state.floatingChatIds
+      : [...state.floatingChatIds, chatId];
+    return { floatingChatIds: nextIds };
+  }),
+
+  closeFloatingChat: (chatId) => set((state) => ({
+    floatingChatIds: state.floatingChatIds.filter(id => id !== chatId)
+  })),
+
   stompClient: null,
   connected: false,
-  messagesByRoom: {}, 
+  messagesByRoom: {},
 
-  // 💡 [과거 내역 로드 추가] 방 진입 시 MongoDB 백엔드 API에서 이전 대화 데이터를 채워 넣는 로직
+  // 과거 내역 로드
   fetchChatHistory: async (roomId) => {
     try {
       const response = await maxios.get(`/api/chat/room/${roomId}/messages`);
       const rawList = response.data || [];
-      
-      const loggedInUser = JSON.parse(localStorage.getItem('user')) || {};
-      
-      // 서버에서 내려온 몽고DB 규격을 UI 메세지 스펙으로 일괄 역정규화 매핑
+      const loggedUser = getLocalUser();
+
       const mappedHistory = rawList.map((received) => ({
         id: received.id || received._id || Date.now() + Math.random(),
+        senderId: received.senderId, // 💡 ChatWindow에서 Oracle DB 유저와 비교하기 위해 추가!
         sender: received.senderName,
+        senderProfile: received.senderProfile || '',
         text: received.message,
-        time: received.createdAt 
-          ? new Date(received.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+        time: received.createdAt
+          ? new Date(received.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isMe: String(received.senderId) === String(loggedInUser.id || loggedInUser.memberId), 
-        type: received.type 
+        isMe: String(received.senderId) === String(loggedUser.id),
+        type: received.type
       }));
 
       set((state) => ({
-        messagesByRoom: {
-          ...state.messagesByRoom,
-          [roomId]: mappedHistory
-        }
+        messagesByRoom: { ...state.messagesByRoom, [roomId]: mappedHistory }
       }));
     } catch (error) {
       console.error('이전 채팅 대화 내역 로드 실패:', error);
     }
   },
 
-  // 3. 최상단 진입 시 웹소켓 파이프라인 활성화
   connectWebSocket: () => {
     if (get().stompClient?.connected) return;
 
     const client = new Client({
-      brokerURL: 'ws://localhost/ws-stomp', 
+      brokerURL: 'ws://localhost/ws-stomp',
       reconnectDelay: 5000,
       onConnect: () => {
         console.log('STOMP 웹소켓 서버 연결 성공 🚀');
         set({ connected: true });
-        
+
         const currentActiveId = get().activeChatId;
         if (currentActiveId) get().subscribeToRoom(currentActiveId);
+        get().floatingChatIds.forEach(id => get().subscribeToRoom(id));
       },
-      onDisconnect: () => {
-        set({ connected: false });
-      }
+      onDisconnect: () => { set({ connected: false }); }
     });
 
     client.activate();
     set({ stompClient: client });
   },
 
-  // 4. 실시간 방 구독 로직
   subscribeToRoom: (roomId) => {
     const client = get().stompClient;
     if (!client || !client.connected) return;
 
     client.subscribe(`/sub/chat/room/${roomId}`, (stompMessage) => {
       const received = JSON.parse(stompMessage.body);
-      const loggedInUser = JSON.parse(localStorage.getItem('user')) || {};
-      
+      const loggedUser = getLocalUser();
+
       const mappedMsg = {
-        id: received.id || received._id || Date.now(), 
-        sender: received.senderName, 
-        text: received.message, 
-        time: received.createdAt 
-          ? new Date(received.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+        id: received.id || received._id || Date.now(),
+        senderId: received.senderId, // 💡 여기도 추가!
+        sender: received.senderName,
+        senderProfile: received.senderProfile || '',
+        text: received.message,
+        time: received.createdAt
+          ? new Date(received.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isMe: String(received.senderId) === String(loggedInUser.id || loggedInUser.memberId), 
-        type: received.type 
+        isMe: String(received.senderId) === String(loggedUser.id),
+        type: received.type
       };
 
       set((state) => {
         const currentRoomMsgs = state.messagesByRoom[roomId] || [];
         if (currentRoomMsgs.some(m => m.id === mappedMsg.id)) return state;
-        
+
         return {
           messagesByRoom: {
             ...state.messagesByRoom,
@@ -104,7 +119,6 @@ const useChatStore = create((set, get) => ({
     });
   },
 
-  // 5. 컨트롤러 규격에 맞춘 메시지 발송
   sendMessage: (roomId, text, type = 'TALK') => {
     const client = get().stompClient;
     if (!client || !client.connected) {
@@ -112,18 +126,20 @@ const useChatStore = create((set, get) => ({
       return;
     }
 
-    const loggedInUser = JSON.parse(localStorage.getItem('user')) || { id: 'system', name: '사용자' };
+    const loggedUser = getLocalUser();
 
+    // 💡 에러 수정: user 대신 완전히 정제된 loggedUser 데이터를 사용해 전송합니다.
     const payload = {
       roomId: Number(roomId),
-      senderId: loggedInUser.id || loggedInUser.memberId,
-      senderName: loggedInUser.name || loggedInUser.nickname || '익명',
-      message: text, 
+      senderId: loggedUser.id,
+      senderName: loggedUser.name,
+      senderProfile: loggedUser.profileImg,
+      message: text,
       type: type
     };
 
     client.publish({
-      destination: '/pub/chat/message', 
+      destination: '/pub/chat/message',
       body: JSON.stringify(payload)
     });
   }

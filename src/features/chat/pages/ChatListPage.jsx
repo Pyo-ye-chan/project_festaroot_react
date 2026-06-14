@@ -6,9 +6,9 @@ import ChatDetails from '../components/ChatDetails';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import gatheringApi from '../../../api/gatheringApi';
 import { useNavigate, useParams } from 'react-router-dom';
+import FloatingChat from '../components/FloatingChat';
 
 const ChatListPage = () => {
-  const [chatRooms, setChatRooms] = useState([]);
   const [participants, setParticipants] = useState([]);
   const { roomId } = useParams(); // 주소창의 room_id (/community/chat/19 -> 19)
   const navigate = useNavigate();
@@ -17,6 +17,9 @@ const ChatListPage = () => {
   const {
     activeChatId,
     setActiveChatId,
+    floatingChatIds,
+    chatRooms,
+    setChatRooms,
     connectWebSocket,
     subscribeToRoom,
     fetchChatHistory,
@@ -33,14 +36,24 @@ const ChatListPage = () => {
     connectWebSocket();
   }, [connectWebSocket]);
 
-  // 대화방 선택(activeChatId 변경) 시 실시간 토픽 채널 구독 트리거
-  // 💡 [대화방 진입 동기화 변경] 방 번호가 바뀔 때 과거 히스토리와 실시간 구독을 연속적으로 활성화합니다.
+  // 💡 방 변경 시 역사 내역 로드 + 실시간 구독 + 참여자 실시간 Fetch 트리거
   useEffect(() => {
     if (activeChatId) {
-      // 1. 먼저 MongoDB 백엔드에서 이전 채팅 내역 로드
       fetchChatHistory(activeChatId);
-      // 2. 이어서 실시간 수신용 파이프 연결
       subscribeToRoom(activeChatId);
+
+      // 💡 [참여자 가져오기 실구현] 하드코딩을 걷어내고 실제 API를 연결합니다!
+      const fetchParticipants = async () => {
+        try {
+          const res = await gatheringApi.gatheringParticipants(activeChatId);
+          // console.log("동네 모임 참여자 API 실시간 수신 데이터:", res); // 채팅방 참여자 목록
+          setParticipants(res || []);
+        } catch (e) {
+          console.error("참여자 목록 로드 실패", e);
+        }
+      };
+
+      fetchParticipants();
     }
   }, [activeChatId, fetchChatHistory, subscribeToRoom]);
 
@@ -96,41 +109,40 @@ const ChatListPage = () => {
     }
   };
 
-  // 내가 참여 중인 모임(채팅방) 리스트 조회 및 이미지 매핑
+  // 내가 참여 중인 모임 리스트 조회 및 글로벌 스토어 세팅
   useEffect(() => {
     const fetchMyChatRooms = async () => {
       try {
         const user = JSON.parse(localStorage.getItem('user'));
         const userId = user?.userId || user?.id || user?.member_id;
-        if (!userId) {
-          console.warn("로그인한 유저 정보를 찾을 수 없습니다.");
-          return;
-        }
+        if (!userId) return;
 
         const responseData = await gatheringApi.getJoinedGatherings(userId, 1, 100, '전체');
         const rawRooms = Array.isArray(responseData) ? responseData : (responseData.list || []);
 
-        // DB에서 가져온 데이터(축제 기본이미지 or 모임 등록 이미지)를 UI 포맷으로 매핑
         const formattedRooms = rawRooms.map(room => ({
           id: room.room_id,
           type: room.room_type,
           title: room.room_title,
           description: room.room_description,
-          room_image: room.room_image, // Mapper의 NVL 처리에 의해 항상 유효한 URL이 담김
+          room_image: room.room_image,
           current_count: room.current_count,
           max_capacity: room.max_capacity,
           nickname: room.nickname,
           profile_image_url: room.profile_image_url
         }));
 
-        setChatRooms(formattedRooms);
+        setChatRooms(formattedRooms); // 💡 스토어에 바인딩하여 공유
       } catch (error) {
         console.error("채팅방 목록 로드 실패:", error);
       }
     };
 
     fetchMyChatRooms();
-  }, []);
+  }, [setChatRooms]);
+
+  // 선택된 채팅방 정보 객체 추출
+  const selectedChat = chatRooms.find(c => c.id === (activeChatId || displayChatId));
 
   const sections = [
     { id: 'festival', label: '축제 채팅' },
@@ -156,9 +168,6 @@ const ChatListPage = () => {
     sendMessage(activeChatId, message, 'TALK');
     setMessage('');
   };
-
-  // 선택된 채팅방 정보 객체 추출
-  const selectedChat = chatRooms.find(c => c.id === (activeChatId || displayChatId));
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -204,12 +213,13 @@ const ChatListPage = () => {
                       toggleSidebar={toggleSidebar}
                       showParticipants={showParticipants}
                       messages={messages}
-                      setMessages={setMessages}
+                      sendMessage={sendMessage}
                       scrollRef={scrollRef}
                       scrollbarHideClass={scrollbarHideClass}
                       message={message}
                       setMessage={setMessage}
                       handleSendMessage={handleSendMessage}
+                      participants={participants}
                     />
 
                     <ChatDetails
@@ -226,6 +236,14 @@ const ChatListPage = () => {
             </div>
           </main>
         </div>
+      </div>
+      {/* 💡 [플로팅 챗 렌더링 구역] 전역 스토어의 대화창 리스트를 실시간 바인딩하여 띄워줍니다 */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse gap-4 pointer-events-none">
+        {floatingChatIds.map((id) => (
+          <div key={id} className="pointer-events-auto">
+            <FloatingChat roomId={id} />
+          </div>
+        ))}
       </div>
     </div>
   );
