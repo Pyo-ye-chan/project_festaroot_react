@@ -10,6 +10,12 @@ const ChatSidebar = ({
   setSelectedChatId,
   customScrollbarClass
 }) => {
+  // 임시 이미지 기본 생성 함수
+  const getDefaultRoomImage = (title) => {
+    // return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(title || 'Room')}`; // 모임 이름으로
+    return 'https://picsum.photos/seed/gathering/100/100';
+  };
+
   return (
     <aside className={`flex flex-col bg-white z-20 overflow-y-auto transition-all duration-500 ${customScrollbarClass} ${selectedChatId ? 'w-full md:w-64 lg:w-72 border-r border-gray-100' : 'flex-grow w-full'}`}>
       <div className="p-6 border-b border-gray-100">
@@ -47,7 +53,16 @@ const ChatSidebar = ({
                   >
                     <div className="relative flex-shrink-0">
                       <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden">
-                        <img src={chat.avatar} alt={chat.title} className="w-full h-full object-cover" />
+                        {/* 💡 이미지가 없거나(null/undefined) 깨진 URL일 때 처리 */}
+                        <img 
+                          src={chat.room_image || getDefaultRoomImage(chat.title)} 
+                          alt={chat.title} 
+                          className="w-full h-full object-cover" 
+                          onError={(e) => {
+                            e.target.onerror = null; // 무한 루프 방지
+                            e.target.src = getDefaultRoomImage(chat.title);
+                          }}
+                        />
                       </div>
                     </div>
                     <div className="min-w-0 flex-grow text-left">

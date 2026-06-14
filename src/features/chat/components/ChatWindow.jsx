@@ -15,6 +15,12 @@ const ChatWindow = ({
   setMessage,
   handleSendMessage
 }) => {
+  // 헤더 임시 이미지 기본 생성 함수
+  const getDefaultRoomImage = (title) => {
+    // return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(title || 'Room')}`; // 모임 이름으로
+    return 'https://picsum.photos/seed/gathering/100/100';
+  };
+
   return (
     <div className="flex flex-col flex-grow min-w-0 bg-white">
       <header className="h-20 border-b border-gray-100 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md z-10 flex-shrink-0">
@@ -23,7 +29,16 @@ const ChatWindow = ({
           onClick={() => selectedChat?.type !== 'private' && toggleSidebar('details')}
         >
           <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden">
-            <img src={selectedChat?.avatar} alt={selectedChat?.title} className="w-full h-full object-cover" />
+            {/* 💡 헤더 이미지 처리: 데이터가 없거나 엑박 뜰 때 이니셜 기본 이미지 매핑 */}
+            <img 
+              src={selectedChat?.room_image || getDefaultRoomImage(selectedChat?.title)} 
+              alt={selectedChat?.title} 
+              className="w-full h-full object-cover" 
+              onError={(e) => {
+                e.target.onerror = null; // 무한 루프 방지
+                e.target.src = getDefaultRoomImage(selectedChat?.title);
+              }}
+            />
           </div>
           <h2 className="text-xl font-black text-gray-900 truncate group-hover:text-purple-600">{selectedChat?.title}</h2>
         </div>
@@ -42,7 +57,7 @@ const ChatWindow = ({
         </div>
       </header>
 
-      {/* 채팅 내용 스크롤 영역 (스크롤바 숨김 처리) */}
+      {/* 채팅 내용 스크롤 영역 */}
       <div ref={scrollRef} className={`flex-grow overflow-y-auto p-6 space-y-6 bg-[#F8F9FF] ${scrollbarHideClass}`}>
         {messages.map(msg => (
           <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-start gap-3`}>

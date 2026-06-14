@@ -4,24 +4,73 @@ import ChatSidebar from '../components/ChatSidebar';
 import ChatWindow from '../components/ChatWindow';
 import ChatDetails from '../components/ChatDetails';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
+import gatheringApi from '../../../api/gatheringApi';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const ChatListPage = () => {
-  const openFloatingChat = useChatStore(state => state.openFloatingChat);
-  const [selectedChatId, setSelectedChatId] = useState(null);
+  const [chatRooms, setChatRooms] = useState([]);
+  const [participants, setParticipants] = useState([]);
+  const { roomId } = useParams(); // 주소창의 room_id (/community/chat/19 -> 19)
+  const navigate = useNavigate();
+
+  // Zustand 스토어에서 정확한 상태와 액션 명칭으로 구조분해할당
+  const {
+    activeChatId,
+    setActiveChatId,
+    connectWebSocket,
+    subscribeToRoom,
+    fetchChatHistory,
+    messagesByRoom,
+    sendMessage,
+    openFloatingChat
+  } = useChatStore();
+
   const [displayChatId, setDisplayChatId] = useState(null);
   const [message, setMessage] = useState('');
-  
-  // Update displayChatId with a delay when closing to allow for animation
+
+  // 최초 진입 시 글로벌 웹소켓 파이프라인 연결
   useEffect(() => {
-    if (selectedChatId) {
-      setDisplayChatId(selectedChatId);
+    connectWebSocket();
+  }, [connectWebSocket]);
+
+  // 대화방 선택(activeChatId 변경) 시 실시간 토픽 채널 구독 트리거
+  // 💡 [대화방 진입 동기화 변경] 방 번호가 바뀔 때 과거 히스토리와 실시간 구독을 연속적으로 활성화합니다.
+  useEffect(() => {
+    if (activeChatId) {
+      // 1. 먼저 MongoDB 백엔드에서 이전 채팅 내역 로드
+      fetchChatHistory(activeChatId);
+      // 2. 이어서 실시간 수신용 파이프 연결
+      subscribeToRoom(activeChatId);
+    }
+  }, [activeChatId, fetchChatHistory, subscribeToRoom]);
+
+  // 사이드바 닫힘 애니메이션을 위한 displayChatId 딜레이 처리
+  useEffect(() => {
+    if (activeChatId) {
+      setDisplayChatId(activeChatId);
     } else {
       const timer = setTimeout(() => {
         setDisplayChatId(null);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [selectedChatId]);
+  }, [activeChatId]);
+
+  // 1. 주소창의 roomId가 변경될 때마다 스토어의 activeChatId 상태를 동기화
+  useEffect(() => {
+    if (roomId) {
+      const parsedRoomId = Number(roomId);
+      if (activeChatId !== parsedRoomId) {
+        setActiveChatId(parsedRoomId);
+      }
+    }
+  }, [roomId, activeChatId, setActiveChatId]);
+
+  // 2. 왼쪽 채팅방 목록에서 다른 방을 클릭했을 때 처리하는 함수
+  const handleRoomClick = (id) => {
+    // URL 자체를 변경하여 useParams(roomId)가 감지하도록 유도합니다.
+    navigate(`/community/chat/${id}`);
+  };
 
   const [showParticipants, setShowParticipants] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -47,13 +96,41 @@ const ChatListPage = () => {
     }
   };
 
-  const chatRooms = [
-    { id: 1, type: 'festival', title: '한강 달빛 야시장 같이 가실 분? 🌙', lastMessage: '6시에 여의나루역에서 볼까요?', time: '오후 2:36', unreadCount: 3, avatar: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=200', date: '2026.06.01 - 06.07', location: '서울 한강공원' },
-    { id: 2, type: 'festival', title: '경복궁 야간개장 티켓팅 성공 기원방 🏯', lastMessage: '내일 오후 2시 오픈이래요!', time: '오후 1:45', unreadCount: 0, avatar: 'https://images.unsplash.com/photo-1467307983825-619715426c70?auto=format&fit=crop&q=80&w=200', date: '2026.06.15 - 07.15', location: '서울 경복궁' },
-    { id: 3, type: 'group', title: '전국 축제 도장깨기 모임 🚌', lastMessage: '다음 주는 어디로 갈까요?', time: '오전 11:20', unreadCount: 12, avatar: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=200' },
-    { id: 4, type: 'group', title: '부산 불꽃축제 사진 동호회 🎆', lastMessage: '마린시티 쪽도 괜찮나요?', time: '어제', unreadCount: 0, avatar: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=200' },
-    { id: 5, type: 'private', title: '김철수님', lastMessage: '오늘 축제 재밌었어요!', time: '오전 09:12', unreadCount: 0, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' },
-  ];
+  // 내가 참여 중인 모임(채팅방) 리스트 조회 및 이미지 매핑
+  useEffect(() => {
+    const fetchMyChatRooms = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const userId = user?.userId || user?.id || user?.member_id;
+        if (!userId) {
+          console.warn("로그인한 유저 정보를 찾을 수 없습니다.");
+          return;
+        }
+
+        const responseData = await gatheringApi.getJoinedGatherings(userId, 1, 100, '전체');
+        const rawRooms = Array.isArray(responseData) ? responseData : (responseData.list || []);
+
+        // DB에서 가져온 데이터(축제 기본이미지 or 모임 등록 이미지)를 UI 포맷으로 매핑
+        const formattedRooms = rawRooms.map(room => ({
+          id: room.room_id,
+          type: room.room_type,
+          title: room.room_title,
+          description: room.room_description,
+          room_image: room.room_image, // Mapper의 NVL 처리에 의해 항상 유효한 URL이 담김
+          current_count: room.current_count,
+          max_capacity: room.max_capacity,
+          nickname: room.nickname,
+          profile_image_url: room.profile_image_url
+        }));
+
+        setChatRooms(formattedRooms);
+      } catch (error) {
+        console.error("채팅방 목록 로드 실패:", error);
+      }
+    };
+
+    fetchMyChatRooms();
+  }, []);
 
   const sections = [
     { id: 'festival', label: '축제 채팅' },
@@ -61,34 +138,33 @@ const ChatListPage = () => {
     { id: 'private', label: '1:1 채팅' },
   ];
 
-  const [messages, setMessages] = useState([
-    { id: 1, sender: '김철수', text: '안녕하세요! 이번 주말에 다들 가시나요?', time: '오후 2:30', isMe: false },
-    { id: 2, sender: '이영희', text: '네! 저도 참여하고 싶어요 ㅎㅎ', time: '오후 2:31', isMe: false },
-    { id: 3, sender: '박지민', text: '혹시 몇시쯤 모이는 게 좋을까요?', time: '오후 2:33', isMe: false },
-    { id: 4, sender: '나', text: '저는 6시쯤이 좋을 것 같아요! 노을도 보고 야시장도 구경하구요.', time: '오후 2:35', isMe: true },
-    { id: 5, sender: '이영희', text: '좋아요! 6시에 여의나루역에서 볼까요?', time: '오후 2:36', isMe: false },
-  ]);
+  // 스토어에서 실시간 메시지 바인딩
+  const messages = messagesByRoom[activeChatId] || [];
 
-  const participants = [
-    { id: 1, name: '김철수', status: 'online', role: '방장' },
-    { id: 2, name: '이영희', status: 'online', role: '멤버' },
-    { id: 6, name: '나', status: 'online', role: '나' },
-  ];
+  const setMessages = (updater) => {
+    if (Array.isArray(updater)) {
+      const lastAddedMsg = updater[updater.length - 1];
+      if (lastAddedMsg && lastAddedMsg.type === 'file') {
+        sendMessage(activeChatId, lastAddedMsg.text, 'file');
+      }
+    }
+  };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!message.trim()) return;
-    setMessages([...messages, { id: messages.length + 1, sender: '나', text: message, time: '방금', isMe: true }]);
+    sendMessage(activeChatId, message, 'TALK');
     setMessage('');
   };
 
-  const selectedChat = chatRooms.find(c => c.id === (selectedChatId || displayChatId));
+  // 선택된 채팅방 정보 객체 추출
+  const selectedChat = chatRooms.find(c => c.id === (activeChatId || displayChatId));
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, selectedChatId, displayChatId]);
+  }, [messages, activeChatId, displayChatId]);
 
   const customScrollbarClass = "[&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-300";
   const scrollbarHideClass = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]";
@@ -97,31 +173,33 @@ const ChatListPage = () => {
     <div className="min-h-screen bg-[#F8F9FD] font-['Pretendard'] pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Sidebar (3 cols) */}
+          {/* Left Sidebar */}
           <aside className="lg:col-span-3">
             <CommunitySidebar />
           </aside>
 
-          {/* Main Content (9 cols) */}
+          {/* Main Content */}
           <main className="lg:col-span-9">
             <div className="flex h-[750px] bg-white shadow-xl overflow-hidden rounded-[2.5rem] border border-gray-100">
-              <ChatSidebar 
+              {/* 채팅 리스트 사이드바 */}
+              <ChatSidebar
                 sections={sections}
                 expandedSections={expandedSections}
                 toggleSection={toggleSection}
                 chatRooms={chatRooms}
-                selectedChatId={selectedChatId}
-                setSelectedChatId={setSelectedChatId}
+                selectedChatId={activeChatId}
+                setSelectedChatId={handleRoomClick} // 클릭 시 URL 변경 함수로 교체
                 customScrollbarClass={customScrollbarClass}
               />
 
-              <div className={`hidden md:flex flex-grow min-w-0 bg-[#F8F9FF] relative overflow-hidden transition-all duration-500 ease-in-out ${selectedChatId ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
-                   style={{ flexGrow: selectedChatId ? 1 : 0.00001, minWidth: selectedChatId ? '0' : '0', width: selectedChatId ? 'auto' : '0' }}>
+              {/* 오른쪽 채팅 메인 창 영역 (activeChatId가 있을 때 열림) */}
+              <div className={`hidden md:flex flex-grow min-w-0 bg-[#F8F9FF] relative overflow-hidden transition-all duration-500 ease-in-out ${activeChatId ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+                style={{ flexGrow: activeChatId ? 1 : 0.00001, minWidth: activeChatId ? '0' : '0', width: activeChatId ? 'auto' : '0' }}>
                 {selectedChat && (
                   <div className="w-full h-full flex">
-                    <ChatWindow 
+                    <ChatWindow
                       selectedChat={selectedChat}
-                      setSelectedChatId={setSelectedChatId}
+                      setSelectedChatId={setActiveChatId}
                       openFloatingChat={openFloatingChat}
                       toggleSidebar={toggleSidebar}
                       showParticipants={showParticipants}
@@ -134,7 +212,7 @@ const ChatListPage = () => {
                       handleSendMessage={handleSendMessage}
                     />
 
-                    <ChatDetails 
+                    <ChatDetails
                       showParticipants={showParticipants}
                       showDetails={showDetails}
                       participants={participants}

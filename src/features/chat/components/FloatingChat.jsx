@@ -12,11 +12,27 @@ import {
 import useChatStore from '../../../store/useChatStore';
 
 const FloatingChat = () => {
-  const { isFloating, activeChatId, closeFloatingChat } = useChatStore();
+  // Zustand 스토어 데이터 및 실시간 전송/구독 함수 구조 분해 할당 연동
+  const { 
+    isFloating, 
+    activeChatId, 
+    closeFloatingChat, 
+    messagesByRoom, 
+    sendMessage, 
+    subscribeToRoom 
+  } = useChatStore();
+  
   const [message, setMessage] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
   const scrollRef = useRef(null);
   const nodeRef = useRef(null);
+
+  // 플로팅 챗 오픈 시 서버 토픽 실시간 감시 채널 구독
+  useEffect(() => {
+    if (activeChatId) {
+      subscribeToRoom(activeChatId);
+    }
+  }, [activeChatId, subscribeToRoom]);
 
   // Mock data - In real app, fetch based on activeChatId
   const chatRooms = [
@@ -29,10 +45,8 @@ const FloatingChat = () => {
 
   const activeChat = chatRooms.find(c => c.id === activeChatId);
 
-  const [messages, setMessages] = useState([
-    { id: 1, sender: '김철수', text: '안녕하세요! 이 채팅은 떠다닙니다.', time: '오후 2:30', isMe: false },
-    { id: 2, sender: '나', text: '네, 정말 편리하네요!', time: '오후 2:35', isMe: true },
-  ]);
+  // 💡 로컬 고정 메시지 상태를 전역 실시간 수신 메시지 풀과 스위칭
+  const messages = messagesByRoom[activeChatId] || [];
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -42,16 +56,11 @@ const FloatingChat = () => {
 
   if (!isFloating) return null;
 
+  // 💡 로컬 발송 로직을 STOMP 웹소켓 퍼블리시 핸들러로 전환
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!message.trim()) return;
-    setMessages([...messages, { 
-      id: messages.length + 1, 
-      sender: '나', 
-      text: message, 
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
-      isMe: true 
-    }]);
+    sendMessage(activeChatId, message, 'TALK');
     setMessage('');
   };
 

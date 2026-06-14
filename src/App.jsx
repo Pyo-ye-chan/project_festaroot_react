@@ -100,6 +100,7 @@ function App() {
           <Route path="/community/gathering/:id" element={<GatheringDetailPage />} />
 
           <Route path="/community/chat" element={<ChatListPage />} />
+          <Route path="/community/chat/:roomId" element={<ChatListPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/ai-planner" element={<AIPlannerPage />} />
