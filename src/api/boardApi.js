@@ -13,7 +13,17 @@ export const uploadImage = async (file, folder = 'board/image') => {
 
 export const addPost = async (data) => maxios.post('board/post', data);
 
-export const getPosts = async (cpage=1) => await maxios.get(`board/posts?cpage=${cpage}`);
+export const getPosts = async (cpage = 1, category = 'all', sortBy = 'latest', searchType = 'title', keyword = '') => {
+  return await maxios.get(`/board/posts`, {
+    params: {
+      cpage,
+      category,
+      sortBy,
+      searchType,
+      keyword,
+    },
+  });
+};
 
 export const getPostDetail = async (id) => await maxios.get(`board/post/${id}`);
 

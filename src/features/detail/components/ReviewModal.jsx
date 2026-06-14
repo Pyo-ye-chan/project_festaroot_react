@@ -112,9 +112,7 @@ const ReviewModal = ({ isOpen, onClose, onSubmit, initialReview, festivalId, mem
               />
             ))}
 
-            <span className="ml-3 text-2xl font-black text-gray-900">
-              {rating.toFixed(1)}
-            </span>
+
           </div>
 
           {/* 방문일자 */}

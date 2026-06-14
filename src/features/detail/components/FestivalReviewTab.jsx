@@ -12,10 +12,11 @@ import {
 } from '../../../api/FestivalApi';
 
 import useAuthStore from '../../../store/useAuthStore';
+import festivalService from '../../../api/festivalService';
 
 const FestivalReviewTab = ({ festival, sortType, setSortType }) => {
   const { user } = useAuthStore();
-  const currentMemberId = user?.member_id;
+  const currentMemberId = user?.member_id || user?.id;
 
   const [reviews, setReviews] = useState([]);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -23,6 +24,8 @@ const FestivalReviewTab = ({ festival, sortType, setSortType }) => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reviewToReportId, setReviewToReportId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false); // 회원만 리뷰 작성 가능
 
   const reviewsPerPage = 3;
 
@@ -33,6 +36,18 @@ const FestivalReviewTab = ({ festival, sortType, setSortType }) => {
   const totalPages = Math.ceil(reviews.length / reviewsPerPage);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  const handleWriteReview = () => {
+
+    // 비회원
+    if (!currentMemberId) {
+      setIsLoginModalOpen(true);
+      return;
+    }
+
+    // 회원
+    handleOpenReviewModal();
+  };
 
   const handleOpenReviewModal = (review = null) => {
     setEditingReview(review);
@@ -50,12 +65,24 @@ const FestivalReviewTab = ({ festival, sortType, setSortType }) => {
 
       console.log('후기 조회 응답:', resp.data);
 
+
+
       setReviews(resp.data.list || []);
       setCurrentPage(1);
+
+
+
+
     } catch (err) {
       console.error('후기 목록 조회 실패:', err);
     }
   };
+
+  const averageRating = // 리뷰 평균
+    reviews.length > 0
+      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+      : 0;
+
 
   useEffect(() => {
     if (!festival?.content_id) return;
@@ -153,7 +180,7 @@ const FestivalReviewTab = ({ festival, sortType, setSortType }) => {
           <div className="flex items-center gap-1 mt-2">
             <Star size={20} fill="#FACC15" className="text-yellow-400" />
             <span className="text-xl font-bold text-gray-800">
-              {festival.rating_avg ? festival.rating_avg.toFixed(1) : '0.0'}
+              {averageRating.toFixed(1)}
             </span>
             <span className="text-sm text-gray-500 font-bold ml-1">/ 5.0</span>
           </div>
@@ -194,7 +221,7 @@ const FestivalReviewTab = ({ festival, sortType, setSortType }) => {
                           className={review.rating > i ? 'text-yellow-400' : 'text-gray-300'}
                         />
                       ))}
-                      <span className="ml-2 text-md text-gray-700 font-medium">{review.rating.toFixed(1)}</span>
+
                     </div>
                   </div>
                   <div className="flex gap-3">
@@ -283,11 +310,12 @@ const FestivalReviewTab = ({ festival, sortType, setSortType }) => {
 
       <button
         className="w-full mt-10 h-16 border-2 border-dashed border-gray-300 rounded-2xl text-gray-500 font-bold hover:bg-purple-50 hover:border-purple-400 hover:text-purple-700 transition-all duration-200 flex items-center justify-center gap-2 text-lg"
-        onClick={() => handleOpenReviewModal()}
+        onClick={() => handleWriteReview()}
       >
         <Camera size={22} />
         생생한 후기 작성하기
       </button>
+
 
       <ReviewModal
         isOpen={isReviewModalOpen}
@@ -305,6 +333,52 @@ const FestivalReviewTab = ({ festival, sortType, setSortType }) => {
         reviewId={reviewToReportId}
         memberId={currentMemberId}
       />
+
+      {/* 로그인 유도 */}
+      {
+        isLoginModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-3xl p-8 w-[420px] shadow-2xl">
+
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                로그인이 필요합니다
+              </h3>
+
+              <p className="text-gray-600 mb-8 leading-relaxed">
+                후기 작성은 회원만 이용할 수 있습니다.
+                <br />
+                로그인 또는 회원가입 후 이용해주세요.
+              </p>
+
+              <div className="flex gap-3">
+
+                <button
+                  onClick={() => window.location.href = '/login'}
+                  className="flex-1 h-12 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700"
+                >
+                  로그인하기
+                </button>
+
+                <button
+                  onClick={() => window.location.href = '/signup'}
+                  className="flex-1 h-12 border border-gray-300 rounded-xl font-semibold hover:bg-gray-50"
+                >
+                  회원가입하기
+                </button>
+
+              </div>
+
+              <button
+                onClick={() => setIsLoginModalOpen(false)}
+                className="w-full mt-4 text-sm text-gray-500 hover:text-gray-700"
+              >
+                닫기
+              </button>
+
+            </div>
+          </div>
+        )
+      }
     </div>
   );
 };
