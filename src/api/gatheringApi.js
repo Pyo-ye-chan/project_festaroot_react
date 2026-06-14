@@ -8,7 +8,7 @@ const gatheringApi = {
     uploadImage: async (file) => {
         const formData = new FormData();
         formData.append('file', file);
-        
+
         const response = await maxios.post(`${BASE_PATH}/image`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
@@ -24,9 +24,9 @@ const gatheringApi = {
     // 자유 모임 목록 출력 (검색 포함)
     freeGatheringList: async (member_id, page = 1, size = 5, keyword = '') => {
         const response = await maxios.get(`${BASE_PATH}/list`, {
-            params: { 
+            params: {
                 member_id: member_id || '',
-                page, 
+                page,
                 size,
                 keyword
             }
@@ -37,7 +37,7 @@ const gatheringApi = {
     // 축제별 모임 전체 목록 조회 (검색 포함)
     festivalGatheringList: async (member_id, page = 1, size = 5, keyword = '') => {
         const response = await maxios.get(`${BASE_PATH}/festival`, {
-            params: { 
+            params: {
                 member_id: member_id || '',
                 page,
                 size,
@@ -53,9 +53,15 @@ const gatheringApi = {
         return response.data;
     },
 
-    // 자유 모임 참여자 목록 조회
+    // 채팅 참여자 목록 조회
     gatheringParticipants: async (room_id) => {
         const response = await maxios.get(`${BASE_PATH}/${room_id}/participants`);
+        return response.data;
+    },
+
+    // 모임 참여자 목록 조회
+    selectGatheringParticipants: async (room_id) => {
+        const response = await maxios.get(`${BASE_PATH}/${room_id}/participants_meet`);
         return response.data;
     },
 
@@ -95,9 +101,9 @@ const gatheringApi = {
 
     // [RESTful] 방장 위임 (PUT)
     delegateOwner: async (room_id, current_owner_id, new_owner_id) => {
-        const response = await maxios.put(`${BASE_PATH}/${room_id}/host`, { 
-            current_owner_id, 
-            new_owner_id 
+        const response = await maxios.put(`${BASE_PATH}/${room_id}/host`, {
+            current_owner_id,
+            new_owner_id
         });
         return response.data;
     },

@@ -20,6 +20,10 @@ const ChatWindow = ({
 
   const navigate = useNavigate();
 
+  // 데이터 key 바인딩 가공
+  const currentRoomId = selectedChat?.id || selectedChat?.room_id;
+  const currentRoomTitle = selectedChat?.title || selectedChat?.room_title;
+
   const getDefaultRoomImage = (title) => {
     return 'https://picsum.photos/seed/gathering/100/100';
   };
@@ -69,21 +73,34 @@ const ChatWindow = ({
       <div ref={scrollRef} className={`flex-grow overflow-y-auto p-6 space-y-6 bg-[#F8F9FF] ${scrollbarHideClass}`}>
         {messages.map(msg => {
 
-          // 💡 [여기서 구현!] 현재 메시지의 senderId와 Oracle DB 참여자 목록 매핑
+          // 현재 메시지의 senderId와 Oracle DB 참여자 목록 매핑
           // Mapper.xml에서 대문자 변환 이슈가 있을 수 있으므로 p.member_id와 p.MEMBER_ID 모두 방어 코드 적용
           const targetUser = participants.find(p =>
             String(p.member_id || p.MEMBER_ID) === String(msg.senderId)
           );
 
-          // 💡 우선순위: 1. MongoDB에 저장된 프로필 -> 2. Oracle DB 실시간 프로필 -> 3. 기본 이니셜 아바타
+          // 우선순위: 1. MongoDB에 저장된 프로필 -> 2. Oracle DB 실시간 프로필 -> 3. 기본 이니셜 아바타
           const userProfileImg = msg.senderProfile || targetUser?.profile_image_url || targetUser?.PROFILE_IMAGE_URL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(msg.sender)}`;
 
-          {/* 💡 메시지 송신자가 해당 방의 방장인지 확인 */ }
+          {/* 메시지 송신자가 해당 방의 방장인지 확인 */ }
           const isSenderHost =
             targetUser?.is_host === 'Y' || targetUser?.IS_HOST === 'Y' ||
             targetUser?.role === 'HOST' || targetUser?.ROLE === 'HOST' ||
             targetUser?.is_owner === 'Y' || targetUser?.IS_OWNER === 'Y' ||
             (selectedChat?.owner_id && String(msg.senderId) === String(selectedChat.owner_id));
+
+          // 💡 메시지 타입이 입장(ENTER) 또는 퇴장(LEAVE)인 경우 센터링된 시스템 문구로 렌더링
+          if (msg.type === 'ENTER' || msg.type === 'LEAVE') {
+            return (
+              <div key={msg.id} className="flex justify-center my-4 w-full select-none">
+                <span className="bg-gray-100/80 text-gray-400 text-xs font-semibold px-4 py-1.5 rounded-full shadow-sm border border-gray-50">
+                  {msg.type === 'ENTER'
+                    ? `${msg.sender}님이 채팅방 입장하였습니다.`
+                    : `${msg.sender}님이 채팅방에서 퇴장하였습니다.`}
+                </span>
+              </div>
+            );
+          }
 
           return (
             <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-start gap-3`}>
@@ -132,8 +149,7 @@ const ChatWindow = ({
               onChange={(e) => {
                 const file = e.target.files[0];
                 if (file) {
-                  // 💡 백엔드 파일 웹소켓으로 직접 전송하도록 수정
-                  sendMessage(selectedChat.id, file.name, 'file');
+                  sendMessage(currentRoomId, file.name, 'file');
                 }
               }}
             />

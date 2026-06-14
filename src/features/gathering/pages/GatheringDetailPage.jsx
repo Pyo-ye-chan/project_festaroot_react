@@ -20,7 +20,7 @@ const GatheringDetailPage = () => {
   // 수정 모드 및 위임 모드 상태
   const [isEditing, setIsEditing] = useState(false);
   const [isDelegating, setIsDelegating] = useState(false);
-  
+
   // 이미지 업로드 관련 상태
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -39,7 +39,7 @@ const GatheringDetailPage = () => {
     try {
       const [roomData, participantData] = await Promise.all([
         gatheringApi.gatheringDetail(id),
-        gatheringApi.gatheringParticipants(id)
+        gatheringApi.selectGatheringParticipants(id)
       ]);
       setGathering(roomData);
       setParticipants(participantData || []);
@@ -458,20 +458,32 @@ const GatheringDetailPage = () => {
                         </button>
                       </div>
                       <div className="space-y-2">
-                        {participants.map(p => (
-                          <div key={p.member_id} className="flex justify-between items-center p-3 bg-white rounded-xl border border-blue-100">
-                            <div className="flex items-center gap-3">
-                              <img src={p.profile_image_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'} alt={p.nickname} className="w-8 h-8 rounded-full" />
-                              <span className="font-bold text-gray-800">{p.nickname}</span>
+                        {participants
+                          .filter(participant => participant.member_id !== gathering.owner_id)
+                          .map(participant => (
+                            <div key={participant.member_id} className="relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group">
+                              <img
+                                src={participant.profile_image_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'}
+                                alt={participant.nickname}
+                                className="w-9 h-9 rounded-full object-cover border border-gray-200"
+                              />
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-gray-400 font-medium mb-0.5">멤버</span>
+                                <span className="text-sm font-bold text-gray-700 leading-tight">{participant.nickname}</span>
+                              </div>
+                              {isOwner && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleKickMember(participant.member_id, participant.nickname);
+                                  }}
+                                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 scale-75"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
                             </div>
-                            <button
-                              onClick={() => handleDelegateAndLeave(p.member_id)}
-                              className="text-xs font-bold text-blue-600 hover:underline"
-                            >
-                              위임하기
-                            </button>
-                          </div>
-                        ))}
+                          ))}
                       </div>
                     </div>
                   )}
@@ -545,8 +557,8 @@ const GatheringDetailPage = () => {
                           onClick={handleJoinClick}
                           disabled={isFull}
                           className={`inline-flex items-center px-10 py-4 rounded-full text-white font-black text-lg transition-all shadow-lg ${isFull
-                              ? 'bg-gray-300 cursor-not-allowed shadow-none'
-                              : 'bg-[var(--festival-purple)] hover:bg-[var(--festival-purple-soft)] shadow-purple-100 hover:scale-[1.02]'
+                            ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                            : 'bg-[var(--festival-purple)] hover:bg-[var(--festival-purple-soft)] shadow-purple-100 hover:scale-[1.02]'
                             }`}
                         >
                           {isFull ? '정원이 마감되었습니다' : '모임 참여하기'}

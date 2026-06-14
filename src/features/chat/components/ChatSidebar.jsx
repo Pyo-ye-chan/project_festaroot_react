@@ -16,9 +16,11 @@ const ChatSidebar = ({
     return 'https://picsum.photos/seed/gathering/100/100';
   };
 
-  // 1:1 채팅방만 필터링 (대소문자 방어 코드 포함)
+  // 1:1 채팅방만 필터링 (대소문자 및 Property 명칭 방어)
   const privateRooms = chatRooms.filter(
-    (room) => room.type?.toUpperCase() === 'PRIVATE' || room.room_type?.toUpperCase() === 'PRIVATE'
+    (room) =>
+      room.type?.toUpperCase() === 'PRIVATE' ||
+      room.room_type?.toUpperCase() === 'PRIVATE'
   );
 
   return (
@@ -50,53 +52,57 @@ const ChatSidebar = ({
 
             {expandedSections[section.id] && (
               <div className="animate-in slide-in-from-top-2 duration-300">
-
-                {/* 1:1 채팅방인데 목록이 없을 경우 */}
                 {section.id === 'private' && privateRooms.length === 0 ? (
                   <div className="text-center py-8 text-xs font-medium text-gray-400 tracking-tight select-none">
                     아직 참여 중인 1:1 채팅방이 없습니다.
                   </div>
                 ) : (
                   chatRooms
-                    .filter(c => c.type?.toLowerCase() === section.id)
-                    .map((chat) => (
-                      <button
-                        key={chat.id}
-                        onClick={() =>
-                          setSelectedChatId(
-                            selectedChatId === chat.id ? null : chat.id
-                          )
-                        }
-                        className={`w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition-all border-l-4 ${selectedChatId === chat.id
-                          ? 'bg-purple-50/50 border-purple-600'
-                          : 'border-transparent'
-                          }`}
-                      >
-                        <div className="relative flex-shrink-0">
-                          <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden">
-                            <img
-                              src={chat.room_image || getDefaultRoomImage(chat.title)}
-                              alt={chat.title}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = getDefaultRoomImage(chat.title);
-                              }}
-                            />
+                    // 💡 type과 room_type 모두 대응할 수 있도록 수정
+                    .filter(c => (c.type || c.room_type)?.toLowerCase() === section.id)
+                    .map((chat) => {
+                      // 💡 id와 room_id 바인딩 방어 코드
+                      const currentRoomId = chat.id || chat.room_id;
+                      const currentRoomTitle = chat.title || chat.room_title;
+
+                      return (
+                        <button
+                          key={currentRoomId}
+                          onClick={() =>
+                            setSelectedChatId(
+                              selectedChatId === currentRoomId ? null : currentRoomId
+                            )
+                          }
+                          className={`w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition-all border-l-4 ${selectedChatId === currentRoomId
+                              ? 'bg-purple-50/50 border-purple-600'
+                              : 'border-transparent'
+                            }`}
+                        >
+                          <div className="relative flex-shrink-0">
+                            <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden">
+                              <img
+                                src={chat.room_image || getDefaultRoomImage(currentRoomTitle)}
+                                alt={currentRoomTitle}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = getDefaultRoomImage(currentRoomTitle);
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="min-w-0 flex-grow text-left">
-                          <h3 className="font-black text-gray-900 text-base truncate">
-                            {chat.title}
-                          </h3>
-
-                          <p className="text-sm font-medium text-gray-500 truncate">
-                            {chat.lastMessage}
-                          </p>
-                        </div>
-                      </button>
-                    ))
+                          <div className="min-w-0 flex-grow text-left">
+                            <h3 className="font-black text-gray-900 text-base truncate">
+                              {currentRoomTitle}
+                            </h3>
+                            <p className="text-sm font-medium text-gray-500 truncate">
+                              {chat.lastMessage}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })
                 )}
               </div>
             )}
