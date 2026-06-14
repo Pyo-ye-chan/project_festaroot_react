@@ -52,22 +52,25 @@ function App() {
       const token = localStorage.getItem("accessToken");
       const storedUser = localStorage.getItem("user");
 
-      // 토큰이나 유저 정보가 아예 없으면 비로그인 상태이므로 즉시 종료
       if (!token || !storedUser) return;
 
       try {
         const user = JSON.parse(storedUser);
-
-        // 소셜/일반 유저 ID 모든 가용 필드를 검사
         const userId = user?.userId || user?.id || user?.member_id;
 
         if (!userId) {
-          console.log("비로그인 상태이므로, 찜 목록을 가져오지 않습니다.")
-          return; // 아이디가 없으면 백엔드 호출을 사전에 차단 (401 에러 방지)
+          console.log("비로그인 상태이므로, 찜 목록을 가져오지 않습니다.");
+          return;
         }
+
+        // 백엔드로 요청 전송 (maxios가 인터셉터로 토큰을 헤더에 알아서 실어 보냄)
         const response = await festivalService.getMyFestivalLikedIds(userId);
 
-        if (response && response.likedFestivalIds) {
+        // 💡 백엔드가 객체가 아닌 순수 리스트 [123, 456] 자체를 주므로 Array.isArray로 체크하고 바로 저장!
+        if (response && Array.isArray(response)) {
+          setInitialLikes(response);
+        } else if (response && response.likedFestivalIds) {
+          // 혹시 몰라 기존 객체 형태 대응용 예외 처리 유지
           setInitialLikes(response.likedFestivalIds);
         }
 
@@ -116,8 +119,8 @@ function App() {
       {/* Routes 바깥 영역에 조건부 렌더링으로 배치 / 주소창 영향X */}
       {isLoading && <LoadingSpinner />}
       {isFloating && <FloatingChat />}
-      
-      <ToastContainer 
+
+      <ToastContainer
         position="top-right"
         autoClose={5000}
         hideProgressBar={false}
