@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { Client } from '@stomp/stompjs';
 import { maxios } from '../api/axiosApi';
 
-// 💡 LocalStorage에서 유저 정보를 안전하고 일관되게 추출하는 헬퍼 함수
 const getLocalUser = () => {
   const user = JSON.parse(localStorage.getItem('user')) || {};
   return {
@@ -15,27 +14,51 @@ const getLocalUser = () => {
 const useChatStore = create((set, get) => ({
   activeChatId: null,
   floatingChatIds: [],
+  minimizedChatIds: [], // 💡 전역 접힘 상태 추가
+  focusedFloatingId: null, // 💡 전역 포커스 레이어 상태 추가
   chatRooms: [],
 
   setActiveChatId: (activeChatId) => set({ activeChatId }),
   setChatRooms: (chatRooms) => set({ chatRooms }),
+  setFocusedFloatingId: (focusedFloatingId) => set({ focusedFloatingId }),
 
+  // 💡 플로팅 창 열기 (접혀있었다면 접힘 해제 + 포커스 부여)
   openFloatingChat: (chatId) => set((state) => {
     const nextIds = state.floatingChatIds.includes(chatId)
       ? state.floatingChatIds
       : [...state.floatingChatIds, chatId];
-    return { floatingChatIds: nextIds };
+    const nextMinimized = state.minimizedChatIds.filter(id => id !== chatId);
+    return { 
+      floatingChatIds: nextIds, 
+      minimizedChatIds: nextMinimized,
+      focusedFloatingId: chatId 
+    };
   }),
 
+  // 💡 플로팅 창 완전히 닫기 (오픈 목록 및 접힘 목록 동시 제거)
   closeFloatingChat: (chatId) => set((state) => ({
-    floatingChatIds: state.floatingChatIds.filter(id => id !== chatId)
+    floatingChatIds: state.floatingChatIds.filter(id => id !== chatId),
+    minimizedChatIds: state.minimizedChatIds.filter(id => id !== chatId),
+    focusedFloatingId: state.focusedFloatingId === chatId ? null : state.focusedFloatingId
+  })),
+
+  // 💡 플로팅 창 접기 액션 추가
+  minimizeFloatingChat: (chatId) => set((state) => ({
+    minimizedChatIds: state.minimizedChatIds.includes(chatId)
+      ? state.minimizedChatIds
+      : [...state.minimizedChatIds, chatId]
+  })),
+
+  // 💡 접힌 창 다시 열기 액션 추가
+  restoreFloatingChat: (chatId) => set((state) => ({
+    minimizedChatIds: state.minimizedChatIds.filter(id => id !== chatId),
+    focusedFloatingId: chatId
   })),
 
   stompClient: null,
   connected: false,
   messagesByRoom: {},
 
-  // 과거 내역 로드
   fetchChatHistory: async (roomId) => {
     try {
       const response = await maxios.get(`/api/chat/room/${roomId}/messages`);
@@ -44,7 +67,7 @@ const useChatStore = create((set, get) => ({
 
       const mappedHistory = rawList.map((received) => ({
         id: received.id || received._id || Date.now() + Math.random(),
-        senderId: received.senderId, // 💡 ChatWindow에서 Oracle DB 유저와 비교하기 위해 추가!
+        senderId: received.senderId,
         sender: received.senderName,
         senderProfile: received.senderProfile || '',
         text: received.message,
@@ -94,7 +117,7 @@ const useChatStore = create((set, get) => ({
 
       const mappedMsg = {
         id: received.id || received._id || Date.now(),
-        senderId: received.senderId, // 💡 여기도 추가!
+        senderId: received.senderId,
         sender: received.senderName,
         senderProfile: received.senderProfile || '',
         text: received.message,
@@ -127,8 +150,6 @@ const useChatStore = create((set, get) => ({
     }
 
     const loggedUser = getLocalUser();
-
-    // 💡 에러 수정: user 대신 완전히 정제된 loggedUser 데이터를 사용해 전송합니다.
     const payload = {
       roomId: Number(roomId),
       senderId: loggedUser.id,
@@ -142,7 +163,15 @@ const useChatStore = create((set, get) => ({
       destination: '/pub/chat/message',
       body: JSON.stringify(payload)
     });
-  }
+  },
+
+  clearChatStore: () => set({
+    floatingChatIds: [],
+    minimizedChatIds: [], // 청소 추가
+    focusedFloatingId: null, // 청소 추가
+    activeChatId: null,
+    messagesByRoom: {}
+  })
 }));
 
 export default useChatStore;

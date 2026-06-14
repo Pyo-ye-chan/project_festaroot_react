@@ -1,5 +1,6 @@
 import React from 'react';
 import { ExternalLink, Users, X, Paperclip, Send } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const ChatWindow = ({
   selectedChat,
@@ -16,6 +17,9 @@ const ChatWindow = ({
   handleSendMessage,
   participants // 👈 부모(ChatListPage)로부터 참여자 목록 데이터 접수!
 }) => {
+
+  const navigate = useNavigate();
+
   const getDefaultRoomImage = (title) => {
     return 'https://picsum.photos/seed/gathering/100/100';
   };
@@ -45,7 +49,7 @@ const ChatWindow = ({
           <button
             onClick={() => {
               openFloatingChat(selectedChat.id);
-              setSelectedChatId(null);
+              navigate('/community/chat');
             }}
             className="p-2.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all"
           >
@@ -94,7 +98,7 @@ const ChatWindow = ({
                     {isSenderHost && <span className="text-amber-500 text-xs" title="방장">👑 </span>}
                     {targetUser?.nickname || targetUser?.NICKNAME || msg.senderName || msg.sender}
                   </span>
-                
+
                 )}
                 <div className={`flex items-end gap-2 ${msg.isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`px-6 py-3.5 rounded-2xl text-base font-medium shadow-sm ${msg.isMe ? 'bg-purple-600 text-white rounded-tr-none' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'}`}>
