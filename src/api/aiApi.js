@@ -1,5 +1,9 @@
 import { maxios } from './axiosApi';
 
+maxios.get('/ai/recommendations', {
+  params: { userInput: userInput.trim() }
+});
+
 /**
  * AI 축제 코스 추천 생성 API
  *
