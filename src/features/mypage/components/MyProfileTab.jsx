@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { updateMemberProfile } from '../../../api/memberApi';
 import { getSidoList } from '../../../api/regionApi';
 import { getThemeList } from '../../../api/themeApi';
 import { toast } from 'react-toastify';
 
 const MyProfileTab = ({ userDetails, onRefresh }) => {
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [editNickname, setEditNickname] = useState('');
   const [editRegions, setEditRegions] = useState([]);
@@ -410,50 +412,64 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
         ))}
       </div>
 
-      {/* Recent Activity */}
+      {/* Recently Viewed Festivals */}
       <section className="bg-white p-6 sm:p-8 md:p-10 rounded-[24px] border border-gray-100 shadow-sm">
         <div className="flex items-center justify-between mb-6 sm:mb-8">
           <h3 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2">
-            최근 활동 내역
+            최근 본 축제
           </h3>
           <button className="text-xs sm:text-sm font-bold text-purple-600 hover:underline transition-all">전체보기</button>
         </div>
         
-        {recentLogs?.length > 0 ? (
-          <div className="space-y-4">
-            {recentLogs.slice(0, 5).map((log) => (
-              <div key={log.log_id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                <div className="flex items-center gap-4">
-                  <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
-                    log.type === 'VIEW' ? 'bg-blue-100 text-blue-600' : 
-                    log.type === 'SEARCH' ? 'bg-amber-100 text-amber-600' : 
-                    'bg-emerald-100 text-emerald-600'
-                  }`}>
-                    {log.type === 'VIEW' ? '👀' : log.type === 'SEARCH' ? '🔍' : '📍'}
-                  </span>
-                  <div>
-                    <p className="font-bold text-gray-800">{log.title || log.searchQuery}</p>
-                    <p className="text-[11px] text-gray-400 font-medium">{formatDate(log.created_at)}</p>
+        {recentLogs?.filter(log => log.type === 'VIEW').length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {recentLogs
+              .filter(log => log.type === 'VIEW')
+              .slice(0, 4)
+              .map((log) => (
+                <div 
+                  key={log.log_id} 
+                  onClick={() => navigate(`/festival/${log.festivalId}`)}
+                  className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-purple-200 hover:bg-purple-50/30 transition-all cursor-pointer group"
+                >
+
+                  <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 shadow-sm border border-gray-100">
+                    {log.first_image ? (
+                      <img 
+                        src={log.first_image} 
+                        alt={log.title} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-2xl">
+                        🎡
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[9px] font-black px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded uppercase">Viewed</span>
+                      <p className="text-[11px] text-gray-400 font-bold">{formatDate(log.created_at)}</p>
+                    </div>
+                    <p className="font-bold text-gray-800 truncate group-hover:text-purple-600 transition-colors">
+                      {log.title}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1 font-medium">다시 보러가기 →</p>
                   </div>
                 </div>
-                <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase ${
-                  log.type === 'VIEW' ? 'bg-blue-50 text-blue-600' : 
-                  log.type === 'SEARCH' ? 'bg-amber-50 text-amber-600' : 
-                  'bg-emerald-50 text-emerald-600'
-                }`}>
-                  {log.type === 'VIEW' ? '조회' : log.type === 'SEARCH' ? '검색' : '지도'}
-                </span>
-              </div>
-            ))}
+              ))}
           </div>
         ) : (
           <div className="space-y-4 text-center py-12 sm:py-16">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl sm:text-3xl opacity-20">📂</span>
+              <span className="text-2xl sm:text-3xl opacity-20">🎡</span>
             </div>
-            <p className="text-gray-400 font-bold text-base sm:text-lg">아직 활동 내역이 없습니다.</p>
-            <p className="text-gray-400 text-xs sm:text-sm">축제를 탐색하고 소통을 시작해보세요!</p>
-            <button className="mt-6 px-6 sm:px-8 py-2.5 sm:py-3 bg-purple-600 text-white text-sm sm:text-base font-bold rounded-xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-100">
+            <p className="text-gray-400 font-bold text-base sm:text-lg">최근 본 축제가 없습니다.</p>
+            <p className="text-gray-400 text-xs sm:text-sm">관심 있는 축제를 구경해 보세요!</p>
+            <button 
+              onClick={() => navigate('/search')}
+              className="mt-6 px-6 sm:px-8 py-2.5 sm:py-3 bg-purple-600 text-white text-sm sm:text-base font-bold rounded-xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-100"
+            >
               축제 보러가기
             </button>
           </div>
