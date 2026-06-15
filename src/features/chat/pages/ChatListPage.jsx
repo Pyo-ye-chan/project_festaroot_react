@@ -170,7 +170,7 @@ const ChatListPage = () => {
           nickname: room.nickname,
           profile_image_url: room.profile_image_url,
           unread_count: room.unread_count || 0, // 미확인 메세지 수
-          lastMessage: room.last_message || room.LAST_MESSAGE || '대화 내용이 없습니다.' // 백엔드에서 넘겨준 마지막 메시지 필드를 프론트 상태에 매핑 
+          lastMessage: room.lastMessage || room.last_message || room.LAST_MESSAGE || '대화 내용이 없습니다.' // 백엔드에서 넘겨준 마지막 메시지 필드를 프론트 상태에 매핑 
         }));
 
         setChatRooms(formattedRooms);
