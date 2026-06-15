@@ -5,7 +5,6 @@ import useChatStore from '../../../store/useChatStore';
 import gatheringApi from '../../../api/gatheringApi';
 
 const FloatingChat = ({ roomId, index }) => {
-  // 💡 스토어로부터 전역 제어 상태 직접 수령
   const {
     chatRooms,
     closeFloatingChat,
@@ -64,7 +63,7 @@ const FloatingChat = ({ roomId, index }) => {
     setMessage('');
   };
 
-  // 💡 선택된 창만 동적으로 최상단 Z-Index 레이어(10000)를 점유하도록 설정
+  // 선택된 창만 동적으로 최상단 Z-Index 레이어(10000)를 점유하도록 설정
   const isFocused = focusedFloatingId === roomId;
   const currentZIndex = isFocused ? 10000 : 9990 + (index || 0);
 
@@ -92,7 +91,6 @@ const FloatingChat = ({ roomId, index }) => {
           </div>
 
           <div className="flex items-center gap-1">
-            {/* 💡 전역 스토어 액션으로 안정적으로 전환 */}
             <button 
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); minimizeFloatingChat(roomId); }} 
               className="p-1 hover:bg-white/10 rounded"

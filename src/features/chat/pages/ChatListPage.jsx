@@ -31,7 +31,13 @@ const ChatListPage = () => {
   const [displayChatId, setDisplayChatId] = useState(null);
   const [message, setMessage] = useState('');
 
-  // 💡 방 변경 시, 참여자뿐만 아니라 실제 "모임 소개글/규칙"이 포함된 상세 데이터도 패치
+
+  // 컴포넌트 마운트 시 웹소켓 서버 최초 연결
+  useEffect(() => {
+    connectWebSocket();
+  }, [connectWebSocket]);
+
+  // 방 변경 시, 참여자뿐만 아니라 실제 "모임 소개글/규칙"이 포함된 상세 데이터도 패치
   useEffect(() => {
     if (activeChatId) {
       fetchChatHistory(activeChatId);

@@ -115,14 +115,14 @@ function App() {
         <Route path="/find-account" element={<FindAccountPage />} />
       </Routes>
 
-      {/* 💡 [수정 완료] 접히지 않은(활성화 상태) 전역 플로팅 챗방들만 중복 없이 단 한번 바인딩 수행 */}
+      {/* 접히지 않은(활성화 상태) 전역 플로팅 챗방들만 중복 없이 단 한번 바인딩 수행 */}
       {floatingChatIds && floatingChatIds
         .filter(id => !minimizedChatIds.includes(id))
         .map((roomId, index) => (
           <FloatingChat key={roomId} roomId={roomId} index={index} />
         ))}
 
-      {/* 💡 [수정 완료] 접힌 플로팅 창 팝업 레이아웃을 최상단 App 레이어로 격상시켜 완벽한 전역 싱크 달성 */}
+      {/* 접힌 플로팅 창 팝업 레이아웃을 최상단 App 레이어로 격상시켜 완벽한 전역 싱크 달성 */}
       {minimizedChatIds && minimizedChatIds.length > 0 && (
         <div className="fixed bottom-6 right-6 z-[10000] group font-['Pretendard']">
           {/* 하단 플로팅 원형 버튼 */}
@@ -133,9 +133,6 @@ function App() {
             </span>
           </button>
 
-          {/* ✨ 마우스 커서 유실 방지를 위한 invisible 브릿지 래퍼 추가 
-            bottom-16(버튼 바로 윗부분)부터 시작하며 pt-3(상단 패딩)으로 시각적인 대화창 간격을 유지합니다.
-          */}
           <div className="absolute bottom-16 pt-3 right-0 hidden group-hover:block z-[10001]">
             {/* 실제 UI가 표현되는 팝업창 바디 */}
             <div className="bg-white border border-gray-100 rounded-2xl shadow-2xl w-64 p-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -151,7 +148,7 @@ function App() {
                   }}
                   className="w-full text-center py-2 mb-1 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm"
                 >
-                  💬 전체 채팅 페이지로 이동
+                  💬 채팅 페이지로 이동
                 </button>
 
                 <hr className="border-gray-100 my-1" />
