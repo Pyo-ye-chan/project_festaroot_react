@@ -49,7 +49,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
     );
   }
 
-  const { member, interestRegions, interestThemes, recentLogs ,likedFestivals,level,titleName,currentExp,nextLevelExp} = userDetails;
+  const { member, interestRegions, interestThemes, recentLogs ,likedFestivals,level,titleName,currentExp,nextLevelExp,myCommentCount,myPostCount} = userDetails;
 
   // 성장 정보 추출 (백엔드 DTO 매핑)
   // const { 
@@ -396,8 +396,8 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         {[
-          { label: '작성글', value: member.post_count || 0, color: 'text-blue-600', bg: 'bg-blue-50', icon: '📝' },
-          { label: '댓글', value: member.comment_count || 0, color: 'text-purple-600', bg: 'bg-purple-50', icon: '💬' },
+          { label: '작성글', value: myPostCount || 0, color: 'text-blue-600', bg: 'bg-blue-50', icon: '📝' },
+          { label: '댓글', value: myCommentCount || 0, color: 'text-purple-600', bg: 'bg-purple-50', icon: '💬' },
           { label: '찜한 축제', value: likedFestivals.length || 0, color: 'text-rose-600', bg: 'bg-rose-50', icon: '❤️' }
         ].map((stat) => (
           <div key={stat.label} className="bg-white p-6 sm:p-8 rounded-[24px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex sm:flex-col items-center sm:items-start gap-4 sm:gap-0">

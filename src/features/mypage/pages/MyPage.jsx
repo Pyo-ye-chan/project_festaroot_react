@@ -10,12 +10,14 @@ import MyAccountSettingsTab from '../components/MyAccountSettingsTab';
 import MyNotificationsTab from '../components/MyNotificationsTab';
 import useAuthStore from '../../../store/useAuthStore';
 import { getMemberProfile } from '../../../api/memberApi';
+import { getMyPost } from '../../../api/boardApi';
 
 const MyPage = () => {
   const { user, isLoggedIn } = useAuthStore();
   const [activeTab, setActiveTab] = useState('profile');
   const [userDetails, setUserDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  
 
   const fetchUserData = async () => {
     setIsLoading(true);
@@ -23,6 +25,7 @@ const MyPage = () => {
       const userId = user.member_id || user.id;
       const resp = await getMemberProfile(userId);
       setUserDetails(resp.data);
+     
     } catch (error) {
       console.error('마이페이지 데이터 로드 실패:', error);
     } finally {
@@ -51,7 +54,7 @@ const MyPage = () => {
       case 'achievements':
         return <MyAchievementsTab />;
       case 'posts':
-        return <MyPostsTab postsCount={0} />;
+        return <MyPostsTab  />;
       case 'saved-plans':
         return <MySavedPlansTab />;
       case 'likes':

@@ -31,6 +31,7 @@ export const updatePost = async (id, data) => await maxios.put(`board/post/${id}
 
 export const deletePost = async (id) => await maxios.delete(`board/post/${id}`);
 
+export const getMyPost = async (id) => await maxios.get(`board/mypost/${id}`);
 
 // 댓글 목록 조회
 export const getComments = async (postId) =>
