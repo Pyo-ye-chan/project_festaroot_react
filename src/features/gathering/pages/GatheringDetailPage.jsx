@@ -4,6 +4,7 @@ import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle, Settings, Save
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import gatheringApi from '../../../api/gatheringApi';
 import useAuthStore from '../../../store/useAuthStore';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const GatheringDetailPage = () => {
   const { id } = useParams();
@@ -279,7 +280,7 @@ const GatheringDetailPage = () => {
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100">
               <div className="relative group/img mb-6">
                 <img
-                  src={imagePreview || gathering.room_image || 'https://picsum.photos/seed/gathering/800/400'}
+                  src={imagePreview || gathering.room_image || DEFAULT_IMAGES.ROOM_COVER}
                   alt={gathering.room_title}
                   className={`w-full h-80 object-cover rounded-2xl transition-all ${isEditing ? 'cursor-pointer hover:brightness-75' : ''}`}
                   onClick={() => isEditing && fileInputRef.current?.click()}
@@ -465,7 +466,7 @@ const GatheringDetailPage = () => {
                           .map(participant => (
                             <div key={participant.member_id} className="relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group">
                               <img
-                                src={participant.profile_image_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'}
+                                src={participant.profile_image_url || DEFAULT_IMAGES.PROFILE}
                                 alt={participant.nickname}
                                 className="w-9 h-9 rounded-full object-cover border border-gray-200"
                               />
@@ -497,7 +498,7 @@ const GatheringDetailPage = () => {
                       {gathering.owner_id && (
                         <div className="flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm">
                           <img
-                            src={gathering.profile_image_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=owner'}
+                            src={gathering.profile_image_url || DEFAULT_IMAGES.PROFILE}
                             alt={gathering.nickname}
                             className="w-9 h-9 rounded-full object-cover border-2 border-[var(--festival-purple)]"
                           />
@@ -511,7 +512,7 @@ const GatheringDetailPage = () => {
                       {participants.map(participant => (
                         <div key={participant.member_id} className="relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group">
                           <img
-                            src={participant.profile_image_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'}
+                            src={participant.profile_image_url || DEFAULT_IMAGES.PROFILE}
                             alt={participant.nickname}
                             className="w-9 h-9 rounded-full object-cover border border-gray-200"
                           />

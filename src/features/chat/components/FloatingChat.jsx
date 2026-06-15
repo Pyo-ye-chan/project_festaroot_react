@@ -3,6 +3,7 @@ import Draggable from 'react-draggable';
 import { Send, X, MessageCircle, Minimize2, User } from 'lucide-react';
 import useChatStore from '../../../store/useChatStore';
 import gatheringApi from '../../../api/gatheringApi';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const FloatingChat = ({ roomId, index }) => {
   const {
@@ -23,8 +24,12 @@ const FloatingChat = ({ roomId, index }) => {
   const scrollRef = useRef(null);
   const nodeRef = useRef(null);
 
+  // 스크린샷 피드백 기반: 축제/소셜 로그인 분기 통합 처리
   const user = JSON.parse(localStorage.getItem('user'));
-  const userId = user?.userId || user?.id || user?.member_id;
+  const userId = user?.member_id || user?.id || user?.userId;
+
+  // 프로필 이미지가 없는 사용자를 위한 기본 아바타 이미지 지정
+  const DEFAULT_USER_AVATAR = 'https://picsum.photos/seed/default-avatar/100/100';
 
   useEffect(() => {
     if (roomId) {
@@ -66,7 +71,6 @@ const FloatingChat = ({ roomId, index }) => {
     setMessage('');
   };
 
-  // 선택된 창만 동적으로 최상단 Z-Index 레이어(10000)를 점유하도록 설정
   const isFocused = focusedFloatingId === roomId;
   const currentZIndex = isFocused ? 10000 : 9990 + (index || 0);
 
@@ -112,7 +116,6 @@ const FloatingChat = ({ roomId, index }) => {
         <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-[#F8F9FF]">
           {messages.map(msg => {
 
-            // 입장/퇴장/강퇴 시스템 메시지 중앙 배치
             if (msg.type === 'ENTER' || msg.type === 'LEAVE' || msg.type === 'KICK') {
               return (
                 <div key={msg.id} className="flex justify-center my-2 w-full select-none">
@@ -125,39 +128,44 @@ const FloatingChat = ({ roomId, index }) => {
               );
             }
 
-            // 유저 구별 및 퇴장 상태 여부 파악 로직
+            // 고유 식별 필드 매칭 다각화 (방어 코드)
             const targetUser = participants.find(p => {
-              const pId = p.member_id || p.MEMBER_ID || p.id;
-              return String(pId) === String(msg.senderId);
+              const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
+              const pUsername = p.username || p.userId || p.USER_ID || p.loginId;
+              return String(pId) === String(msg.senderId) || (pUsername && String(pUsername) === String(msg.senderId));
             });
-            
-            // 본인이 아니고, 현재 참여자 명단에 없다면 퇴장한 유저로 판단
+
+            // 본인이 아니고 참여자 명단에도 완전히 결여되어 있을 때만 퇴장 유저 판정
             const isLeftUser = !msg.isMe && !targetUser;
 
-            // 실제 데이터가 있을 때만 매핑
             const userProfileImg = msg.senderProfile || targetUser?.profile_image_url || targetUser?.PROFILE_IMAGE_URL;
 
             return (
               <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-start gap-2`}>
                 {!msg.isMe && (
                   <div className={`w-8 h-8 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 mt-1 shadow-sm flex items-center justify-center ${isLeftUser ? 'bg-gray-200/50 opacity-60' : ''}`}>
-                    {userProfileImg ? (
-                      <img
-                        src={userProfileImg}
-                        alt={msg.sender}
-                        className={`w-full h-full object-cover ${isLeftUser ? 'grayscale' : ''}`}
-                      />
-                    ) : (
-                      // 가짜 이미지 링크 대신 깔끔한 유저 기본 아이콘으로 대체
+                    {isLeftUser ? (
+                      /* 1. 진짜 퇴장한 사람만 User 아이콘 처리 */
                       <User className="w-4 h-4 text-gray-400" />
+                    ) : (
+                      /* 2. 퇴장 안 한 일반 참여자는 이미지 주소 주입 (없으면 기본 아바타) */
+                      <img
+                        src={userProfileImg || DEFAULT_IMAGES.PROFILE}
+                        alt={msg.sender}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = DEFAULT_IMAGES.PROFILE;
+                        }}
+                      />
                     )}
                   </div>
                 )}
                 <div className={`flex flex-col gap-0.5 max-w-[80%] ${msg.isMe ? 'items-end' : 'items-start'}`}>
                   {!msg.isMe && (
                     <span className={`text-[10px] font-bold mb-0.5 ${isLeftUser ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {isLeftUser 
-                        ? `${msg.sender} (퇴장한 사용자)` 
+                      {isLeftUser
+                        ? `${msg.sender} (퇴장한 사용자)`
                         : (targetUser?.nickname || targetUser?.NICKNAME || msg.sender)
                       }
                     </span>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageCircle, Search, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const ChatSidebar = ({
   sections,
@@ -10,9 +11,14 @@ const ChatSidebar = ({
   setSelectedChatId,
   customScrollbarClass
 }) => {
-  // 임시 이미지 기본 생성 함수
-  const getDefaultRoomImage = (title) => {
-    return 'https://picsum.photos/seed/gathering/100/100';
+  // // 임시 이미지 기본 생성 함수
+  // const getDefaultRoomImage = (title) => {
+  //   return 'https://picsum.photos/seed/gathering/100/100';
+  // };
+
+  // roomType에 맞게 축제 또는 일반 커버 이미지를 반환하도록 변경
+  const getDefaultRoomImage = (roomType) => {
+    return roomType === 'FESTIVAL' ? DEFAULT_IMAGES.FESTIVAL_FALLBACK : DEFAULT_IMAGES.ROOM_COVER;
   };
 
   // 1:1 채팅방만 필터링
@@ -77,16 +83,16 @@ const ChatSidebar = ({
                             }`}
                         >
 
-                          {/* 핵심 수정: 배지 위치 레이아웃을 부모 relative 공간 안으로 격리 */}
+                          {/* 배지 위치 레이아웃 부모 공간 및 기본 이미지 연동 */}
                           <div className="relative flex-shrink-0">
                             <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden">
                               <img
-                                src={chat.room_image || getDefaultRoomImage(currentRoomTitle)}
+                                src={chat.room_image || getDefaultRoomImage(roomType)}
                                 alt={currentRoomTitle}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   e.target.onerror = null;
-                                  e.target.src = getDefaultRoomImage(currentRoomTitle);
+                                  e.target.src = getDefaultRoomImage(roomType);
                                 }}
                               />
                             </div>

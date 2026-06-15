@@ -61,7 +61,7 @@ const ChatListPage = () => {
 
   // 로컬스토리지에서 로그인한 유저 ID 추출
   const user = JSON.parse(localStorage.getItem('user'));
-  const userId = user?.userId || user?.id || user?.member_id;
+  const userId = user?.member_id || user?.id;
 
   // 선택된 채팅 및 상세정보 매핑 변수를 함수들이 참조
   const selectedChat = chatRooms.find(c => Number(c.id) === Number(activeChatId || displayChatId));

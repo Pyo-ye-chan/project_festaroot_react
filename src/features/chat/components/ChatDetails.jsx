@@ -1,5 +1,6 @@
 import React from 'react';
 import { Ban, MapPin, X, Calendar, LogOut, Crown } from 'lucide-react';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const ChatDetails = ({
   showParticipants,
@@ -55,7 +56,7 @@ const ChatDetails = ({
               {participants.map(p => {
                 const memberId = p.member_id || p.MEMBER_ID || p.id;
                 const nickname = p.nickname || p.NICKNAME || '이름 없음';
-                const profileImg = p.profile_image_url || p.PROFILE_IMAGE_URL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(nickname)}`;
+                const profileImg = p.profile_image_url || p.PROFILE_IMAGE_URL || DEFAULT_IMAGES.PROFILE;;
 
                 const isHost =
                   p.is_host === 'Y' || p.IS_HOST === 'Y' ||
