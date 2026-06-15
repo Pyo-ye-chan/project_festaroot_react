@@ -1,15 +1,88 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
+import NotificationDropdown from './notifications/NotificationDropdown';
+import { getUnreadNotifications } from '../api/notificationApi';
 
 const Header = () => {
   const [region, setRegion] = useState('서울');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { isLoggedIn, logout } = useAuthStore();
+  const { isLoggedIn, logout, user } = useAuthStore();
   const navigate = useNavigate();
   const [isWeatherDropdownOpen, setIsWeatherDropdownOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
   const dropdownRef = useRef(null);
+  const notificationRef = useRef(null);
+
+  // 시간 포맷팅 함수
+  const formatTime = (dateString) => {
+    if (!dateString) return '방금 전';
+    const now = new Date();
+    const past = new Date(dateString);
+    const diffInMs = now - past;
+    const diffInMins = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMins / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInMins < 1) return '방금 전';
+    if (diffInMins < 60) return `${diffInMins}분 전`;
+    if (diffInHours < 24) return `${diffInHours}시간 전`;
+    if (diffInDays < 7) return `${diffInDays}일 전`;
+    return past.toLocaleDateString();
+  };
+
+  // 알림 데이터 가져오기
+  const fetchNotifications = async () => {
+    if (!isLoggedIn) return;
+    try {
+      const response = await getUnreadNotifications();
+      // 백엔드 DTO 필드에 맞춰 매핑
+      const mappedData = response.data.map(n => {
+        const activityMap = {
+          ACHIEVEMENT: { label: '업적 달성', icon: '🏆', color: 'bg-orange-50 text-orange-600' },
+          LIKE: { label: '좋아요 알림', icon: '❤️', color: 'bg-rose-50 text-rose-600' },
+          ATTENDANCE: { label: '출석 체크', icon: '📅', color: 'bg-blue-50 text-blue-600' },
+          POST: { label: '게시글 작성', icon: '✍️', color: 'bg-green-50 text-green-600' },
+          COMMENT: { label: '댓글 작성', icon: '💬', color: 'bg-yellow-50 text-yellow-600' },
+          LEVEL_UP: { label: '레벨업 달성', icon: '⭐', color: 'bg-indigo-50 text-indigo-600' }
+        };
+
+        const info = activityMap[n.noti_type] || { label: '알림', icon: '🔔', color: 'bg-gray-50 text-gray-600' };
+
+        // content에서 경험치 추출 시도 (예: "POST(20)")
+        let exp = null;
+        const expMatch = n.content ? n.content.match(/\((\d+)\)/) : null;
+        if (expMatch) exp = expMatch[1];
+
+        return {
+          id: n.noti_id,
+          type: n.noti_type,
+          title: `${info.label} 완료!`,
+          desc: n.content,
+          exp: exp,
+          time: formatTime(n.created_at),
+          isRead: n.is_read === 'Y',
+          icon: info.icon,
+          color: info.color
+        };
+      });
+      setNotifications(mappedData);
+    } catch (error) {
+      console.error('알림을 가져오는 중 오류 발생:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchNotifications();
+    } else {
+      setNotifications([]);
+    }
+  }, [isLoggedIn]);
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   // Colors aligned with Footer
   const primaryPurple = '#6B46FE';
@@ -40,8 +113,13 @@ const Header = () => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Weather dropdown
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsWeatherDropdownOpen(false);
+      }
+      // Notification dropdown
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsNotificationOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -66,13 +144,27 @@ const Header = () => {
           {/* User Section (Right) */}
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Notification */}
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all relative">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full border-2 border-white bg-rose-500"></span>
-            </button>
+            <div className="relative" ref={notificationRef}>
+              <button 
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className={`p-2 rounded-full transition-all relative ${isNotificationOpen ? 'bg-purple-50 text-purple-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+              >
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full border-2 border-white bg-rose-500"></span>
+                )}
+              </button>
+
+              {/* Notification Dropdown Component */}
+              <NotificationDropdown 
+                isOpen={isNotificationOpen} 
+                onClose={() => setIsNotificationOpen(false)} 
+                notifications={notifications} 
+              />
+            </div>
 
             {/* Profile/Login Button with Hover Effect */}
             <button

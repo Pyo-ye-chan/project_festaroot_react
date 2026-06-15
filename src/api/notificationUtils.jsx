@@ -9,6 +9,36 @@ export const notifyAchievements = (achievements) => {
   if (!achievements || achievements.length === 0) return;
 
   achievements.forEach((ach, index) => {
+    // 활동 유형 한글 매핑 및 ach_desc 파싱 로직
+    const activityMap = {
+      ATTENDANCE: '출석 체크',
+      POST: '게시글 작성',
+      COMMENT: '댓글 작성',
+      LIKE_GIVEN: '좋아요 클릭',
+      RECEIVE_LIKE: '좋아요 받음',
+      FESTIVAL_LIKE: '축제 찜하기',
+      FESTIVAL_REVIEW: '축제 후기 작성',
+      AI_PLAN: 'AI 플래너 이용',
+      RANDOM_PICK: '랜덤 축제 뽑기',
+    };
+
+    // ach_desc에서 "POST" 같은 패턴을 찾아 한글로 변환
+    let displayTitle = ach.ach_title;
+    let displayDesc = ach.ach_desc;
+    let activityLabel = '활동';
+
+    // ach_desc가 활동 코드(POST, ATTENDANCE 등) 중 하나인지 확인
+    const isActivityCode = ach.ach_desc && activityMap.hasOwnProperty(ach.ach_desc);
+
+    if (isActivityCode) {
+      const type = ach.ach_desc;
+      activityLabel = activityMap[type];
+      displayTitle = `${activityLabel} 완료!`;
+      displayDesc = `${activityLabel}을(를) 통해 경험치를 획득했습니다.`;
+    } else {
+      activityLabel = activityMap[ach.activity_type] || ach.activity_type || '활동';
+    }
+
     // 여러 알림이 겹치지 않도록 순차적으로 표시
     setTimeout(() => {
       toast.success(
@@ -18,19 +48,23 @@ export const notifyAchievements = (achievements) => {
               <span className="text-lg">🏆</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none mb-1">New Achievement</span>
-              <span className="text-sm font-black text-gray-800 leading-tight">{ach.ach_title}</span>
+              <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none mb-1">
+                {isActivityCode ? 'Activity Reward' : 'New Achievement'}
+              </span>
+              <span className="text-sm font-black text-gray-800 leading-tight">{displayTitle}</span>
             </div>
           </div>
           
           <div className="bg-gray-50/80 backdrop-blur-sm rounded-xl p-3 border border-gray-100/50 mb-2">
-            <p className="text-xs text-gray-500 font-bold leading-relaxed">{ach.ach_desc}</p>
+            <p className="text-xs text-gray-500 font-bold leading-relaxed">{displayDesc}</p>
           </div>
           
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-1.5">
               <span className="flex h-2 w-2 rounded-full bg-purple-500 animate-pulse"></span>
-              <span className="text-[10px] font-black text-purple-600 uppercase tracking-tighter">Experience Reward</span>
+              <span className="text-[10px] font-black text-purple-600 uppercase tracking-tighter">
+                {activityLabel} 보상
+              </span>
             </div>
             <div className="bg-purple-600 px-2 py-0.5 rounded-md shadow-lg shadow-purple-100">
               <span className="text-[11px] font-black text-white">+{ach.exp_reward} EXP</span>
