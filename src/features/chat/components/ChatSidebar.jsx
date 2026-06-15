@@ -1,5 +1,6 @@
 import React from 'react';
-import { MessageCircle, Search, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MessageCircle, Search, ChevronDown, ChevronUp, Users, ArrowRight } from 'lucide-react';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const ChatSidebar = ({
@@ -11,22 +12,12 @@ const ChatSidebar = ({
   setSelectedChatId,
   customScrollbarClass
 }) => {
-  // // 임시 이미지 기본 생성 함수
-  // const getDefaultRoomImage = (title) => {
-  //   return 'https://picsum.photos/seed/gathering/100/100';
-  // };
+  const navigate = useNavigate();
 
-  // roomType에 맞게 축제 또는 일반 커버 이미지를 반환하도록 변경
+  // roomType에 맞게 축제 또는 일반 커버 이미지를 반환하는 함수
   const getDefaultRoomImage = (roomType) => {
     return roomType === 'FESTIVAL' ? DEFAULT_IMAGES.FESTIVAL_FALLBACK : DEFAULT_IMAGES.ROOM_COVER;
   };
-
-  // 1:1 채팅방만 필터링
-  const privateRooms = chatRooms.filter(
-    (room) =>
-      room.type?.toUpperCase() === 'PRIVATE' ||
-      room.room_type?.toUpperCase() === 'PRIVATE'
-  );
 
   return (
     <aside className={`flex flex-col bg-white z-20 overflow-y-auto transition-all duration-500 ${customScrollbarClass} ${selectedChatId ? 'w-full md:w-64 lg:w-72 border-r border-gray-100' : 'flex-grow w-full'}`}>
@@ -42,29 +33,72 @@ const ChatSidebar = ({
       </div>
 
       <div className={`flex-grow overflow-y-auto pt-4 ${customScrollbarClass}`}>
-        {sections.map(section => (
-          <div key={section.id} className="mb-2 last:mb-0">
-            <div className="px-6 py-2">
-              <button
-                onClick={() => toggleSection(section.id)}
-                className="w-full flex items-center justify-between font-black text-gray-600 text-sm uppercase tracking-wider hover:text-purple-600 transition-colors"
-              >
-                {section.label}
-                {expandedSections[section.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-              <div className="mt-2 border-b border-gray-200"></div>
-            </div>
+        {sections.map(section => {
+          // 각 섹션 ID 유형('festival', 'group', 'private')에 맞는 채팅방 필터링
+          const filteredRooms = chatRooms.filter(
+            c => (c.type || c.room_type)?.toLowerCase() === section.id
+          );
 
-            {expandedSections[section.id] && (
-              <div className="animate-in slide-in-from-top-2 duration-300">
-                {section.id === 'private' && privateRooms.length === 0 ? (
-                  <div className="text-center py-8 text-xs font-medium text-gray-400 tracking-tight select-none">
-                    아직 참여 중인 1:1 채팅방이 없습니다.
-                  </div>
-                ) : (
-                  chatRooms
-                    .filter(c => (c.type || c.room_type)?.toLowerCase() === section.id)
-                    .map((chat) => {
+          return (
+            <div key={section.id} className="mb-2 last:mb-0">
+              <div className="px-6 py-2">
+                <button
+                  onClick={() => toggleSection(section.id)}
+                  className="w-full flex items-center justify-between font-black text-gray-600 text-sm uppercase tracking-wider hover:text-purple-600 transition-colors"
+                >
+                  {section.label}
+                  {expandedSections[section.id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                <div className="mt-2 border-b border-gray-200"></div>
+              </div>
+
+              {expandedSections[section.id] && (
+                <div className="animate-in slide-in-from-top-2 duration-300">
+                  {/* 참여 중인 방이 없을 때 섹션별 맞춤 안내 및 이동 버튼 분기 처리 */}
+                  {filteredRooms.length === 0 ? (
+                    <div className="text-center py-8 px-6 text-xs font-medium text-gray-400 tracking-tight select-none flex flex-col items-center gap-3">
+                      <p className="leading-relaxed whitespace-pre-line">
+                        {section.id === 'festival'
+                          ? '축제 찾기를 통해 원하는 축제 채팅에 참여해보세요 !'
+                          : `아직 참여 중인 ${section.label}방이 없습니다.`}
+                      </p>
+
+                      {/* 축제 채팅방이 비었을 때 버튼 컴포넌트 */}
+                      {section.id === 'festival' && (
+                        <div className='flex gap-2 justify-center w-full'>
+                          {/* 메인 액션 버튼 (크기 축소) */}
+                          <button
+                            onClick={() => navigate('/search')}
+                            className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] rounded-lg transition-all shadow-sm shadow-purple-600/5 flex items-center gap-1 group/btn whitespace-nowrap"
+                          >
+                            축제 찾으러 가기
+                            <ArrowRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-0.5" />
+                          </button>
+
+                          {/* 서브 이동 버튼 (회색 톤 + 크기 축소) */}
+                          <button
+                            onClick={() => navigate('/community/gathering')}
+                            className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 group/btn whitespace-nowrap"
+                          >
+                            축제 모임 보러가기
+                            <ArrowRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-0.5" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 모임 채팅방이 비었을 때 버튼 (회색 톤 + 크기 축소) */}
+                      {section.id === 'group' && (
+                        <button
+                          onClick={() => navigate('/community/gathering')}
+                          className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 group/btn"
+                        >
+                          자유 모임 보러가기
+                          <ArrowRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-0.5" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    filteredRooms.map((chat) => {
                       const currentRoomId = chat.id || chat.room_id;
                       const currentRoomTitle = chat.title || chat.room_title;
                       const roomType = (chat.type || chat.room_type)?.toUpperCase();
@@ -82,8 +116,6 @@ const ChatSidebar = ({
                             : 'border-transparent'
                             }`}
                         >
-
-                          {/* 배지 위치 레이아웃 부모 공간 및 기본 이미지 연동 */}
                           <div className="relative flex-shrink-0">
                             <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden">
                               <img
@@ -97,7 +129,6 @@ const ChatSidebar = ({
                               />
                             </div>
 
-                            {/* 읽지 않은 메시지 수 배지 위치를 이미지 우상단 딱 맞는 곳으로 이동 완료 */}
                             {chat.unread_count > 0 && (
                               <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white ring-2 ring-white select-none animate-bounce z-10">
                                 {chat.unread_count}
@@ -111,7 +142,6 @@ const ChatSidebar = ({
                                 {currentRoomTitle}
                               </h3>
 
-                              {/* 1:1 채팅이 아닐 때만 현재인원/최대인원 배지 표시 */}
                               {roomType !== 'PRIVATE' && chat.current_count !== undefined && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full flex-shrink-0 select-none">
                                   <Users className="w-3 h-3" />
@@ -129,11 +159,12 @@ const ChatSidebar = ({
                         </button>
                       );
                     })
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </aside>
   );
