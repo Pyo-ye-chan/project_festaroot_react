@@ -23,6 +23,9 @@ const FloatingChat = ({ roomId, index }) => {
   const scrollRef = useRef(null);
   const nodeRef = useRef(null);
 
+  const user = JSON.parse(localStorage.getItem('user'));
+  const userId = user?.userId || user?.id || user?.member_id;
+
   useEffect(() => {
     if (roomId) {
       if (chatRooms.length > 0 && !chatRooms.some(c => c.id === roomId)) {
@@ -30,7 +33,7 @@ const FloatingChat = ({ roomId, index }) => {
         return;
       }
 
-      fetchChatHistory(roomId);
+      fetchChatHistory(roomId, userId);
       subscribeToRoom(roomId);
 
       const fetchParticipants = async () => {
@@ -45,7 +48,7 @@ const FloatingChat = ({ roomId, index }) => {
 
       setFocusedFloatingId(roomId);
     }
-  }, [roomId, chatRooms, subscribeToRoom, fetchChatHistory, closeFloatingChat, setFocusedFloatingId]);
+  }, [roomId, userId, chatRooms, subscribeToRoom, fetchChatHistory, closeFloatingChat, setFocusedFloatingId]);
 
   const activeChat = chatRooms.find(c => c.id === roomId);
   const messages = messagesByRoom[roomId] || [];
@@ -91,14 +94,14 @@ const FloatingChat = ({ roomId, index }) => {
           </div>
 
           <div className="flex items-center gap-1">
-            <button 
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); minimizeFloatingChat(roomId); }} 
+            <button
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); minimizeFloatingChat(roomId); }}
               className="p-1 hover:bg-white/10 rounded"
             >
               <Minimize2 className="w-3.5 h-3.5" />
             </button>
-            <button 
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); closeFloatingChat(roomId); }} 
+            <button
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); closeFloatingChat(roomId); }}
               className="p-1 hover:bg-rose-500 rounded"
             >
               <X className="w-3.5 h-3.5" />
@@ -108,6 +111,20 @@ const FloatingChat = ({ roomId, index }) => {
 
         <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-[#F8F9FF]">
           {messages.map(msg => {
+
+            // 입장/퇴장/강퇴 시스템 메시지 중앙 배치
+            if (msg.type === 'ENTER' || msg.type === 'LEAVE' || msg.type === 'KICK') {
+              return (
+                <div key={msg.id} className="flex justify-center my-2 w-full select-none">
+                  <span className="bg-gray-100/80 text-gray-400 text-[10px] font-semibold px-3 py-1.5 rounded-full shadow-xs border border-gray-50">
+                    {msg.type === 'ENTER' && `${msg.sender}님이 입장하셨습니다.`}
+                    {msg.type === 'LEAVE' && `${msg.sender}님이 퇴장하셨습니다.`}
+                    {msg.type === 'KICK' && (msg.text || `${msg.sender}님이 내보내졌습니다.`)}
+                  </span>
+                </div>
+              );
+            }
+
             const targetUser = participants.find(p =>
               String(p.member_id || p.MEMBER_ID) === String(msg.senderId)
             );

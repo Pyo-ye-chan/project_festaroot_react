@@ -65,7 +65,9 @@ const ChatWindow = ({
             <ExternalLink className="w-6 h-6" />
           </button>
           <button onClick={() => toggleSidebar('participants')} className={`p-2.5 rounded-xl transition-all ${showParticipants ? 'bg-purple-600 text-white' : 'text-gray-400 hover:bg-gray-50'}`}><Users className="w-6 h-6" /></button>
-          <button onClick={() => setSelectedChatId(null)} className="p-2.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl"><X className="w-6 h-6" /></button>
+          <button onClick={() => { setSelectedChatId(null); navigate('/community/chat'); }} className="p-2.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl">
+            <X className="w-6 h-6" />
+          </button>
         </div>
       </header>
 
@@ -98,14 +100,14 @@ const ChatWindow = ({
             targetUser?.is_owner === 'Y' || targetUser?.IS_OWNER === 'Y' ||
             (selectedChat?.owner_id && String(msg.senderId) === String(selectedChat.owner_id));
 
-          // 메시지 타입이 입장(ENTER) 또는 퇴장(LEAVE)인 경우 센터링된 시스템 문구로 렌더링
-          if (msg.type === 'ENTER' || msg.type === 'LEAVE') {
+          // 메시지 타입이 입장(ENTER) 또는 퇴장(LEAVE)또는 강퇴(KICK)인 경우 센터링된 시스템 문구로 렌더링
+          if (msg.type === 'ENTER' || msg.type === 'LEAVE' || msg.type === 'KICK') {
             return (
               <div key={msg.id} className="flex justify-center my-4 w-full select-none">
                 <span className="bg-gray-100/80 text-gray-400 text-xs font-semibold px-4 py-1.5 rounded-full shadow-sm border border-gray-50">
-                  {msg.type === 'ENTER'
-                    ? `${msg.sender}님이 채팅방 입장하였습니다.`
-                    : `${msg.sender}님이 채팅방에서 퇴장하였습니다.`}
+                  {msg.type === 'ENTER' && `${msg.sender}님이 입장하셨습니다.`}
+                  {msg.type === 'LEAVE' && `${msg.sender}님이 퇴장하셨습니다.`}
+                  {msg.type === 'KICK' && (msg.text || `${msg.sender}님이 퇴장당하셨습니다.`)}
                 </span>
               </div>
             );

@@ -6,10 +6,13 @@ import ChatDetails from '../components/ChatDetails';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import gatheringApi from '../../../api/gatheringApi';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Crown, X } from 'lucide-react';
+import useLoadingStore from '../../../store/useLoadingStore';
 
 const ChatListPage = () => {
   const [participants, setParticipants] = useState([]);
   const [roomDetail, setRoomDetail] = useState(null);
+  const [showDelegateModal, setShowDelegateModal] = useState(false); // 위임 팝업 모달
   const { roomId } = useParams();
   const navigate = useNavigate();
 
@@ -31,6 +34,31 @@ const ChatListPage = () => {
   const [displayChatId, setDisplayChatId] = useState(null);
   const [message, setMessage] = useState('');
 
+  const { startLoading, stopLoading } = useLoadingStore();
+
+  // 참여자 목록
+  const fetchParticipants = async () => {
+    try {
+      const res = await gatheringApi.gatheringParticipants(activeChatId);
+
+      // 방장의 ID를 구해서 각 참여자 객체에 정확히 방장 여부(isOwner) 주입하기
+      const resParticipants = res || [];
+      const currentOwnerId = roomDetail?.owner_id || selectedChat?.owner_id;
+
+      const mappedParticipants = resParticipants.map(p => {
+        const pId = p.member_id || p.MEMBER_ID || p.id;
+        return {
+          ...p,
+          isOwner: currentOwnerId && String(pId) === String(currentOwnerId) // 정확한 방장 조건 검사
+        };
+      });
+
+      setParticipants(mappedParticipants);
+    } catch (e) {
+      console.error("참여자 목록 로드 실패", e);
+    }
+  };
+
   // 로컬스토리지에서 로그인한 유저 ID 추출
   const user = JSON.parse(localStorage.getItem('user'));
   const userId = user?.userId || user?.id || user?.member_id;
@@ -39,10 +67,19 @@ const ChatListPage = () => {
   const selectedChat = chatRooms.find(c => Number(c.id) === Number(activeChatId || displayChatId));
   const detailedChat = selectedChat ? { ...selectedChat, ...roomDetail } : null;
 
+  const isCurrentUserHost = selectedChat?.owner_id === userId || roomDetail?.owner_id === userId;
+
   // 컴포넌트 마운트 시 웹소켓 서버 최초 연결
   useEffect(() => {
     connectWebSocket();
   }, [connectWebSocket]);
+
+  useEffect(() => {
+    // 컴포넌트가 언마운트(페이지 이탈)될 때 현재 활성화된 채팅방 ID를 초기화
+    return () => {
+      setActiveChatId(null);
+    };
+  }, [setActiveChatId]);
 
   // 방 변경 시, 참여자뿐만 아니라 실제 "모임 소개글/규칙"이 포함된 상세 데이터도 패치
   useEffect(() => {
@@ -53,36 +90,29 @@ const ChatListPage = () => {
       // 채팅 읽음 처리 요청 보내기
       gatheringApi.updateReadStatus(activeChatId, userId);
 
-      // 참여자 목록 패치
-      const fetchParticipants = async () => {
-        try {
-          const res = await gatheringApi.gatheringParticipants(activeChatId);
-
-          // 방장의 ID를 구해서 각 참여자 객체에 정확히 방장 여부(isOwner) 주입하기
-          const resParticipants = res || [];
-          const currentOwnerId = roomDetail?.owner_id || selectedChat?.owner_id;
-
-          const mappedParticipants = resParticipants.map(p => {
-            const pId = p.member_id || p.MEMBER_ID || p.id;
-            return {
-              ...p,
-              isOwner: currentOwnerId && String(pId) === String(currentOwnerId) // 정확한 방장 조건 검사
-            };
-          });
-
-          setParticipants(mappedParticipants);
-        } catch (e) {
-          console.error("참여자 목록 로드 실패", e);
-        }
-      };
-
-      // ✨ 모임 상세 원격 내용 패치 (오른쪽 레이어에 띄울 핵심 알맹이)
+      // 모임 상세 원격 내용 패치
       const fetchRoomDetail = async () => {
+        // 현재 activeChatId가 없다면 이미 삭제되었거나 비정상적인 접근이므로 애초에 API를 호출X
+        if (chatRooms.length > 0 && !chatRooms.some(room => room.id === Number(activeChatId))) {
+          return;
+        }
+
         try {
-          const res = await gatheringApi.gatheringDetail(activeChatId);
-          setRoomDetail(res); // 백엔드 내부의 room_description 등이 완벽하게 탑재됨
+          startLoading(); // 로딩 시작
+          const detail = await gatheringApi.gatheringDetail(activeChatId);
+          setRoomDetail(detail);
         } catch (e) {
+          // Axios 에러 중 404인 경우는 방이 삭제되어 생기는 자연스러운 현상이므로 에러 처리에서 제외
+          if (e.response?.status === 404) {
+            console.log("채팅방이 삭제되었거나 존재하지 않아 패치를 중단합니다.");
+            setRoomDetail(null); // 상태 비워주기
+            return;
+          }
+
+          // 404가 아닌 진짜 에러만 red log로 출력
           console.error("모임 상세 내용 패치 실패", e);
+        } finally {
+          stopLoading(); // 패치가 끝나면 에러가 나든 성공하든 무조건 로딩 종료
         }
       };
 
@@ -90,6 +120,68 @@ const ChatListPage = () => {
       fetchRoomDetail();
     }
   }, [activeChatId, userId, fetchChatHistory, subscribeToRoom]);
+
+  // 방장이 참가자를 강퇴하는 로직 핸들러
+  const handleKickParticipant = async (targetMemberId, targetNickname) => {
+    if (!window.confirm(`정말 "${targetNickname}"님을 이 모임에서 퇴장(차단)시키겠습니까?`)) return;
+
+    try {
+      // 1. 백엔드 서버에 강퇴 API 호출
+      await gatheringApi.kickParticipant(activeChatId, userId, targetMemberId);
+      alert("해당 참여자가 모임에서 퇴장 처리되었습니다.");
+
+      // 2. 채팅창에 강퇴 안내 시스템 메시지 전송
+      // 백엔드 웹소켓 프로토콜 구조에 따라 'TALK' 대신 'NOTICE'나 'SYSTEM' 타입을 사용할 수도 있습니다.
+      // 여기서는 기본 구현된 'TALK' 핸들러를 기반으로 메시지를 보냅니다.
+      if (sendMessage) {
+        sendMessage(activeChatId, `방장님이 ${targetNickname}님을 퇴장시켰습니다.`, 'KICK');
+      }
+
+      // 3. 우측 사이드바 참여 인원 목록 리프레시
+      await fetchParticipants();
+
+      // 4. 왼쪽 채팅방 리스트(Sidebar)의 현재 인원수 즉시 감소 반영
+      const updatedRooms = chatRooms.map((room) => {
+        if (room.id === Number(activeChatId)) {
+          return {
+            ...room,
+            current_count: Math.max(1, (room.current_count || 1) - 1) // 인원이 1명 미만으로 내려가지 않도록 안전장치
+          };
+        }
+        return room;
+      });
+      setChatRooms(updatedRooms);
+
+    } catch (error) {
+      console.error("강퇴 처리 오류:", error);
+      alert("퇴장 처리 도중 에러가 발생했습니다.");
+    }
+  };
+
+  // 실제 방장 권한 위임 후 퇴장을 처리하는 실행 함수
+  const handleDelegateAndLeave = async (nextOwnerId, nextOwnerNickname) => {
+    const confirmMessage = nextOwnerNickname
+      ? `"${nextOwnerNickname}"님에게 방장을 위임하고 퇴장하시겠습니까?`
+      : "가장 오래 참여 중인 사람에게 자동으로 방장을 위임하고 퇴장하시겠습니까?";
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      // 1. 권한 위임 API 호출
+      await gatheringApi.delegateOwner(activeChatId, userId, nextOwnerId);
+      // 2. 모임 퇴장 API 호출
+      await gatheringApi.leaveGathering(activeChatId, userId);
+
+      alert("방장 권한을 위임하고 채팅방에서 퇴장하였습니다.");
+      setShowDelegateModal(false);
+      setActiveChatId(null);
+      navigate('/community/chat');
+      setChatRooms(chatRooms.filter((room) => room.id !== activeChatId));
+    } catch (error) {
+      console.error("위임 퇴장 중 오류 발생:", error);
+      alert("위임 및 퇴장 처리 중 오류가 발생했습니다.");
+    }
+  };
 
   // 채팅방(모임) 나가기 핸들러 함수
   const handleLeaveRoom = async () => {
@@ -120,26 +212,8 @@ const ChatListPage = () => {
         }
         return; // 함수 종료
       } else {
-        // ⚠️ 중요: 채팅방 화면에는 위임 팝업UI가 없을 수 있으므로, 
-        // 가장 간단하게는 '가장 먼저 들어온 사람(혹은 첫 번째 참여자)'에게 자동 위임되도록 처리하거나 알림을 줘야 합니다.
-        if (window.confirm("방장 권한이 다음 참여자에게 자동 위임되고 퇴장합니다. 나가시겠습니까?")) {
-          try {
-            const nextOwnerId = otherParticipants[0].member_id || otherParticipants[0].MEMBER_ID || otherParticipants[0].id;
-
-            // 백엔드 위임 API 호출
-            await gatheringApi.delegateOwner(activeChatId, userId, nextOwnerId);
-            // 그 후 퇴장 API 호출
-            await gatheringApi.leaveGathering(activeChatId, userId);
-
-            alert("방장 권한을 위임하고 채팅방에서 퇴장하였습니다.");
-            setActiveChatId(null);
-            navigate('/community/chat');
-            setChatRooms(chatRooms.filter((room) => room.id !== activeChatId));
-          } catch (error) {
-            console.error("위임 퇴장 중 오류:", error);
-            alert("위임 처리 중 오류가 발생했습니다.");
-          }
-        }
+        // 다른 인원이 존재하면 위임 방식 선택 모달 팝업 노출
+        setShowDelegateModal(true);
         return;
       }
     }
@@ -183,7 +257,7 @@ const ChatListPage = () => {
     }
   }, [roomId, activeChatId, setActiveChatId]);
 
-  const handleRoomClick = (id) => {
+  const handleRoomClick = async (id) => {
     navigate(`/community/chat/${id}`);
   };
 
@@ -339,6 +413,9 @@ const ChatListPage = () => {
                       customScrollbarClass={customScrollbarClass}
                       toggleSidebar={toggleSidebar}
                       onLeaveRoom={handleLeaveRoom}
+                      currentUserId={userId}
+                      isCurrentUserHost={isCurrentUserHost}
+                      onKickParticipant={handleKickParticipant}
                     />
                   </div>
                 )}
@@ -347,6 +424,84 @@ const ChatListPage = () => {
           </main>
         </div>
       </div>
+      {/* 👑 신규 반영: 방장 권한 위임 선택용 팝업 모달 UI */}
+      {showDelegateModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in backdrop-blur-xs">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-2xl border border-gray-100 mx-4 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-500 fill-amber-500" />
+                방장 권한 위임선택
+              </h3>
+              <button
+                onClick={() => setShowDelegateModal(false)}
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm font-medium text-gray-500 mb-5 leading-relaxed">
+              채팅방을 나가기 전 권한을 넘겨줄 유저를 직접 선택하거나, 자동 선택 버튼을 눌러 먼저 참여한 사람에게 권한을 위임할 수 있습니다.
+            </p>
+
+            {/* 위임 가능 참여자 리스트 (본인 제외) */}
+            <div className="max-h-52 overflow-y-auto space-y-2 mb-5 pr-1 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+              {participants
+                .filter(p => {
+                  const pId = p.member_id || p.MEMBER_ID || p.id;
+                  return String(pId) !== String(userId);
+                })
+                .map(p => {
+                  const pId = p.member_id || p.MEMBER_ID || p.id;
+                  const nickname = p.nickname || p.NICKNAME || '이름 없음';
+                  const profileImg = p.profile_image_url || p.PROFILE_IMAGE_URL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(nickname)}`;
+
+                  return (
+                    <button
+                      key={pId}
+                      onClick={() => handleDelegateAndLeave(pId, nickname)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-purple-200 hover:bg-purple-50/40 transition-all text-left group"
+                    >
+                      <img src={profileImg} className="w-9 h-9 rounded-full object-cover shadow-xs" alt={nickname} />
+                      <div className="flex-grow">
+                        <p className="font-bold text-gray-800 group-hover:text-purple-700 text-sm transition-colors">{nickname}</p>
+                      </div>
+                      <span className="text-xs font-black text-purple-500 bg-purple-50 px-2 py-1 rounded-md opacity-80 group-hover:opacity-100 transition-all">선택 위임</span>
+                    </button>
+                  );
+                })}
+            </div>
+
+            {/* 하단 제어 영역 버튼 단축 구성 */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  const otherParticipants = participants.filter(p => {
+                    const pId = p.member_id || p.MEMBER_ID || p.id;
+                    return String(pId) !== String(userId);
+                  });
+                  if (otherParticipants.length > 0) {
+                    const nextOwnerId = otherParticipants[0].member_id || otherParticipants[0].MEMBER_ID || otherParticipants[0].id;
+                    const nextOwnerNickname = otherParticipants[0].nickname || otherParticipants[0].NICKNAME;
+                    handleDelegateAndLeave(nextOwnerId, nextOwnerNickname);
+                  }
+                }}
+                className="py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl transition-colors shadow-md shadow-purple-600/10 flex items-center justify-center gap-1.5"
+              >
+                <Crown className="w-3.5 h-3.5 text-white/90 fill-white/20" />
+                자동 선택 위임
+              </button>
+              <button
+                onClick={() => setShowDelegateModal(false)}
+                className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-xs rounded-xl transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

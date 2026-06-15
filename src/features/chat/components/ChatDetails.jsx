@@ -8,7 +8,10 @@ const ChatDetails = ({
   selectedChat,
   customScrollbarClass,
   toggleSidebar,
-  onLeaveRoom
+  onLeaveRoom,
+  currentUserId,        // 로그인한 사용자 ID
+  isCurrentUserHost,    // 현재 사용자가 방장인지 여부
+  onKickParticipant     // 강퇴 핸들러 함수
 }) => {
   const isOpen = showParticipants || showDetails;
 
@@ -73,9 +76,17 @@ const ChatDetails = ({
                         <Crown className="w-4 h-4 text-amber-500 fill-amber-500" />
                       )}
                     </div>
-                    <button className="text-gray-300 hover:text-rose-500">
-                      <Ban className="w-5 h-5" />
-                    </button>
+
+                    {/* 내가 방장이고, 본인이 아닐 때만 강퇴(Ban) 아이콘 표시 */}
+                    {isCurrentUserHost && String(memberId) !== String(currentUserId) && (
+                      <button
+                        onClick={() => onKickParticipant(memberId, nickname)}
+                        className="text-gray-300 hover:text-rose-500 transition-colors"
+                        title="추방하기"
+                      >
+                        <Ban className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                 );
               })}
