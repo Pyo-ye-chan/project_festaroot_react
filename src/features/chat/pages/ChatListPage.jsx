@@ -3,11 +3,89 @@ import useChatStore from '../../../store/useChatStore';
 import ChatSidebar from '../components/ChatSidebar';
 import ChatWindow from '../components/ChatWindow';
 import ChatDetails from '../components/ChatDetails';
+import CommunitySidebar from '../../community/components/CommunitySidebar';
+import gatheringApi from '../../../api/gatheringApi';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const ChatListPage = () => {
-  const openFloatingChat = useChatStore(state => state.openFloatingChat);
-  const [selectedChatId, setSelectedChatId] = useState(null);
+  const [participants, setParticipants] = useState([]);
+  const [roomDetail, setRoomDetail] = useState(null); // 💡 백엔드에서 긁어올 리얼 상세정보 보관소 추가
+  const { roomId } = useParams();
+  const navigate = useNavigate();
+
+  const {
+    activeChatId,
+    setActiveChatId,
+    floatingChatIds,
+    chatRooms,
+    setChatRooms,
+    connectWebSocket,
+    subscribeToRoom,
+    fetchChatHistory,
+    messagesByRoom,
+    sendMessage,
+    openFloatingChat,
+    closeFloatingChat
+  } = useChatStore();
+
+  const [displayChatId, setDisplayChatId] = useState(null);
   const [message, setMessage] = useState('');
+
+  // 💡 방 변경 시, 참여자뿐만 아니라 실제 "모임 소개글/규칙"이 포함된 상세 데이터도 패치
+  useEffect(() => {
+    if (activeChatId) {
+      fetchChatHistory(activeChatId);
+      subscribeToRoom(activeChatId);
+
+      // 참여자 목록 패치
+      const fetchParticipants = async () => {
+        try {
+          const res = await gatheringApi.gatheringParticipants(activeChatId);
+          setParticipants(res || []);
+        } catch (e) {
+          console.error("참여자 목록 로드 실패", e);
+        }
+      };
+
+      // ✨ 모임 상세 원격 내용 패치 (오른쪽 레이어에 띄울 핵심 알맹이)
+      const fetchRoomDetail = async () => {
+        try {
+          const res = await gatheringApi.gatheringDetail(activeChatId);
+          setRoomDetail(res); // 백엔드 내부의 room_description 등이 완벽하게 탑재됨
+        } catch (e) {
+          console.error("모임 상세 내용 패치 실패", e);
+        }
+      };
+
+      fetchParticipants();
+      fetchRoomDetail();
+    }
+  }, [activeChatId, fetchChatHistory, subscribeToRoom]);
+
+  useEffect(() => {
+    if (activeChatId) {
+      setDisplayChatId(activeChatId);
+    } else {
+      const timer = setTimeout(() => {
+        setDisplayChatId(null);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [activeChatId]);
+
+  useEffect(() => {
+    if (roomId) {
+      const parsedRoomId = Number(roomId);
+      if (activeChatId !== parsedRoomId) {
+        setActiveChatId(parsedRoomId);
+      }
+    }
+  }, [roomId, activeChatId, setActiveChatId]);
+
+  const handleRoomClick = (id) => {
+    navigate(`/community/chat/${id}`);
+  };
+
   const [showParticipants, setShowParticipants] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
@@ -26,19 +104,48 @@ const ChatListPage = () => {
       setShowParticipants(!showParticipants);
       setShowDetails(false);
     } else {
-      if (selectedChat?.type === 'private') return;
+      if (selectedChat?.type?.toUpperCase() === 'PRIVATE') return;
       setShowDetails(!showDetails);
       setShowParticipants(false);
     }
   };
 
-  const chatRooms = [
-    { id: 1, type: 'festival', title: '한강 달빛 야시장 같이 가실 분? 🌙', lastMessage: '6시에 여의나루역에서 볼까요?', time: '오후 2:36', unreadCount: 3, avatar: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=200', date: '2026.06.01 - 06.07', location: '서울 한강공원' },
-    { id: 2, type: 'festival', title: '경복궁 야간개장 티켓팅 성공 기원방 🏯', lastMessage: '내일 오후 2시 오픈이래요!', time: '오후 1:45', unreadCount: 0, avatar: 'https://images.unsplash.com/photo-1467307983825-619715426c70?auto=format&fit=crop&q=80&w=200', date: '2026.06.15 - 07.15', location: '서울 경복궁' },
-    { id: 3, type: 'group', title: '전국 축제 도장깨기 모임 🚌', lastMessage: '다음 주는 어디로 갈까요?', time: '오전 11:20', unreadCount: 12, avatar: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=200' },
-    { id: 4, type: 'group', title: '부산 불꽃축제 사진 동호회 🎆', lastMessage: '마린시티 쪽도 괜찮나요?', time: '어제', unreadCount: 0, avatar: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=200' },
-    { id: 5, type: 'private', title: '김철수님', lastMessage: '오늘 축제 재밌었어요!', time: '오전 09:12', unreadCount: 0, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' },
-  ];
+  useEffect(() => {
+    const fetchMyChatRooms = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const userId = user?.userId || user?.id || user?.member_id;
+        if (!userId) return;
+
+        const responseData = await gatheringApi.getJoinedGatherings(userId, 1, 100, '전체');
+        const rawRooms = Array.isArray(responseData) ? responseData : (responseData.list || []);
+
+        const formattedRooms = rawRooms.map(room => ({
+          id: room.room_id,
+          type: room.room_type,
+          title: room.room_title,
+          description: room.room_description,
+          room_image: room.room_image,
+          current_count: room.current_count,
+          max_capacity: room.max_capacity,
+          nickname: room.nickname,
+          profile_image_url: room.profile_image_url
+        }));
+
+        setChatRooms(formattedRooms);
+      } catch (error) {
+        console.error("채팅방 목록 로드 실패:", error);
+      }
+    };
+    fetchMyChatRooms();
+  }, [setChatRooms]);
+
+  const selectedChat = chatRooms.find(c => c.id === (activeChatId || displayChatId));
+
+  // 실시간으로 들고온 상세 정보를 깔끔하게 덧씌웁니다.
+  const detailedChat = selectedChat
+    ? { ...selectedChat, ...roomDetail }
+    : null;
 
   const sections = [
     { id: 'festival', label: '축제 채팅' },
@@ -46,82 +153,87 @@ const ChatListPage = () => {
     { id: 'private', label: '1:1 채팅' },
   ];
 
-  const [messages, setMessages] = useState([
-    { id: 1, sender: '김철수', text: '안녕하세요! 이번 주말에 다들 가시나요?', time: '오후 2:30', isMe: false },
-    { id: 2, sender: '이영희', text: '네! 저도 참여하고 싶어요 ㅎㅎ', time: '오후 2:31', isMe: false },
-    { id: 3, sender: '박지민', text: '혹시 몇시쯤 모이는 게 좋을까요?', time: '오후 2:33', isMe: false },
-    { id: 4, sender: '나', text: '저는 6시쯤이 좋을 것 같아요! 노을도 보고 야시장도 구경하구요.', time: '오후 2:35', isMe: true },
-    { id: 5, sender: '이영희', text: '좋아요! 6시에 여의나루역에서 볼까요?', time: '오후 2:36', isMe: false },
-  ]);
+  const messages = messagesByRoom[activeChatId] || [];
 
-  const participants = [
-    { id: 1, name: '김철수', status: 'online', role: '방장' },
-    { id: 2, name: '이영희', status: 'online', role: '멤버' },
-    { id: 6, name: '나', status: 'online', role: '나' },
-  ];
+  const setMessages = (updater) => {
+    if (Array.isArray(updater)) {
+      const lastAddedMsg = updater[updater.length - 1];
+      if (lastAddedMsg && lastAddedMsg.type === 'file') {
+        sendMessage(activeChatId, lastAddedMsg.text, 'file');
+      }
+    }
+  };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!message.trim()) return;
-    setMessages([...messages, { id: messages.length + 1, sender: '나', text: message, time: '방금', isMe: true }]);
+    sendMessage(activeChatId, message, 'TALK');
     setMessage('');
   };
-
-  const selectedChat = chatRooms.find(c => c.id === selectedChatId);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, selectedChatId]);
+  }, [messages, activeChatId, displayChatId]);
 
   const customScrollbarClass = "[&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-300";
   const scrollbarHideClass = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]";
 
   return (
-    <div className="flex h-[calc(100vh-120px)] bg-gray-50 font-['Pretendard']">
-      <div className="max-w-7xl mx-auto w-full flex bg-white shadow-xl overflow-hidden md:my-10 md:rounded-[2.5rem] border border-gray-100">
-        
-        <ChatSidebar 
-          sections={sections}
-          expandedSections={expandedSections}
-          toggleSection={toggleSection}
-          chatRooms={chatRooms}
-          selectedChatId={selectedChatId}
-          setSelectedChatId={setSelectedChatId}
-          customScrollbarClass={customScrollbarClass}
-        />
+    <div className="min-h-screen bg-[#F8F9FD] font-['Pretendard'] pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <aside className="lg:col-span-3">
+            <CommunitySidebar />
+          </aside>
 
-        {selectedChatId ? (
-          <div className="hidden md:flex flex-grow min-w-0 bg-[#F8F9FF]">
-            <ChatWindow 
-              selectedChat={selectedChat}
-              setSelectedChatId={setSelectedChatId}
-              openFloatingChat={openFloatingChat}
-              toggleSidebar={toggleSidebar}
-              showParticipants={showParticipants}
-              messages={messages}
-              setMessages={setMessages}
-              scrollRef={scrollRef}
-              scrollbarHideClass={scrollbarHideClass}
-              message={message}
-              setMessage={setMessage}
-              handleSendMessage={handleSendMessage}
-            />
+          <main className="lg:col-span-9">
+            <div className="flex h-[750px] bg-white shadow-xl overflow-hidden rounded-[2.5rem] border border-gray-100">
+              <ChatSidebar
+                sections={sections}
+                expandedSections={expandedSections}
+                toggleSection={toggleSection}
+                chatRooms={chatRooms}
+                selectedChatId={activeChatId}
+                setSelectedChatId={handleRoomClick}
+                customScrollbarClass={customScrollbarClass}
+              />
 
-            <ChatDetails 
-              showParticipants={showParticipants}
-              showDetails={showDetails}
-              participants={participants}
-              selectedChat={selectedChat}
-              customScrollbarClass={customScrollbarClass}
-            />
-          </div>
-        ) : (
-          <div className="flex flex-grow items-center justify-center text-gray-400 font-bold">
-            채팅방을 선택해주세요.
-          </div>
-        )}
+              <div className={`hidden md:flex flex-grow min-w-0 bg-[#F8F9FF] relative overflow-hidden transition-all duration-500 ease-in-out ${activeChatId ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+                style={{ flexGrow: activeChatId ? 1 : 0.00001, minWidth: activeChatId ? '0' : '0', width: activeChatId ? 'auto' : '0' }}>
+                {selectedChat && (
+                  <div className="w-full h-full flex">
+                    <ChatWindow
+                      selectedChat={detailedChat}
+                      setSelectedChatId={setActiveChatId}
+                      openFloatingChat={openFloatingChat}
+                      toggleSidebar={toggleSidebar}
+                      showParticipants={showParticipants}
+                      messages={messages}
+                      sendMessage={sendMessage}
+                      scrollRef={scrollRef}
+                      scrollbarHideClass={scrollbarHideClass}
+                      message={message}
+                      setMessage={setMessage}
+                      handleSendMessage={handleSendMessage}
+                      participants={participants}
+                    />
+
+                    <ChatDetails
+                      showParticipants={showParticipants}
+                      showDetails={showDetails}
+                      participants={participants}
+                      selectedChat={detailedChat}
+                      customScrollbarClass={customScrollbarClass}
+                      toggleSidebar={toggleSidebar}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );

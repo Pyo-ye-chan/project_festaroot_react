@@ -107,7 +107,7 @@ const festivalService = {
   // 로그인한 유저의 찜 목록 조회
   getMyFestivalLikedIds: async (userId) => {
     try {
-      const response = await maxios.get(`${BASE_PATH}/likeList`, { headers: { 'user-id': userId } });
+      const response = await maxios.get(`${BASE_PATH}/likeList`);
       return response.data; // 백엔드가 준 { likedFestivalIds: [...] }를 리턴
     } catch (error) {
       console.error('Error fetching my liked festival IDs:', error);

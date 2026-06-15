@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import festivalService from '../../../api/festivalService';
-import RegionService from '../../../api/regionService';
+import RegionService from '../../../api/regionService.js';
 import useAuthStore from '../../../store/useAuthStore';
 import { saveActivityLog } from '../../../api/activityApi';
 import useFestivalLikeStore from '../../../store/useFestivalLikeStore';
