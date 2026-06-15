@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageCircle, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageCircle, Search, ChevronDown, ChevronUp, Users } from 'lucide-react';
 
 const ChatSidebar = ({
   sections,
@@ -12,11 +12,10 @@ const ChatSidebar = ({
 }) => {
   // 임시 이미지 기본 생성 함수
   const getDefaultRoomImage = (title) => {
-    // return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(title || 'Room')}`; // 모임 이름으로
     return 'https://picsum.photos/seed/gathering/100/100';
   };
 
-  // 1:1 채팅방만 필터링 (대소문자 및 Property 명칭 방어)
+  // 1:1 채팅방만 필터링
   const privateRooms = chatRooms.filter(
     (room) =>
       room.type?.toUpperCase() === 'PRIVATE' ||
@@ -58,12 +57,11 @@ const ChatSidebar = ({
                   </div>
                 ) : (
                   chatRooms
-                    // 💡 type과 room_type 모두 대응할 수 있도록 수정
                     .filter(c => (c.type || c.room_type)?.toLowerCase() === section.id)
                     .map((chat) => {
-                      // 💡 id와 room_id 바인딩 방어 코드
                       const currentRoomId = chat.id || chat.room_id;
                       const currentRoomTitle = chat.title || chat.room_title;
+                      const roomType = (chat.type || chat.room_type)?.toUpperCase();
 
                       return (
                         <button
@@ -74,10 +72,12 @@ const ChatSidebar = ({
                             )
                           }
                           className={`w-full px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition-all border-l-4 ${selectedChatId === currentRoomId
-                              ? 'bg-purple-50/50 border-purple-600'
-                              : 'border-transparent'
+                            ? 'bg-purple-50/50 border-purple-600'
+                            : 'border-transparent'
                             }`}
                         >
+
+                          {/* 핵심 수정: 배지 위치 레이아웃을 부모 relative 공간 안으로 격리 */}
                           <div className="relative flex-shrink-0">
                             <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden">
                               <img
@@ -90,13 +90,33 @@ const ChatSidebar = ({
                                 }}
                               />
                             </div>
+
+                            {/* 읽지 않은 메시지 수 배지 위치를 이미지 우상단 딱 맞는 곳으로 이동 완료 */}
+                            {chat.unread_count > 0 && (
+                              <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white ring-2 ring-white select-none animate-bounce z-10">
+                                {chat.unread_count}
+                              </span>
+                            )}
                           </div>
 
                           <div className="min-w-0 flex-grow text-left">
-                            <h3 className="font-black text-gray-900 text-base truncate">
-                              {currentRoomTitle}
-                            </h3>
-                            <p className="text-sm font-medium text-gray-500 truncate">
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="font-black text-gray-900 text-base truncate flex-grow">
+                                {currentRoomTitle}
+                              </h3>
+
+                              {/* 1:1 채팅이 아닐 때만 현재인원/최대인원 배지 표시 */}
+                              {roomType !== 'PRIVATE' && chat.current_count !== undefined && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full flex-shrink-0 select-none">
+                                  <Users className="w-3 h-3" />
+                                  <span>
+                                    {chat.current_count}
+                                    {chat.max_capacity ? `/${chat.max_capacity}` : ''}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium text-gray-500 truncate mt-0.5">
                               {chat.lastMessage}
                             </p>
                           </div>

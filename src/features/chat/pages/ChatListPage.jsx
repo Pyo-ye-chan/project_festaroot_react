@@ -9,7 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 const ChatListPage = () => {
   const [participants, setParticipants] = useState([]);
-  const [roomDetail, setRoomDetail] = useState(null); // 💡 백엔드에서 긁어올 리얼 상세정보 보관소 추가
+  const [roomDetail, setRoomDetail] = useState(null);
   const { roomId } = useParams();
   const navigate = useNavigate();
 
@@ -31,6 +31,13 @@ const ChatListPage = () => {
   const [displayChatId, setDisplayChatId] = useState(null);
   const [message, setMessage] = useState('');
 
+  // 로컬스토리지에서 로그인한 유저 ID 추출
+  const user = JSON.parse(localStorage.getItem('user'));
+  const userId = user?.userId || user?.id || user?.member_id;
+
+  // 선택된 채팅 및 상세정보 매핑 변수를 함수들이 참조
+  const selectedChat = chatRooms.find(c => Number(c.id) === Number(activeChatId || displayChatId));
+  const detailedChat = selectedChat ? { ...selectedChat, ...roomDetail } : null;
 
   // 컴포넌트 마운트 시 웹소켓 서버 최초 연결
   useEffect(() => {
@@ -40,8 +47,11 @@ const ChatListPage = () => {
   // 방 변경 시, 참여자뿐만 아니라 실제 "모임 소개글/규칙"이 포함된 상세 데이터도 패치
   useEffect(() => {
     if (activeChatId) {
-      fetchChatHistory(activeChatId);
+      fetchChatHistory(activeChatId, userId);
       subscribeToRoom(activeChatId);
+
+      // 채팅 읽음 처리 요청 보내기
+      gatheringApi.updateReadStatus(activeChatId, userId);
 
       // 참여자 목록 패치
       const fetchParticipants = async () => {
@@ -66,7 +76,30 @@ const ChatListPage = () => {
       fetchParticipants();
       fetchRoomDetail();
     }
-  }, [activeChatId, fetchChatHistory, subscribeToRoom]);
+  }, [activeChatId, userId, fetchChatHistory, subscribeToRoom]);
+
+  // 채팅방(모임) 나가기 핸들러 함수
+  const handleLeaveRoom = async () => {
+    if (!activeChatId || !userId) return;
+
+    if (!window.confirm("정말 이 채팅방(모임)에서 나가시겠습니까?")) return;
+
+    try {
+      // 기존에 만들어두신 모임 나가기 API 연동
+      await gatheringApi.leaveGathering(activeChatId, userId);
+      alert("채팅방에서 퇴장하였습니다.");
+
+      // 1. 현재 열려있는 채팅창 닫기 및 주소 초기화
+      setActiveChatId(null);
+      navigate('/community/chat');
+
+      // 2. 왼쪽 사이드바의 채팅방 목록(chatRooms)에서 나간 방 즉시 제거하여 리렌더링
+      setChatRooms(chatRooms.filter((room) => room.id !== activeChatId));
+    } catch (error) {
+      console.error("채팅방 나가기 실패:", error);
+      alert("채팅방을 나가는 도중 오류가 발생했습니다.");
+    }
+  };
 
   useEffect(() => {
     if (activeChatId) {
@@ -127,7 +160,7 @@ const ChatListPage = () => {
         const rawRooms = Array.isArray(responseData) ? responseData : (responseData.list || []);
 
         const formattedRooms = rawRooms.map(room => ({
-          id: room.room_id,
+          id: Number(room.room_id),
           type: room.room_type,
           title: room.room_title,
           description: room.room_description,
@@ -135,7 +168,9 @@ const ChatListPage = () => {
           current_count: room.current_count,
           max_capacity: room.max_capacity,
           nickname: room.nickname,
-          profile_image_url: room.profile_image_url
+          profile_image_url: room.profile_image_url,
+          unread_count: room.unread_count || 0, // 미확인 메세지 수
+          lastMessage: room.last_message || room.LAST_MESSAGE || '대화 내용이 없습니다.' // 백엔드에서 넘겨준 마지막 메시지 필드를 프론트 상태에 매핑 
         }));
 
         setChatRooms(formattedRooms);
@@ -145,13 +180,6 @@ const ChatListPage = () => {
     };
     fetchMyChatRooms();
   }, [setChatRooms]);
-
-  const selectedChat = chatRooms.find(c => c.id === (activeChatId || displayChatId));
-
-  // 실시간으로 들고온 상세 정보를 깔끔하게 덧씌웁니다.
-  const detailedChat = selectedChat
-    ? { ...selectedChat, ...roomDetail }
-    : null;
 
   const sections = [
     { id: 'festival', label: '축제 채팅' },
@@ -185,6 +213,20 @@ const ChatListPage = () => {
 
   const customScrollbarClass = "[&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-300";
   const scrollbarHideClass = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]";
+
+  // 활성화된 채팅방이 바뀌면 해당 방의 unread_count를 0으로 리셋 (무한루프 방지 조건 포함)
+  useEffect(() => {
+    if (!activeChatId) return;
+
+    const targetRoom = chatRooms.find(r => r.id === Number(activeChatId));
+    // 해당 방이 존재하고, 읽지 않은 메시지가 1개 이상일 때만 상태 업데이트 트리거
+    if (targetRoom && targetRoom.unread_count > 0) {
+      const updated = chatRooms.map(room =>
+        room.id === Number(activeChatId) ? { ...room, unread_count: 0 } : room
+      );
+      setChatRooms(updated);
+    }
+  }, [activeChatId, chatRooms, setChatRooms]);
 
   return (
     <div className="min-h-screen bg-[#F8F9FD] font-['Pretendard'] pb-20">
@@ -233,6 +275,7 @@ const ChatListPage = () => {
                       selectedChat={detailedChat}
                       customScrollbarClass={customScrollbarClass}
                       toggleSidebar={toggleSidebar}
+                      onLeaveRoom={handleLeaveRoom}
                     />
                   </div>
                 )}

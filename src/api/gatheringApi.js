@@ -114,6 +114,15 @@ const gatheringApi = {
             params: { owner_id }
         });
         return response.data;
+    },
+
+    // 채팅 읽음 상태 갱신 연동 수정 완료
+    // BASE_PATH(/api/gathering) 대신 ChatRestController 주소인 /api/chat으로 직접 지정하고, params로 activeChatId를 전송
+    updateReadStatus: async (activeChatId, userId) => {
+        const response = await maxios.get(`/api/chat/${userId}`, {
+            params: { activeChatId: activeChatId }
+        });
+        return response.data;
     }
 };
 
