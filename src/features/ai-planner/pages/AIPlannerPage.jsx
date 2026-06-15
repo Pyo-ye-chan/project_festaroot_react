@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { maxios } from '../../../api/axiosApi';
 import useAuthStore from '../../../store/useAuthStore';
 import { getMemberProfile } from '../../../api/memberApi';
 import { saveActivityLog } from '../../../api/activityApi';
-import { createAIPlanner } from '../../../api/aiApi';
+import {
+  createAIPlanner,
+  getMyAIPlanners,
+  getAIPlannerDetail,
+  deleteAIPlanner
+} from '../../../api/aiApi';
 
 const AIPlannerPage = () => {
   const { user, isLoggedIn } = useAuthStore();
@@ -16,7 +20,7 @@ const AIPlannerPage = () => {
   const [userInput, setUserInput] = useState(''); // 사용자의 한 마디
   const [feedbackMap, setFeedbackMap] = useState({}); // contentId -> 'LIKE' | 'DISLIKE'
   const [showDislikeReason, setShowDislikeReason] = useState(null); // feedback 중인 축제 ID
-  
+
   const [userDetails, setUserDetails] = useState(null); // 유저 상세 정보
   const [isLoadingContext, setIsLoadingContext] = useState(false);
 
@@ -24,14 +28,13 @@ const AIPlannerPage = () => {
   const [showPlannerModal, setShowPlannerModal] = useState(false);
   const [plannerForm, setPlannerForm] = useState({
     visitDate: '',
-    startLocation: '',
     peopleCount: 2,
     companionType: 'FRIEND',
-    transportType: 'PUBLIC',
-    startTime: '10:00',
-    endTime: '18:00',
+    courseStyle: 'RELAXED',
     extraRequest: ''
   });
+
+  const [routeNotice, setRouteNotice] = useState('');
 
   const [itineraryList, setItineraryList] = useState([]);
   const [plannerId, setPlannerId] = useState(null);
@@ -142,15 +145,23 @@ const AIPlannerPage = () => {
   // 일정 단계 타입에 따른 아이콘 반환 함수
   const getStepIcon = (type) => {
     switch (type) {
-      case 'MOVE': return '🚶';
       case 'FESTIVAL': return '🎪';
       case 'FOOD': return '🍽️';
-      case 'CAFE': return '☕';
       case 'TOUR': return '📸';
       case 'CULTURE': return '🏛️';
-      case 'PARKING': return '🅿️';
+      case 'REST': return '🌿';
       default: return '📍';
     }
+  };
+
+  const getFestivalContentId = (festival) => {
+    return (
+      festival?.CONTENT_ID ||
+      festival?.content_id ||
+      festival?.contentId ||
+      festival?.CONTENTID ||
+      festival?.contentid
+    );
   };
 
   // 유저의 생년월일을 바탕으로 연령대 계산
@@ -164,13 +175,13 @@ const AIPlannerPage = () => {
 
   // 실제 데이터를 기반으로 컨텍스트 구성
   const userContext = {
-    profile: { 
-      age: getAgeGroup(userDetails?.member?.birthdate), 
-      gender: userDetails?.member?.gender === 'M' ? '남성' : userDetails?.member?.gender === 'F' ? '여성' : (userDetails?.member?.gender || '성별 미정') 
+    profile: {
+      age: getAgeGroup(userDetails?.member?.birthdate),
+      gender: userDetails?.member?.gender === 'M' ? '남성' : userDetails?.member?.gender === 'F' ? '여성' : (userDetails?.member?.gender || '성별 미정')
     },
-    interests: { 
-      regions: userDetails?.interestRegions?.map(r => r.region_name) || [], 
-      themes: userDetails?.interestThemes?.map(t => t.theme_name) || [] 
+    interests: {
+      regions: userDetails?.interestRegions?.map(r => r.region_name) || [],
+      themes: userDetails?.interestThemes?.map(t => t.theme_name) || []
     },
     likedFestivals: userDetails?.likedFestivals || [],
     recentHistory: (userDetails?.recentLogs || []).map((log, idx) => ({
@@ -185,11 +196,9 @@ const AIPlannerPage = () => {
     setShowRecommendations(false);
     setSelectedFestival(null);
     setShowItinerary(false);
-    
+
     try {
-      const resp = await maxios.get('/ai/recommendations', {
-        params: { userInput: userInput.trim() }
-      });
+      const resp = await getAIRecommendations(userInput.trim());
       setRecommendList(resp.data || []);
       setShowRecommendations(true);
     } catch (error) {
@@ -202,20 +211,20 @@ const AIPlannerPage = () => {
 
   const handleSelectFestival = (festival) => {
     setSelectedFestival(festival);
-    // 기존 임시 일정 생성 제거
+
     setShowItinerary(false);
     setItineraryList([]);
     setPlannerWeather(null);
     setPlannerId(null);
+    setRouteNotice('');
 
-    // 플래너 폼 초기화 (방문 날짜와 추가 요청사항만 초기화)
     setPlannerForm(prev => ({
       ...prev,
       visitDate: '',
+      courseStyle: 'RELAXED',
       extraRequest: ''
     }));
 
-    // 플래너 설정 모달 열기
     setShowPlannerModal(true);
   };
 
@@ -226,58 +235,70 @@ const AIPlannerPage = () => {
       return;
     }
 
+    const contentId = getFestivalContentId(selectedFestival);
+
+    if (!contentId) {
+      console.log('selectedFestival:', selectedFestival);
+      alert('축제 contentId를 찾을 수 없습니다.');
+      return;
+    }
+
     if (!plannerForm.visitDate) {
       alert('방문 날짜를 선택해주세요.');
-      return;
-    }
-
-    if (!plannerForm.startLocation.trim()) {
-      alert('출발지를 입력해주세요.');
-      return;
-    }
-
-    if (!plannerForm.startTime || !plannerForm.endTime) {
-      alert('시작 시간과 종료 시간을 선택해주세요.');
       return;
     }
 
     setIsGenerating(true);
     setShowItinerary(false);
     setItineraryList([]);
+    setPlannerId(null);
+    setPlannerWeather(null);
+    setRouteNotice('');
 
     try {
       const response = await createAIPlanner({
-        contentId: selectedFestival.CONTENT_ID,
-        visitDate: plannerForm.visitDate,
-        startLocation: plannerForm.startLocation,
-        peopleCount: Number(plannerForm.peopleCount),
-        companionType: plannerForm.companionType,
-        transportType: plannerForm.transportType,
-        startTime: plannerForm.startTime,
-        endTime: plannerForm.endTime,
-        userInput: plannerForm.extraRequest,
-        ragQuery: userInput,
-        recommendationReason: selectedFestival.recommendation_reason
+        content_id: Number(contentId),
+        visit_date: plannerForm.visitDate,
+        people_count: Number(plannerForm.peopleCount),
+        companion_type: plannerForm.companionType,
+        course_style: plannerForm.courseStyle,
+        user_input: plannerForm.extraRequest,
+        rag_query: userInput,
+        recommendation_reason: selectedFestival.recommendation_reason
       });
 
       const data = response?.data ?? response;
+      console.log('AI 코스 생성 응답:', data);
 
       if (data.success) {
-        setPlannerId(data.plannerId);
-        setPlannerWeather(data.weather || null);
-        setItineraryList(data.steps || []);
-        setShowPlannerModal(false); // 모달 닫기
-        setShowItinerary(true); // 일정 표시
+        const normalizedSteps = (data.steps || []).map((step) => ({
+          ...step,
+          time: step.time || step.time_label,
+          placeName: step.placeName || step.place_name,
+          kakaoPlaceUrl: step.kakaoPlaceUrl || step.kakao_place_url,
+          sourceContentId: step.sourceContentId || step.source_content_id,
+          contentTypeId: step.contentTypeId || step.content_type_id,
+          firstImage: step.firstImage || step.first_image,
+          sourceApi: step.sourceApi || step.source_api
+        }));
+
+        setPlannerId(data.plannerId || data.planner_id);
+        setPlannerWeather(data.weather_summary || data.weatherSummary || null);
+        setRouteNotice(data.route_notice || data.routeNotice || '');
+        setItineraryList(normalizedSteps);
+        setShowPlannerModal(false);
+        setShowItinerary(true);
       } else {
-        alert(data.message || 'AI 플래너 생성에 실패했습니다.');
+        alert(data.message || 'AI 축제 코스 생성에 실패했습니다.');
       }
     } catch (error) {
-      console.error('AI 플래너 생성 실패:', error);
-      alert(error.response?.data?.message || 'AI 플래너 생성 중 오류가 발생했습니다.');
+      console.error('AI 축제 코스 생성 실패:', error);
+      alert(error.response?.data?.message || 'AI 축제 코스 생성 중 오류가 발생했습니다.');
     } finally {
       setIsGenerating(false);
     }
   };
+
 
   // 플래너 폼 입력 변경 핸들러
   const handlePlannerFormChange = (e) => {
@@ -303,14 +324,14 @@ const AIPlannerPage = () => {
         searchQuery: reason || userInput,
         type: type === 'LIKE' ? 'AI_LIKE' : 'AI_DISLIKE' // 이전 버전에서 동작했던 필드명
       };
-      
+
       await saveActivityLog(activityData);
-      
+
       setFeedbackMap(prev => ({
         ...prev,
         [contentId]: type
       }));
-      
+
       if (type === 'DISLIKE') {
         setShowDislikeReason(null);
       }
@@ -328,14 +349,14 @@ const AIPlannerPage = () => {
             <span>✨</span> AI RAG 기반 맞춤형 여행 설계
           </div>
           <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-            당신만을 위한<br/>가장 완벽한 축제 여행
+            당신만을 위한<br />가장 완벽한 축제 여행
           </h1>
-          
+
           <div className="max-w-2xl mx-auto pt-4">
             <div className="bg-white rounded-[32px] p-2 shadow-2xl shadow-indigo-900/40 border border-white/20 flex flex-col md:flex-row items-stretch gap-2">
               <div className="flex-grow relative group">
                 <div className="absolute left-6 top-1/2 -translate-y-1/2 text-xl text-purple-600 opacity-50 group-focus-within:opacity-100 transition-opacity">🤖</div>
-                <input 
+                <input
                   type="text"
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
@@ -344,7 +365,7 @@ const AIPlannerPage = () => {
                   onKeyDown={(e) => e.key === 'Enter' && handleRecommend()}
                 />
               </div>
-              <button 
+              <button
                 onClick={handleRecommend}
                 disabled={isRecommending}
                 className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-10 py-5 rounded-[26px] font-black text-lg shadow-lg hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 shrink-0"
@@ -352,7 +373,7 @@ const AIPlannerPage = () => {
                 {isRecommending ? '분석 중...' : '추천받기 🚀'}
               </button>
             </div>
-            
+
             {/* Quick Keyword Chips */}
             <div className="flex flex-wrap justify-center gap-2 mt-6">
               {['#아이와함께', '#조용한', '#먹거리풍부', '#수도권', '#이색체험', '#가족여행'].map(chip => (
@@ -376,7 +397,7 @@ const AIPlannerPage = () => {
             <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
               <span className="text-2xl">🧠</span> 분석 데이터 소스
             </h3>
-            
+
             <div className="space-y-6">
               <div>
                 <p className="text-xs font-black text-purple-600 uppercase tracking-wider mb-3">사용자 프로필</p>
@@ -388,7 +409,7 @@ const AIPlannerPage = () => {
               </div>
 
               <div>
-                <button 
+                <button
                   onClick={() => setIsRegionsOpen(!isRegionsOpen)}
                   className="w-full flex items-center justify-between text-xs font-black text-purple-600 uppercase tracking-wider mb-3 group"
                 >
@@ -411,7 +432,7 @@ const AIPlannerPage = () => {
               </div>
 
               <div>
-                <button 
+                <button
                   onClick={() => setIsThemesOpen(!isThemesOpen)}
                   className="w-full flex items-center justify-between text-xs font-black text-purple-600 uppercase tracking-wider mb-3 group"
                 >
@@ -434,7 +455,7 @@ const AIPlannerPage = () => {
               </div>
 
               <div>
-                <button 
+                <button
                   onClick={() => setIsLikesOpen(!isLikesOpen)}
                   className="w-full flex items-center justify-between text-xs font-black text-purple-600 uppercase tracking-wider mb-3 group"
                 >
@@ -464,12 +485,11 @@ const AIPlannerPage = () => {
                     {userContext.recentHistory.slice(0, 3).map((history, idx) => (
                       <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-gray-100">
                         <span className="text-[11px] font-bold text-gray-700 truncate max-w-[120px]">{history.title}</span>
-                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
-                          history.type === '조회' ? 'bg-blue-100 text-blue-600' : 
-                          history.type === '검색' ? 'bg-amber-100 text-amber-600' : 
-                          history.type === '지도' ? 'bg-emerald-100 text-emerald-600' : 
-                          'bg-gray-100 text-gray-600'
-                        }`}>
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${history.type === '조회' ? 'bg-blue-100 text-blue-600' :
+                          history.type === '검색' ? 'bg-amber-100 text-amber-600' :
+                            history.type === '지도' ? 'bg-emerald-100 text-emerald-600' :
+                              'bg-gray-100 text-gray-600'
+                          }`}>
                           {history.type}
                         </span>
                       </div>
@@ -516,7 +536,7 @@ const AIPlannerPage = () => {
                     <p className="text-lg font-black text-gray-800 leading-tight">
                       {userInput ? (
                         <>
-                          <span className="text-purple-600">"{userInput}"</span><br/>조건에 맞춰 분석 중...
+                          <span className="text-purple-600">"{userInput}"</span><br />조건에 맞춰 분석 중...
                         </>
                       ) : '사용자 취향 분석 중...'}
                     </p>
@@ -526,14 +546,13 @@ const AIPlannerPage = () => {
               ) : (
                 <div className="grid grid-cols-1 gap-6">
                   {recommendList.map((item) => (
-                    <div 
-                      key={item.CONTENT_ID} 
+                    <div
+                      key={item.CONTENT_ID}
                       onClick={() => handleSelectFestival(item)}
-                      className={`group cursor-pointer p-6 rounded-[32px] border-2 transition-all duration-300 ${
-                        selectedFestival?.CONTENT_ID === item.CONTENT_ID 
-                        ? 'border-purple-600 bg-purple-50/30' 
+                      className={`group cursor-pointer p-6 rounded-[32px] border-2 transition-all duration-300 ${selectedFestival?.CONTENT_ID === item.CONTENT_ID
+                        ? 'border-purple-600 bg-purple-50/30'
                         : 'border-transparent bg-slate-50 hover:border-purple-200 hover:bg-white hover:shadow-lg'
-                      }`}
+                        }`}
                     >
                       <div className="flex flex-col md:flex-row gap-6">
                         <div className="relative w-full md:w-48 h-48 shrink-0 rounded-2xl overflow-hidden">
@@ -549,48 +568,46 @@ const AIPlannerPage = () => {
                         <div className="flex-grow">
                           <div className="flex justify-between items-start">
                             <h4 className="text-xl font-black text-gray-800 group-hover:text-purple-600 transition-colors">{item.TITLE}</h4>
-                            
+
                             {/* Feedback Buttons */}
                             <div className="flex gap-2 shrink-0 ml-4">
-                              <button 
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleFeedback(item.CONTENT_ID, 'LIKE');
                                 }}
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                                  feedbackMap[item.CONTENT_ID] === 'LIKE'
+                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${feedbackMap[item.CONTENT_ID] === 'LIKE'
                                   ? 'bg-blue-500 text-white shadow-lg'
                                   : 'bg-white text-gray-400 hover:text-blue-500 border border-gray-100'
-                                }`}
+                                  }`}
                               >
                                 👍
                               </button>
                               <div className="relative">
-                                <button 
+                                <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setShowDislikeReason(showDislikeReason === item.CONTENT_ID ? null : item.CONTENT_ID);
                                   }}
-                                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                                    feedbackMap[item.CONTENT_ID] === 'DISLIKE'
+                                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${feedbackMap[item.CONTENT_ID] === 'DISLIKE'
                                     ? 'bg-red-500 text-white shadow-lg'
                                     : 'bg-white text-gray-400 hover:text-red-500 border border-gray-100'
-                                  }`}
+                                    }`}
                                 >
                                   👎
                                 </button>
-                                
+
                                 {/* Dislike Reason Modal (Small Popover) */}
                                 {showDislikeReason === item.CONTENT_ID && (
                                   <div className="absolute right-0 top-12 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50 animate-in zoom-in-95 duration-200">
                                     <p className="text-xs font-black text-gray-800 mb-3">어떤 점이 별로였나요? 🤔</p>
                                     <div className="flex flex-wrap gap-2">
                                       {[
-                                        '거리가 너무 멀어요', 
-                                        '취향이 아니에요', 
-                                        '이미 가봤어요', 
-                                        '주변 즐길거리가 없어요', 
-                                        '너무 북적거려요', 
+                                        '거리가 너무 멀어요',
+                                        '취향이 아니에요',
+                                        '이미 가봤어요',
+                                        '주변 즐길거리가 없어요',
+                                        '너무 북적거려요',
                                         '일정이 안 맞아요',
                                         '아이와 가기 별로예요',
                                         '테마가 지루해요'
@@ -615,7 +632,7 @@ const AIPlannerPage = () => {
 
                           <p className="text-xs text-gray-400 font-bold mt-2 flex items-center gap-1">📍 {item.ADDR1}</p>
                           <p className="text-sm text-gray-500 font-medium mt-3 line-clamp-3">{item.OVERVIEW}</p>
-                          
+
                           <div className="mt-4 p-4 bg-purple-50 rounded-2xl border border-purple-100">
                             <p className="text-[11px] font-black text-purple-600 uppercase mb-1 flex items-center gap-1">
                               ✨ AI의 추천 사유
@@ -632,7 +649,7 @@ const AIPlannerPage = () => {
                             }}
                             className="mt-4 w-full bg-purple-600 text-white py-3 rounded-2xl font-black hover:bg-purple-700 transition-all"
                           >
-                            이 축제로 AI 일정 만들기
+                            이 축제로 AI 코스 추천받기
                           </button>
                         </div>
                       </div>
@@ -648,17 +665,23 @@ const AIPlannerPage = () => {
             <section className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 animate-in fade-in slide-in-from-top-8 duration-700">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h3 className="text-2xl font-black text-gray-800">STEP 2. 맞춤형 여행 코스</h3>
+                  <h3 className="text-2xl font-black text-gray-800">STEP 2. 축제장 주변 추천 코스</h3>
                   <p className="text-sm text-gray-500 font-medium mt-1">
-                    <span className="text-purple-600 font-bold">[{selectedFestival?.TITLE}]</span> 기반의 최적 동선입니다.
+                    <span className="text-purple-600 font-bold">[{selectedFestival?.TITLE}]</span> 주변의 음식점·관광지·문화시설 추천 순서입니다.
                   </p>
                 </div>
               </div>
 
               {/* 날씨 요약 표시 */}
-              {plannerWeather?.summary && (
+              {plannerWeather && (
                 <div className="mb-6 p-4 rounded-2xl bg-blue-50 border border-blue-100 text-blue-700 text-sm font-bold">
-                  🌦 방문일 날씨 반영: {plannerWeather.summary}
+                  🌦 방문일 날씨 반영: {plannerWeather}
+                </div>
+              )}
+
+              {routeNotice && (
+                <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-100 text-amber-700 text-sm font-bold">
+                  ⚠️ {routeNotice}
                 </div>
               )}
 
@@ -676,8 +699,8 @@ const AIPlannerPage = () => {
                     <div className="absolute inset-0 flex items-center justify-center text-2xl">✨</div>
                   </div>
                   <div className="text-center space-y-2">
-                    <p className="text-xl font-black text-gray-800">AI가 일정을 설계하고 있습니다</p>
-                    <p className="text-sm text-gray-400 font-medium">실시간 데이터 분석 중입니다...</p>
+                    <p className="text-xl font-black text-gray-800">AI가 축제장 주변 코스를 구성하고 있습니다</p>
+                    <p className="text-sm text-gray-400 font-medium">날씨와 주변 장소 정보를 분석 중입니다...</p>
                   </div>
                 </div>
               ) : (
@@ -705,11 +728,22 @@ const AIPlannerPage = () => {
                               {step.placeName && <p className="text-xs text-gray-400 font-bold mt-2">📍 {step.placeName}</p>}
                               {step.address && <p className="text-xs text-gray-400 font-bold">{step.address}</p>}
                               {step.reason && <p className="text-xs text-purple-700 font-bold mt-2">💡 {step.reason}</p>}
+                              {step.distance != null && (
+                                <p className="text-xs text-emerald-600 font-bold mt-2">
+                                  📏 축제장 기준 약 {Math.round(Number(step.distance))}m
+                                </p>
+                              )}
+
+                              {step.sourceApi && (
+                                <p className="text-[10px] text-gray-400 font-bold mt-1">
+                                  출처: {step.sourceApi === 'TOUR_API' ? 'TourAPI 주변정보' : step.sourceApi}
+                                </p>
+                              )}
                               {step.kakaoPlaceUrl && (
-                                <a 
-                                  href={step.kakaoPlaceUrl} 
-                                  target="_blank" 
-                                  rel="noreferrer" 
+                                <a
+                                  href={step.kakaoPlaceUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
                                   className="text-xs text-blue-500 hover:underline mt-2 inline-block font-bold"
                                 >
                                   카카오맵에서 보기
@@ -735,8 +769,8 @@ const AIPlannerPage = () => {
                 {showRecommendations && recommendList.length === 0 ? '😢' : '🤖'}
               </div>
               <h3 className="text-2xl font-black text-gray-800 mb-4">
-                {showRecommendations && recommendList.length === 0 ? 
-                  "조건에 맞는 추천 축제가 없습니다." : 
+                {showRecommendations && recommendList.length === 0 ?
+                  "조건에 맞는 추천 축제가 없습니다." :
                   "나만을 위한 특별한 여행 준비"
                 }
               </h3>
@@ -744,7 +778,7 @@ const AIPlannerPage = () => {
                 {showRecommendations && recommendList.length === 0 ?
                   "다른 검색어를 입력하거나 조건을 변경하여 다시 시도해 보세요." :
                   <>
-                    상단의 <span className="text-purple-600 font-bold">'한 마디 입력창'</span>에 원하는 조건을 적거나<br/>
+                    상단의 <span className="text-purple-600 font-bold">'한 마디 입력창'</span>에 원하는 조건을 적거나<br />
                     <span className="text-purple-600 font-bold">'추천받기'</span> 버튼을 클릭하여 AI 분석 시스템을 시작해 보세요.
                   </>
                 }
@@ -755,7 +789,7 @@ const AIPlannerPage = () => {
           {showRecommendations && recommendList.length > 0 && !selectedFestival && (
             <div className="bg-slate-100/50 rounded-[32px] p-12 border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
               <div className="text-4xl mb-4">👆</div>
-              <p className="text-slate-400 font-bold">위의 추천 목록에서 축제를 선택하면<br/>상세 여행 계획이 이곳에 생성됩니다.</p>
+              <p className="text-slate-400 font-bold">위의 추천 목록에서 축제를 선택하면<br />축제장 주변 추천 코스가 이곳에 생성됩니다.</p>
             </div>
           )}
         </main>
@@ -765,15 +799,17 @@ const AIPlannerPage = () => {
       {showPlannerModal && selectedFestival && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-gray-700/40 backdrop-blur-[2px]">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto scrollbar-hide p-5 sm:p-8 relative">
-            <h3 className="text-2xl font-black text-gray-800 mb-2">AI 플래너 설정</h3>
+            <h3 className="text-2xl font-black text-gray-800 mb-2">AI 축제 코스 설정</h3>
             <p className="text-sm text-gray-500 mb-6">
-              <span className="font-bold text-purple-600">[{selectedFestival.TITLE}]</span> 축제를 위한 일정을 생성합니다.
+              <span className="font-bold text-purple-600">[{selectedFestival.TITLE}]</span> 주변의 음식점·관광지·문화시설 코스를 추천합니다.
             </p>
 
             <div className="space-y-4">
               {/* 방문 날짜 */}
               <div>
-                <label htmlFor="visitDate" className="block text-sm font-bold text-gray-700 mb-1">방문 날짜</label>
+                <label htmlFor="visitDate" className="block text-sm font-bold text-gray-700 mb-1">
+                  방문 날짜
+                </label>
                 <input
                   type="date"
                   id="visitDate"
@@ -784,23 +820,11 @@ const AIPlannerPage = () => {
                 />
               </div>
 
-              {/* 출발지 */}
-              <div>
-                <label htmlFor="startLocation" className="block text-sm font-bold text-gray-700 mb-1">출발지</label>
-                <input
-                  type="text"
-                  id="startLocation"
-                  name="startLocation"
-                  value={plannerForm.startLocation}
-                  onChange={handlePlannerFormChange}
-                  placeholder="예: 서울역"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
               {/* 인원 수 */}
               <div>
-                <label htmlFor="peopleCount" className="block text-sm font-bold text-gray-700 mb-1">인원 수</label>
+                <label htmlFor="peopleCount" className="block text-sm font-bold text-gray-700 mb-1">
+                  인원 수
+                </label>
                 <input
                   type="number"
                   id="peopleCount"
@@ -814,7 +838,9 @@ const AIPlannerPage = () => {
 
               {/* 동행 유형 */}
               <div>
-                <label htmlFor="companionType" className="block text-sm font-bold text-gray-700 mb-1">동행 유형</label>
+                <label htmlFor="companionType" className="block text-sm font-bold text-gray-700 mb-1">
+                  동행 유형
+                </label>
                 <select
                   id="companionType"
                   name="companionType"
@@ -832,58 +858,40 @@ const AIPlannerPage = () => {
                 </select>
               </div>
 
-              {/* 이동수단 */}
+              {/* 코스 스타일 */}
               <div>
-                <label htmlFor="transportType" className="block text-sm font-bold text-gray-700 mb-1">이동수단</label>
+                <label htmlFor="courseStyle" className="block text-sm font-bold text-gray-700 mb-1">
+                  코스 스타일
+                </label>
                 <select
-                  id="transportType"
-                  name="transportType"
-                  value={plannerForm.transportType}
+                  id="courseStyle"
+                  name="courseStyle"
+                  value={plannerForm.courseStyle}
                   onChange={handlePlannerFormChange}
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
                 >
-                  <option value="PUBLIC">대중교통</option>
-                  <option value="CAR">자가용</option>
-                  <option value="WALK">도보</option>
+                  <option value="RELAXED">여유롭게</option>
+                  <option value="FOOD">맛집 중심</option>
+                  <option value="TOUR">관광지 중심</option>
+                  <option value="CULTURE">문화시설 중심</option>
+                  <option value="INDOOR">실내 중심</option>
+                  <option value="PHOTO">사진 명소 중심</option>
+                  <option value="FAMILY">가족 중심</option>
                 </select>
-              </div>
-
-              {/* 시작 시간 / 종료 시간 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex-1">
-                  <label htmlFor="startTime" className="block text-sm font-bold text-gray-700 mb-1">시작 시간</label>
-                  <input
-                    type="time"
-                    id="startTime"
-                    name="startTime"
-                    value={plannerForm.startTime}
-                    onChange={handlePlannerFormChange}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label htmlFor="endTime" className="block text-sm font-bold text-gray-700 mb-1">종료 시간</label>
-                  <input
-                    type="time"
-                    id="endTime"
-                    name="endTime"
-                    value={plannerForm.endTime}
-                    onChange={handlePlannerFormChange}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
               </div>
 
               {/* 추가 요청사항 */}
               <div>
-                <label htmlFor="extraRequest" className="block text-sm font-bold text-gray-700 mb-1">추가 요청사항 (선택 사항)</label>
+                <label htmlFor="extraRequest" className="block text-sm font-bold text-gray-700 mb-1">
+                  추가 요청사항
+                </label>
                 <textarea
                   id="extraRequest"
                   name="extraRequest"
                   value={plannerForm.extraRequest}
                   onChange={handlePlannerFormChange}
                   rows="3"
-                  placeholder="예: 조용한 카페를 선호해요, 반려동물 동반 가능 장소를 포함해주세요."
+                  placeholder="예: 너무 빡빡하지 않게, 실내 위주로, 맛집을 꼭 포함해주세요."
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                 ></textarea>
               </div>
@@ -901,7 +909,7 @@ const AIPlannerPage = () => {
                 className="w-full sm:w-auto px-6 py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors disabled:opacity-50"
                 disabled={isGenerating}
               >
-                {isGenerating ? '일정 생성 중...' : 'AI 일정 만들기'}
+                {isGenerating ? '코스 생성 중...' : 'AI 코스 추천받기'}
               </button>
             </div>
           </div>
