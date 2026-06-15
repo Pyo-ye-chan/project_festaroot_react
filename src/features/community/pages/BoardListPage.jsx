@@ -50,23 +50,27 @@ const BoardListPage = () => {
     { label: '좋아요순', value: 'likes' },
   ];
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [category]);
-
-  useEffect(() => {
-    loadPosts();
-  }, [currentPage, category, sortBy]);
-
   const loadPosts = async () => {
     try {
-      const result = await getPosts(currentPage);
+      const result = await getPosts(currentPage, category, sortBy, searchType, keyword);
       setPosts(result.data.list || []);
       setTotalCount(result.data.totalPostCount || 0);
     } catch (error) {
       console.error(error);
     }
   };
+
+  useEffect(() => {
+    loadPosts();
+  }, [currentPage, category, sortBy, searchType, keyword]);
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [category, sortBy, searchType]);
 
   const getCategoryClasses = (postCategory) => {
     switch (postCategory) {
@@ -169,13 +173,19 @@ const BoardListPage = () => {
                     <input
                       value={keyword}
                       onChange={(e) => setKeyword(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') handleSearch();
+                      }}
                       type="text"
                       placeholder="검색어를 입력하세요"
                       className="w-full h-12 bg-gray-50 rounded-2xl pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20"
                     />
                   </div>
 
-                  <button className="h-12 px-6 rounded-2xl bg-[var(--dark-gray)] text-white text-sm font-black hover:bg-black transition-all">
+                  <button
+                    onClick={handleSearch}
+                    className="h-12 px-6 rounded-2xl bg-[var(--dark-gray)] text-white text-sm font-black hover:bg-black transition-all"
+                  >
                     검색
                   </button>
                 </div>

@@ -11,12 +11,12 @@ maxios.interceptors.request.use(
   (config) => {
     // 로컬 스토리지에서 토큰을 가져옵니다.
     const token = localStorage.getItem('accessToken');
-    
+
     // 토큰이 존재한다면 헤더에 담습니다.
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     return config;
   },
   (error) => {
@@ -37,8 +37,22 @@ maxios.interceptors.response.use(
       notifyAchievements(response.data.achievements);
     }
     return response;
+
+
   },
   (error) => {
+    // // 응답에서 토큰 만료 처리
+    // const status = error.response?.status;
+
+    // if (status === 401) {
+    //   localStorage.removeItem("accessToken");
+    //   localStorage.removeItem("user");
+
+    //   alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
+
+    //   window.location.href = "/login";
+    // }
     return Promise.reject(error);
   }
 );
+
