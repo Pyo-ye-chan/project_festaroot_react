@@ -1,5 +1,5 @@
 import React from 'react';
-import { Ban, MapPin, X, Calendar, LogOut } from 'lucide-react';
+import { Ban, MapPin, X, Calendar, LogOut, Crown } from 'lucide-react';
 
 const ChatDetails = ({
   showParticipants,
@@ -70,9 +70,7 @@ const ChatDetails = ({
                       />
                       <span className="text-base font-bold">{nickname}</span>
                       {isHost && (
-                        <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded-md font-black border border-amber-200 shadow-sm flex items-center gap-0.5">
-                          👑 방장
-                        </span>
+                        <Crown className="w-4 h-4 text-amber-500 fill-amber-500" />
                       )}
                     </div>
                     <button className="text-gray-300 hover:text-rose-500">

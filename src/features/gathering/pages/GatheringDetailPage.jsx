@@ -117,17 +117,19 @@ const GatheringDetailPage = () => {
     try {
       const response = await gatheringApi.joinGathering(id, loggedInUserId);
       alert("모임에 성공적으로 참여되었습니다!");
+
+      // 데이터를 다시 불러와서 state를 완전히 새로고침
+      await fetchDetailAndParticipants();
+
       if (response && response.roomId) {
         const actualRoomId = response.roomId;
         if (String(actualRoomId) !== String(id)) {
           navigate(`/community/gathering/${actualRoomId}`, { replace: true });
-        } else {
-          await fetchDetailAndParticipants();
         }
       }
     } catch (error) {
       console.error("모임 참여 중 오류 발생:", error);
-      // 🔥 서버에서 튕겨낸 블랙리스트(403) 문구가 여기에 동적으로 출력됩니다.
+      // 서버에서 튕겨낸 블랙리스트(403) 문구가 여기에 동적으로 출력
       const errorMsg = error.response?.data?.message || "모임 참여에 실패했습니다. 다시 시도해 주세요.";
       alert(errorMsg);
     }

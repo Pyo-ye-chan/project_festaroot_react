@@ -57,7 +57,20 @@ const ChatListPage = () => {
       const fetchParticipants = async () => {
         try {
           const res = await gatheringApi.gatheringParticipants(activeChatId);
-          setParticipants(res || []);
+
+          // 방장의 ID를 구해서 각 참여자 객체에 정확히 방장 여부(isOwner) 주입하기
+          const resParticipants = res || [];
+          const currentOwnerId = roomDetail?.owner_id || selectedChat?.owner_id;
+
+          const mappedParticipants = resParticipants.map(p => {
+            const pId = p.member_id || p.MEMBER_ID || p.id;
+            return {
+              ...p,
+              isOwner: currentOwnerId && String(pId) === String(currentOwnerId) // 정확한 방장 조건 검사
+            };
+          });
+
+          setParticipants(mappedParticipants);
         } catch (e) {
           console.error("참여자 목록 로드 실패", e);
         }
@@ -82,18 +95,63 @@ const ChatListPage = () => {
   const handleLeaveRoom = async () => {
     if (!activeChatId || !userId) return;
 
+    // 1. 현재 사용자가 이 방의 방장(Owner)인지 확인
+    // detailedChat 이나 selectedChat 에 owner_id 가 포함되어 있는지 확인하세요.
+    const isOwner = selectedChat?.owner_id === userId || roomDetail?.owner_id === userId;
+
+    if (isOwner) {
+      // 참여자가 방장 자신 제외하고 더 있는지 확인 (participants는 자신을 포함하고 있음)
+      const otherParticipants = participants.filter(p => {
+        const pId = p.member_id || p.MEMBER_ID || p.id;
+        return String(pId) !== String(userId);
+      });
+
+      if (otherParticipants.length === 0) {
+        if (window.confirm("참여자가 없어 모임이 자동으로 삭제됩니다. 정말 나가시겠습니까?")) {
+          try {
+            await gatheringApi.deleteGathering(activeChatId, userId);
+            alert("모임이 삭제되었습니다.");
+            setActiveChatId(null);
+            navigate('/community/chat');
+            setChatRooms(chatRooms.filter((room) => room.id !== activeChatId));
+          } catch (error) {
+            alert("모임 삭제 중 오류가 발생했습니다.");
+          }
+        }
+        return; // 함수 종료
+      } else {
+        // ⚠️ 중요: 채팅방 화면에는 위임 팝업UI가 없을 수 있으므로, 
+        // 가장 간단하게는 '가장 먼저 들어온 사람(혹은 첫 번째 참여자)'에게 자동 위임되도록 처리하거나 알림을 줘야 합니다.
+        if (window.confirm("방장 권한이 다음 참여자에게 자동 위임되고 퇴장합니다. 나가시겠습니까?")) {
+          try {
+            const nextOwnerId = otherParticipants[0].member_id || otherParticipants[0].MEMBER_ID || otherParticipants[0].id;
+
+            // 백엔드 위임 API 호출
+            await gatheringApi.delegateOwner(activeChatId, userId, nextOwnerId);
+            // 그 후 퇴장 API 호출
+            await gatheringApi.leaveGathering(activeChatId, userId);
+
+            alert("방장 권한을 위임하고 채팅방에서 퇴장하였습니다.");
+            setActiveChatId(null);
+            navigate('/community/chat');
+            setChatRooms(chatRooms.filter((room) => room.id !== activeChatId));
+          } catch (error) {
+            console.error("위임 퇴장 중 오류:", error);
+            alert("위임 처리 중 오류가 발생했습니다.");
+          }
+        }
+        return;
+      }
+    }
+
+    // 방장이 아닌 일반 유저의 기존 퇴장 로직
     if (!window.confirm("정말 이 채팅방(모임)에서 나가시겠습니까?")) return;
 
     try {
-      // 기존에 만들어두신 모임 나가기 API 연동
       await gatheringApi.leaveGathering(activeChatId, userId);
       alert("채팅방에서 퇴장하였습니다.");
-
-      // 1. 현재 열려있는 채팅창 닫기 및 주소 초기화
       setActiveChatId(null);
       navigate('/community/chat');
-
-      // 2. 왼쪽 사이드바의 채팅방 목록(chatRooms)에서 나간 방 즉시 제거하여 리렌더링
       setChatRooms(chatRooms.filter((room) => room.id !== activeChatId));
     } catch (error) {
       console.error("채팅방 나가기 실패:", error);
@@ -112,12 +170,16 @@ const ChatListPage = () => {
     }
   }, [activeChatId]);
 
+  // URL 주소에 roomId가 없을 때는 자동으로 빈 화면(목록만) 렌더링하도록 분기 처리
   useEffect(() => {
     if (roomId) {
       const parsedRoomId = Number(roomId);
       if (activeChatId !== parsedRoomId) {
         setActiveChatId(parsedRoomId);
       }
+    } else {
+      // URL 경로가 '/community/chat' 형태로 들어왔다면 열려있던 방 선택을 지워줌
+      setActiveChatId(null);
     }
   }, [roomId, activeChatId, setActiveChatId]);
 
@@ -170,7 +232,8 @@ const ChatListPage = () => {
           nickname: room.nickname,
           profile_image_url: room.profile_image_url,
           unread_count: room.unread_count || 0, // 미확인 메세지 수
-          lastMessage: room.lastMessage || room.last_message || room.LAST_MESSAGE || '대화 내용이 없습니다.' // 백엔드에서 넘겨준 마지막 메시지 필드를 프론트 상태에 매핑 
+          lastMessage: room.lastMessage || room.last_message || room.LAST_MESSAGE || '대화 내용이 없습니다.', // 백엔드에서 넘겨준 마지막 메시지 필드를 프론트 상태에 매핑 
+          owner_id: room.owner_id
         }));
 
         setChatRooms(formattedRooms);
