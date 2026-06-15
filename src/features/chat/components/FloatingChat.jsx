@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Draggable from 'react-draggable';
-import { Send, X, MessageCircle, Minimize2 } from 'lucide-react';
+import { Send, X, MessageCircle, Minimize2, User } from 'lucide-react';
 import useChatStore from '../../../store/useChatStore';
 import gatheringApi from '../../../api/gatheringApi';
 
@@ -125,24 +125,43 @@ const FloatingChat = ({ roomId, index }) => {
               );
             }
 
-            const targetUser = participants.find(p =>
-              String(p.member_id || p.MEMBER_ID) === String(msg.senderId)
-            );
-            const userProfileImg = msg.senderProfile || targetUser?.profile_image_url || targetUser?.PROFILE_IMAGE_URL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(msg.sender)}`;
+            // 유저 구별 및 퇴장 상태 여부 파악 로직
+            const targetUser = participants.find(p => {
+              const pId = p.member_id || p.MEMBER_ID || p.id;
+              return String(pId) === String(msg.senderId);
+            });
+            
+            // 본인이 아니고, 현재 참여자 명단에 없다면 퇴장한 유저로 판단
+            const isLeftUser = !msg.isMe && !targetUser;
+
+            // 실제 데이터가 있을 때만 매핑
+            const userProfileImg = msg.senderProfile || targetUser?.profile_image_url || targetUser?.PROFILE_IMAGE_URL;
 
             return (
               <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-start gap-2`}>
                 {!msg.isMe && (
-                  <div className="w-8 h-8 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 mt-1 shadow-sm">
-                    <img
-                      src={userProfileImg}
-                      alt={msg.sender}
-                      className="w-full h-full object-cover"
-                    />
+                  <div className={`w-8 h-8 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 mt-1 shadow-sm flex items-center justify-center ${isLeftUser ? 'bg-gray-200/50 opacity-60' : ''}`}>
+                    {userProfileImg ? (
+                      <img
+                        src={userProfileImg}
+                        alt={msg.sender}
+                        className={`w-full h-full object-cover ${isLeftUser ? 'grayscale' : ''}`}
+                      />
+                    ) : (
+                      // 가짜 이미지 링크 대신 깔끔한 유저 기본 아이콘으로 대체
+                      <User className="w-4 h-4 text-gray-400" />
+                    )}
                   </div>
                 )}
                 <div className={`flex flex-col gap-0.5 max-w-[80%] ${msg.isMe ? 'items-end' : 'items-start'}`}>
-                  {!msg.isMe && <span className="text-[10px] font-bold text-gray-500 mb-0.5">{targetUser?.nickname || targetUser?.NICKNAME || msg.sender}</span>}
+                  {!msg.isMe && (
+                    <span className={`text-[10px] font-bold mb-0.5 ${isLeftUser ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {isLeftUser 
+                        ? `${msg.sender} (퇴장한 사용자)` 
+                        : (targetUser?.nickname || targetUser?.NICKNAME || msg.sender)
+                      }
+                    </span>
+                  )}
                   <div className={`flex items-end gap-1.5 ${msg.isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                     <div className={`px-3 py-1.5 rounded-2xl text-xs font-medium ${msg.isMe ? 'bg-purple-600 text-white rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none border'}`}>
                       {msg.text}
