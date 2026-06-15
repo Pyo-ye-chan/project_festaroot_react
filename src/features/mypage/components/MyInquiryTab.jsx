@@ -23,6 +23,8 @@ const MyInquiryTab = () => {
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [isWriting, setIsWriting] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [existingAttachments, setExistingAttachments] = useState([]);
+  const [removedAttachIds, setRemovedAttachIds] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -87,6 +89,8 @@ const MyInquiryTab = () => {
   const handleCancelWrite = () => {
     setIsWriting(false);
     setEditingId(null);
+    setExistingAttachments([]);
+    setRemovedAttachIds([]);
     setFormData({
       category: 'SERVICE',
       title: '',
@@ -112,6 +116,8 @@ const MyInquiryTab = () => {
 
   const handleEdit = (inquiry) => {
     setEditingId(inquiry.inquiry_id);
+    setExistingAttachments(inquiry.attachments || []);
+    setRemovedAttachIds([]);
     setFormData({
       category: inquiry.category,
       title: inquiry.title,
@@ -120,6 +126,11 @@ const MyInquiryTab = () => {
     if (editor) editor.commands.setContent(inquiry.content);
     setIsWriting(true);
     setSelectedInquiry(null);
+  };
+
+  const handleRemoveExistingFile = (attachId) => {
+    setExistingAttachments(prev => prev.filter(file => file.attach_id !== attachId));
+    setRemovedAttachIds(prev => [...prev, attachId]);
   };
 
   useEffect(() => {
@@ -252,6 +263,12 @@ const MyInquiryTab = () => {
       }
 
       if (editingId) {
+        if (removedAttachIds.length > 0) {
+          // 백엔드 요청대로 deleteFileIds라는 이름으로 각각 append 합니다.
+          removedAttachIds.forEach(id => {
+            data.append('deleteFileIds', id);
+          });
+        }
         await updateInquiry(editingId, data);
         alert('문의가 수정되었습니다.');
       } else {
@@ -493,7 +510,33 @@ const MyInquiryTab = () => {
                   </div>
                 </div>
 
-                {attachedFiles.length > 0 && (
+                {/* Existing Attachments Display */}
+              {existingAttachments.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {existingAttachments.map((file) => (
+                    <div
+                      key={file.attach_id}
+                      className="flex items-center justify-between gap-4 rounded-xl bg-purple-50 border border-purple-100 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-purple-700 truncate">
+                          {file.file_name}
+                        </p>
+                        <p className="text-[10px] text-purple-400 mt-0.5 font-medium">기존 파일</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExistingFile(file.attach_id)}
+                        className="shrink-0 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {attachedFiles.length > 0 && (
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {attachedFiles.map((file) => (
                       <div

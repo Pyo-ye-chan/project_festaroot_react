@@ -66,13 +66,13 @@ const Home = () => {
   return (
     <div className="space-y-12 pb-20 bg-gray-50/30 relative">
       {/* 개발용 테스트 버튼 */}
-      <button 
+      {/* <button 
         onClick={handleTestNotification}
         className="fixed bottom-24 right-8 z-50 bg-white border-2 border-purple-500 text-purple-600 px-4 py-2 rounded-full font-black text-xs shadow-xl hover:bg-purple-500 hover:text-white transition-all transform hover:scale-110 flex items-center gap-2 group"
       >
         <span className="group-hover:animate-spin">⚙️</span>
         Test Alert
-      </button>
+      </button> */}
 
       <Hero />
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

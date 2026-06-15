@@ -75,3 +75,9 @@ export const updateMemberProfile = (userId, profileData) => maxios.put(`/member/
  * @param {string} userId
  */
 export const getMemberAchievements = (userId) => maxios.get(`/member/achievements/${userId}`, { skipAchievementNotification: true });
+
+/**
+ * 유저가 작성한 게시글 조회
+ * @param {string} userId 
+ */
+export const getMemberPosts = (userId) => maxios.get(`/member/posts/${userId}`);
