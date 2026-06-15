@@ -210,12 +210,11 @@ const PostWritePage = () => {
                 게시판 선택
               </label>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {[
                   { id: 'free', label: '자유게시판' },
                   { id: 'review', label: '축제후기' },
                   { id: 'tip', label: '꿀팁공유' },
-                  { id: 'notice', label: '공지사항' },
                 ].map((cat) => (
                   <button
                     key={cat.id}

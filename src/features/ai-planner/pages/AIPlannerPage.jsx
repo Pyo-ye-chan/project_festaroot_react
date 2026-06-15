@@ -3,6 +3,7 @@ import { maxios } from '../../../api/axiosApi';
 import useAuthStore from '../../../store/useAuthStore';
 import { getMemberProfile } from '../../../api/memberApi';
 import { saveActivityLog } from '../../../api/activityApi';
+import { createAIPlanner } from '../../../api/aiApi';
 
 const AIPlannerPage = () => {
   const { user, isLoggedIn } = useAuthStore();
@@ -18,6 +19,23 @@ const AIPlannerPage = () => {
   
   const [userDetails, setUserDetails] = useState(null); // 유저 상세 정보
   const [isLoadingContext, setIsLoadingContext] = useState(false);
+
+  // AI 플래너 생성 관련 상태
+  const [showPlannerModal, setShowPlannerModal] = useState(false);
+  const [plannerForm, setPlannerForm] = useState({
+    visitDate: '',
+    startLocation: '',
+    peopleCount: 2,
+    companionType: 'FRIEND',
+    transportType: 'PUBLIC',
+    startTime: '10:00',
+    endTime: '18:00',
+    extraRequest: ''
+  });
+
+  const [itineraryList, setItineraryList] = useState([]);
+  const [plannerId, setPlannerId] = useState(null);
+  const [plannerWeather, setPlannerWeather] = useState(null);
 
   // 관심사 섹션 펼침/접힘 상태
   const [isRegionsOpen, setIsRegionsOpen] = useState(true);
@@ -44,6 +62,96 @@ const AIPlannerPage = () => {
       fetchUserData();
     }
   }, [isLoggedIn, user?.member_id, user?.id]);
+
+  // 카카오 지도 렌더링 Effect
+  useEffect(() => {
+    if (!showItinerary || itineraryList.length === 0) return;
+    // window.kakao 객체가 로드되었는지 확인
+    if (!window.kakao || !window.kakao.maps) {
+      console.warn("Kakao Maps API not loaded.");
+      // 지도 영역 대신 메시지 표시 등을 고려할 수 있음
+      return;
+    }
+
+    const markerSteps = itineraryList.filter(step => step.x && step.y);
+    if (markerSteps.length === 0) {
+      console.warn("No valid coordinates in itineraryList for map markers.");
+      return;
+    }
+
+    const container = document.getElementById('plannerMap');
+    if (!container) {
+      console.warn("Map container element not found.");
+      return;
+    }
+
+    // 기존 지도가 있다면 제거
+    if (container.hasChildNodes()) {
+      container.innerHTML = '';
+    }
+
+    const first = markerSteps[0];
+
+    const map = new window.kakao.maps.Map(container, {
+      center: new window.kakao.maps.LatLng(Number(first.y), Number(first.x)),
+      level: 5
+    });
+
+    const bounds = new window.kakao.maps.LatLngBounds();
+    const linePath = [];
+
+    markerSteps.forEach((step, idx) => {
+      const position = new window.kakao.maps.LatLng(Number(step.y), Number(step.x));
+      bounds.extend(position);
+      linePath.push(position);
+
+      const marker = new window.kakao.maps.Marker({
+        position,
+        map
+      });
+
+      const infoWindow = new window.kakao.maps.InfoWindow({
+        content: `
+          <div style="padding:8px;font-size:12px;min-width:150px;">
+            <strong>${idx + 1}. ${step.title || ''}</strong><br/>
+            <span>${step.placeName || ''}</span>
+          </div>
+        `
+      });
+
+      window.kakao.maps.event.addListener(marker, 'click', () => {
+        infoWindow.open(map, marker);
+      });
+    });
+
+    if (linePath.length >= 2) {
+      const polyline = new window.kakao.maps.Polyline({
+        path: linePath,
+        strokeWeight: 4,
+        strokeColor: '#AD5FEE', // 보라색 계열
+        strokeOpacity: 0.8,
+        strokeStyle: 'solid'
+      });
+
+      polyline.setMap(map);
+    }
+
+    map.setBounds(bounds);
+  }, [showItinerary, itineraryList]);
+
+  // 일정 단계 타입에 따른 아이콘 반환 함수
+  const getStepIcon = (type) => {
+    switch (type) {
+      case 'MOVE': return '🚶';
+      case 'FESTIVAL': return '🎪';
+      case 'FOOD': return '🍽️';
+      case 'CAFE': return '☕';
+      case 'TOUR': return '📸';
+      case 'CULTURE': return '🏛️';
+      case 'PARKING': return '🅿️';
+      default: return '📍';
+    }
+  };
 
   // 유저의 생년월일을 바탕으로 연령대 계산
   const getAgeGroup = (birthdate) => {
@@ -94,14 +202,90 @@ const AIPlannerPage = () => {
 
   const handleSelectFestival = (festival) => {
     setSelectedFestival(festival);
+    // 기존 임시 일정 생성 제거
+    setShowItinerary(false);
+    setItineraryList([]);
+    setPlannerWeather(null);
+    setPlannerId(null);
+
+    // 플래너 폼 초기화 (방문 날짜와 추가 요청사항만 초기화)
+    setPlannerForm(prev => ({
+      ...prev,
+      visitDate: '',
+      extraRequest: ''
+    }));
+
+    // 플래너 설정 모달 열기
+    setShowPlannerModal(true);
+  };
+
+  // AI 플래너 생성 함수
+  const handleCreatePlanner = async () => {
+    if (!selectedFestival) {
+      alert('축제를 먼저 선택해주세요.');
+      return;
+    }
+
+    if (!plannerForm.visitDate) {
+      alert('방문 날짜를 선택해주세요.');
+      return;
+    }
+
+    if (!plannerForm.startLocation.trim()) {
+      alert('출발지를 입력해주세요.');
+      return;
+    }
+
+    if (!plannerForm.startTime || !plannerForm.endTime) {
+      alert('시작 시간과 종료 시간을 선택해주세요.');
+      return;
+    }
+
     setIsGenerating(true);
     setShowItinerary(false);
-    
-    // Simulate AI itinerary generation
-    setTimeout(() => {
+    setItineraryList([]);
+
+    try {
+      const response = await createAIPlanner({
+        contentId: selectedFestival.CONTENT_ID,
+        visitDate: plannerForm.visitDate,
+        startLocation: plannerForm.startLocation,
+        peopleCount: Number(plannerForm.peopleCount),
+        companionType: plannerForm.companionType,
+        transportType: plannerForm.transportType,
+        startTime: plannerForm.startTime,
+        endTime: plannerForm.endTime,
+        userInput: plannerForm.extraRequest,
+        ragQuery: userInput,
+        recommendationReason: selectedFestival.recommendation_reason
+      });
+
+      const data = response?.data ?? response;
+
+      if (data.success) {
+        setPlannerId(data.plannerId);
+        setPlannerWeather(data.weather || null);
+        setItineraryList(data.steps || []);
+        setShowPlannerModal(false); // 모달 닫기
+        setShowItinerary(true); // 일정 표시
+      } else {
+        alert(data.message || 'AI 플래너 생성에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('AI 플래너 생성 실패:', error);
+      alert(error.response?.data?.message || 'AI 플래너 생성 중 오류가 발생했습니다.');
+    } finally {
       setIsGenerating(false);
-      setShowItinerary(true);
-    }, 2000);
+    }
+  };
+
+  // 플래너 폼 입력 변경 핸들러
+  const handlePlannerFormChange = (e) => {
+    const { name, value } = e.target;
+    setPlannerForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleFeedback = async (contentId, type, reason = '') => {
@@ -187,7 +371,7 @@ const AIPlannerPage = () => {
 
       <div className="max-w-6xl mx-auto px-4 -mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left: User Context Analysis */}
-        <aside className="lg:col-span-1 space-y-6">
+        <aside className="lg:col-span-1 space-y-6 order-2 lg:order-1">
           <div className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 sticky top-24">
             <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
               <span className="text-2xl">🧠</span> 분석 데이터 소스
@@ -304,7 +488,7 @@ const AIPlannerPage = () => {
         </aside>
 
         {/* Right: Steps Section */}
-        <main className="lg:col-span-2 space-y-8">
+        <main className="lg:col-span-2 space-y-6 sm:space-y-8 order-1 lg:order-2">
           {/* Step 1: Recommendations */}
           {(isRecommending || showRecommendations) && (
             <section className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -440,6 +624,16 @@ const AIPlannerPage = () => {
                               {item.recommendation_reason}
                             </p>
                           </div>
+                          {/* 추천 카드 버튼 문구 변경 */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectFestival(item);
+                            }}
+                            className="mt-4 w-full bg-purple-600 text-white py-3 rounded-2xl font-black hover:bg-purple-700 transition-all"
+                          >
+                            이 축제로 AI 일정 만들기
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -461,6 +655,20 @@ const AIPlannerPage = () => {
                 </div>
               </div>
 
+              {/* 날씨 요약 표시 */}
+              {plannerWeather?.summary && (
+                <div className="mb-6 p-4 rounded-2xl bg-blue-50 border border-blue-100 text-blue-700 text-sm font-bold">
+                  🌦 방문일 날씨 반영: {plannerWeather.summary}
+                </div>
+              )}
+
+              {/* 저장 완료 안내 */}
+              {plannerId && (
+                <div className="mb-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm font-bold">
+                  ✅ 생성된 플래너가 저장되었습니다. 마이페이지에서 다시 확인할 수 있습니다.
+                </div>
+              )}
+
               {isGenerating ? (
                 <div className="py-20 flex flex-col items-center justify-center space-y-6">
                   <div className="relative">
@@ -473,45 +681,78 @@ const AIPlannerPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent pt-4">
-                  {[
-                    { time: '10:00 AM', title: `${selectedFestival?.TITLE.split(' ')[0]} 도착`, desc: '주차 및 대중교통 이용 안내', icon: '📍' },
-                    { time: '12:00 PM', title: '현지 맛집 점심 식사', desc: '테마 취향을 반영한 인기 음식점', icon: '🍽️' },
-                    { time: '02:00 PM', title: `${selectedFestival?.TITLE} 체험`, desc: '주요 프로그램 및 포토존 가이드', icon: '📸' },
-                    { time: '05:00 PM', title: '주변 감성 카페 마무리', desc: '분위기 좋은 카페에서 일정 마무리', icon: '☕' }
-                  ].map((step, idx) => (
-                    <div key={idx} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-purple-600 text-white shadow-lg shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 font-bold">
-                        <span className="text-xs">{step.icon}</span>
-                      </div>
-                      <div className="w-[calc(100%-4rem)] md:w-[45%] p-5 rounded-3xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-xl hover:border-purple-200">
-                        <div className="flex items-center justify-between space-x-2 mb-2">
-                          <div className="font-black text-gray-800">{step.title}</div>
-                          <time className="font-black text-[10px] text-purple-600 bg-purple-50 px-2 py-1 rounded-md">{step.time}</time>
-                        </div>
-                        <div className="text-sm text-gray-500 font-medium leading-relaxed">{step.desc}</div>
-                      </div>
+                <>
+                  {itineraryList.length === 0 ? (
+                    <div className="py-20 flex flex-col items-center justify-center text-center text-gray-500">
+                      <span className="text-5xl mb-4">🤔</span>
+                      <p className="text-lg font-bold">일정을 생성하지 못했습니다.</p>
+                      <p className="text-sm text-gray-400 mt-2">조건을 조금 바꿔 다시 시도해주세요.</p>
                     </div>
-                  ))}
-                </div>
+                  ) : (
+                    <>
+                      <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent pt-4">
+                        {itineraryList.map((step, idx) => (
+                          <div key={idx} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-purple-600 text-white shadow-lg shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 font-bold">
+                              <span className="text-xs">{getStepIcon(step.type)}</span>
+                            </div>
+                            <div className="w-[calc(100%-4rem)] md:w-[45%] p-5 rounded-3xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-xl hover:border-purple-200">
+                              <div className="flex items-center justify-between space-x-2 mb-2">
+                                <h4 className="font-black text-gray-800">{step.title}</h4>
+                                <time className="font-black text-[10px] text-purple-600 bg-purple-50 px-2 py-1 rounded-md">{step.time}</time>
+                              </div>
+                              <p className="text-sm text-gray-500 font-medium leading-relaxed">{step.description}</p>
+                              {step.placeName && <p className="text-xs text-gray-400 font-bold mt-2">📍 {step.placeName}</p>}
+                              {step.address && <p className="text-xs text-gray-400 font-bold">{step.address}</p>}
+                              {step.reason && <p className="text-xs text-purple-700 font-bold mt-2">💡 {step.reason}</p>}
+                              {step.kakaoPlaceUrl && (
+                                <a 
+                                  href={step.kakaoPlaceUrl} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="text-xs text-blue-500 hover:underline mt-2 inline-block font-bold"
+                                >
+                                  카카오맵에서 보기
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 카카오 지도 표시 영역 */}
+                      <div id="plannerMap" className="w-full h-[360px] rounded-[28px] border border-gray-100 mt-8 overflow-hidden" />
+                    </>
+                  )}
+                </>
               )}
             </section>
           )}
 
-          {!showRecommendations && !isRecommending && (
+          {(!showRecommendations && !isRecommending) || (showRecommendations && recommendList.length === 0) ? (
             <div className="bg-white rounded-[32px] p-20 shadow-xl shadow-purple-900/5 border border-purple-50 flex flex-col items-center justify-center text-center">
               <div className="w-24 h-24 bg-purple-50 rounded-full flex items-center justify-center mb-8 text-4xl animate-bounce">
-                🤖
+                {showRecommendations && recommendList.length === 0 ? '😢' : '🤖'}
               </div>
-              <h3 className="text-2xl font-black text-gray-800 mb-4">나만을 위한 특별한 여행 준비</h3>
+              <h3 className="text-2xl font-black text-gray-800 mb-4">
+                {showRecommendations && recommendList.length === 0 ? 
+                  "조건에 맞는 추천 축제가 없습니다." : 
+                  "나만을 위한 특별한 여행 준비"
+                }
+              </h3>
               <p className="text-gray-500 font-medium leading-relaxed">
-                상단의 <span className="text-purple-600 font-bold">'한 마디 입력창'</span>에 원하는 조건을 적거나<br/>
-                <span className="text-purple-600 font-bold">'추천받기'</span> 버튼을 클릭하여 AI 분석 시스템을 시작해 보세요.
+                {showRecommendations && recommendList.length === 0 ?
+                  "다른 검색어를 입력하거나 조건을 변경하여 다시 시도해 보세요." :
+                  <>
+                    상단의 <span className="text-purple-600 font-bold">'한 마디 입력창'</span>에 원하는 조건을 적거나<br/>
+                    <span className="text-purple-600 font-bold">'추천받기'</span> 버튼을 클릭하여 AI 분석 시스템을 시작해 보세요.
+                  </>
+                }
               </p>
             </div>
-          )}
+          ) : null}
 
-          {showRecommendations && !selectedFestival && (
+          {showRecommendations && recommendList.length > 0 && !selectedFestival && (
             <div className="bg-slate-100/50 rounded-[32px] p-12 border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
               <div className="text-4xl mb-4">👆</div>
               <p className="text-slate-400 font-bold">위의 추천 목록에서 축제를 선택하면<br/>상세 여행 계획이 이곳에 생성됩니다.</p>
@@ -519,6 +760,153 @@ const AIPlannerPage = () => {
           )}
         </main>
       </div>
+
+      {/* AI Planner 설정 모달 */}
+      {showPlannerModal && selectedFestival && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-gray-700/40 backdrop-blur-[2px]">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto scrollbar-hide p-5 sm:p-8 relative">
+            <h3 className="text-2xl font-black text-gray-800 mb-2">AI 플래너 설정</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              <span className="font-bold text-purple-600">[{selectedFestival.TITLE}]</span> 축제를 위한 일정을 생성합니다.
+            </p>
+
+            <div className="space-y-4">
+              {/* 방문 날짜 */}
+              <div>
+                <label htmlFor="visitDate" className="block text-sm font-bold text-gray-700 mb-1">방문 날짜</label>
+                <input
+                  type="date"
+                  id="visitDate"
+                  name="visitDate"
+                  value={plannerForm.visitDate}
+                  onChange={handlePlannerFormChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              {/* 출발지 */}
+              <div>
+                <label htmlFor="startLocation" className="block text-sm font-bold text-gray-700 mb-1">출발지</label>
+                <input
+                  type="text"
+                  id="startLocation"
+                  name="startLocation"
+                  value={plannerForm.startLocation}
+                  onChange={handlePlannerFormChange}
+                  placeholder="예: 서울역"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              {/* 인원 수 */}
+              <div>
+                <label htmlFor="peopleCount" className="block text-sm font-bold text-gray-700 mb-1">인원 수</label>
+                <input
+                  type="number"
+                  id="peopleCount"
+                  name="peopleCount"
+                  value={plannerForm.peopleCount}
+                  onChange={handlePlannerFormChange}
+                  min="1"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              {/* 동행 유형 */}
+              <div>
+                <label htmlFor="companionType" className="block text-sm font-bold text-gray-700 mb-1">동행 유형</label>
+                <select
+                  id="companionType"
+                  name="companionType"
+                  value={plannerForm.companionType}
+                  onChange={handlePlannerFormChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                >
+                  <option value="ALONE">혼자</option>
+                  <option value="FRIEND">친구</option>
+                  <option value="COUPLE">연인</option>
+                  <option value="FAMILY">가족</option>
+                  <option value="CHILD">아이와 함께</option>
+                  <option value="PARENT">부모님과</option>
+                  <option value="PET">반려동물과</option>
+                </select>
+              </div>
+
+              {/* 이동수단 */}
+              <div>
+                <label htmlFor="transportType" className="block text-sm font-bold text-gray-700 mb-1">이동수단</label>
+                <select
+                  id="transportType"
+                  name="transportType"
+                  value={plannerForm.transportType}
+                  onChange={handlePlannerFormChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                >
+                  <option value="PUBLIC">대중교통</option>
+                  <option value="CAR">자가용</option>
+                  <option value="WALK">도보</option>
+                </select>
+              </div>
+
+              {/* 시작 시간 / 종료 시간 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex-1">
+                  <label htmlFor="startTime" className="block text-sm font-bold text-gray-700 mb-1">시작 시간</label>
+                  <input
+                    type="time"
+                    id="startTime"
+                    name="startTime"
+                    value={plannerForm.startTime}
+                    onChange={handlePlannerFormChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="endTime" className="block text-sm font-bold text-gray-700 mb-1">종료 시간</label>
+                  <input
+                    type="time"
+                    id="endTime"
+                    name="endTime"
+                    value={plannerForm.endTime}
+                    onChange={handlePlannerFormChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              {/* 추가 요청사항 */}
+              <div>
+                <label htmlFor="extraRequest" className="block text-sm font-bold text-gray-700 mb-1">추가 요청사항 (선택 사항)</label>
+                <textarea
+                  id="extraRequest"
+                  name="extraRequest"
+                  value={plannerForm.extraRequest}
+                  onChange={handlePlannerFormChange}
+                  rows="3"
+                  placeholder="예: 조용한 카페를 선호해요, 반려동물 동반 가능 장소를 포함해주세요."
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                ></textarea>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+              <button
+                onClick={() => setShowPlannerModal(false)}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCreatePlanner}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors disabled:opacity-50"
+                disabled={isGenerating}
+              >
+                {isGenerating ? '일정 생성 중...' : 'AI 일정 만들기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
