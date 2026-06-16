@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Ban, MapPin, X, Calendar, LogOut, Crown, ExternalLink, MessageCircle, User } from 'lucide-react';
+import { Ban, MapPin, X, Calendar, LogOut, Crown, ExternalLink, MessageCircle, User, Settings } from 'lucide-react';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 import { useNavigate } from 'react-router-dom';
 
@@ -115,8 +115,8 @@ const ChatDetails = ({
                             }}
                             className="w-full py-1.5 px-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-2xs"
                           >
-                            <User className="w-3.5 h-3.5" />
-                            프로필 수정
+                            <Settings className="w-4 h-4" />
+                            내 프로필 수정
                           </button>
                         ) : (
                           /* 타인 프로필일 때: 기존 1:1 채팅 보내기 버튼 노출 */
