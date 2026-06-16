@@ -1,21 +1,30 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* Define CSS variables for direct use if needed, mirroring Tailwind custom colors */
 :root {
+  /* 기존 이름 유지 (기존 컴포넌트 호환용) */
   --festival-yellow: #FFD23F;
-  --deep-festival-purple: #5B21B6;
-  --warm-white: #FAF9F6;
-  --soft-purple: #C7B0E6;
-  --dark-gray: #4A4A4A;
+  --festival-purple: #5B21B6;
+  --festival-purple-soft: #8B5CF6;
+  --warm-white: #FAFAF9;
+  --dark-gray: #374151;
 }
 
+@theme {
+  /* Tailwind v4 유틸리티 클래스 생성용 (--color- 접두사 필요) */
+  --color-festival-yellow: var(--festival-yellow);
+  --color-festival-purple: var(--festival-purple);
+  --color-festival-purple-soft: var(--festival-purple-soft);
+  --color-warm-white: var(--warm-white);
+  --color-dark-gray: var(--dark-gray);
+}
+
+
+
 body {
-  background-color: var(--warm-white); /* Example of using CSS variable */
-  color: var(--dark-gray); /* Example of using CSS variable */
+  background-color: var(--warm-white);
+  color: #1F2937;
 }
 
 * {
@@ -59,3 +68,7 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;             /* Chrome, Safari */
 }
+
+
+
+
