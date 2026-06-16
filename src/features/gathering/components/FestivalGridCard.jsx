@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, CalendarDays, Users } from 'lucide-react';
 import useAuthStore from '../../../store/useAuthStore';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const FestivalGridCard = ({ item }) => {
   const { user } = useAuthStore();
@@ -21,8 +22,8 @@ const FestivalGridCard = ({ item }) => {
   // 참여 여부 확인 (백엔드에서 넘겨주는 is_joined 필드 혹은 방장 여부)
   const isJoined = item.is_joined || (loggedInUserId && loggedInUserId === ownerId);
   
-  // 🌟 이미지 우선순위: 모임 대표 이미지 -> 프로필 이미지 -> 기본 축제 이미지
-  const festivalImage = item.room_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=300';
+  // 🌟 이미지 우선순위: 모임 대표 이미지 -> 기본 축제 이미지
+  const festivalImage = item.room_image || DEFAULT_IMAGES.ROOM_COVER;
   
   // 🌟 상단 타이틀에서 ' 공식 모임' 제거한 순수 축제명 추출
   const festivalName = roomTitle ? roomTitle.replace(' 공식 모임', '') : '';
