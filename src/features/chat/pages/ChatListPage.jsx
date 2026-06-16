@@ -324,6 +324,35 @@ const ChatListPage = () => {
     { id: 'private', label: '1:1 채팅' },
   ];
 
+  // 1:1 채팅방 생성 및 이동 요청 핸들러 추가
+  const handleStartPrivateChat = async (targetMemberId, targetNickname) => {
+    try {
+      startLoading();
+
+      // [백엔드 API 호출 조율 필요] 예시: gatheringApi.createOrGetPrivateRoom(현재유저ID, 상대방ID)
+      // 이 API는 기존 방이 있으면 해당 room_id를, 없으면 새로 만들어서 room_id를 반환해야 합니다.
+      const response = await gatheringApi.createOrGetPrivateRoom(userId, targetMemberId);
+      const targetRoomId = response?.room_id || response;
+
+      if (targetRoomId) {
+        // 1. 목록 리프레시하여 새 1:1 채팅방 정보 가져오기
+        await fetchMyChatRooms();
+
+        // 2. 해당 방 ID를 활성화하고 해당 URL 경로로 이동
+        setActiveChatId(Number(targetRoomId));
+        navigate(`/community/chat/${targetRoomId}`);
+
+        // 사이드바가 모바일 등에서 열려있다면 닫아주기 위해 상태 초기화
+        setShowParticipants(false);
+      }
+    } catch (error) {
+      console.error("1:1 채팅방 생성 실패:", error);
+      alert("채팅방을 여는 중 오류가 발생했습니다.");
+    } finally {
+      stopLoading();
+    }
+  };
+
   const messages = messagesByRoom[activeChatId] || [];
 
   const setMessages = (updater) => {
@@ -416,6 +445,7 @@ const ChatListPage = () => {
                       currentUserId={userId}
                       isCurrentUserHost={isCurrentUserHost}
                       onKickParticipant={handleKickParticipant}
+                      onStartPrivateChat={handleStartPrivateChat}
                     />
                   </div>
                 )}

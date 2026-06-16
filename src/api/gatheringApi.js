@@ -123,6 +123,16 @@ const gatheringApi = {
             params: { activeChatId: activeChatId }
         });
         return response.data;
+    },
+
+    // 1:1 채팅 생성
+    createOrGetPrivateRoom: async (currentUserId, targetMemberId) => {
+        // 백엔드 엔드포인트 구조에 맞춰 구현 (POST 방식 추천)
+        const response = await maxios.post('/api/chat/private', {
+            currentUserId,
+            targetMemberId
+        });
+        return response.data;
     }
 };
 
