@@ -25,13 +25,6 @@ const ChatWindow = ({
   const currentRoomId = selectedChat?.id || selectedChat?.room_id;
   const currentRoomTitle = selectedChat?.title || selectedChat?.room_title;
 
-  // const getDefaultRoomImage = (title) => {
-  //   return 'https://picsum.photos/seed/gathering/100/100';
-  // };
-
-  // // 프로필 이미지가 없는 사용자를 위한 기본 아바타 이미지 지정
-  // const DEFAULT_USER_AVATAR = 'https://picsum.photos/seed/default-avatar/100/100';
-
   // 타입별 기본 룸 이미지 선택 함수
   const getDefaultRoomImage = (type) => {
     return type === 'FESTIVAL' ? DEFAULT_IMAGES.FESTIVAL_FALLBACK : DEFAULT_IMAGES.ROOM_COVER;
@@ -57,8 +50,9 @@ const ChatWindow = ({
               }}
             />
           </div>
+          {/* 변경된 부분: font-bold 클래스 추가 및 텍스트 크기(text-lg) 조정 */}
           <h2
-            className="cursor-pointer hover:text-purple-600 transition-colors"
+            className="font-bold text-lg cursor-pointer hover:text-purple-600 transition-colors"
             onClick={() => toggleSidebar('details')}
           >
             {selectedChat.title}
@@ -84,23 +78,19 @@ const ChatWindow = ({
       {/* 채팅 내용 스크롤 영역 */}
       <div ref={scrollRef} className={`flex-grow overflow-y-auto p-6 space-y-6 bg-[#F8F9FF] ${scrollbarHideClass}`}>
         {messages.map(msg => {
-          // 로컬스토리지 id 고유값 꼬임 방지를 위해 문자열/숫자 및 로그인 ID 다각도 매칭 방어 코드 적용
           const targetUser = participants.find(p => {
             const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
             const pUsername = p.username || p.userId || p.USER_ID || p.loginId;
             return String(pId) === String(msg.senderId) || (pUsername && String(pUsername) === String(msg.senderId));
           });
 
-          // 본인이 아니고, 매핑되는 참여자 목록에 없으면 실제 방에서 나간 사용자로 판정
           const isLeftUser = !msg.isMe && !targetUser;
 
-          // 닉네임 가공 규칙
           const existingName = targetUser?.nickname || targetUser?.NICKNAME || msg.senderName || msg.sender;
           const displayNickname = isLeftUser
             ? (existingName ? `${existingName}(퇴장한 사용자)` : '퇴장한 사용자')
             : existingName;
 
-          // 프로필 이미지 경로 추출
           const userProfileImg =
             msg.senderProfile ||
             targetUser?.profile_image_url ||
@@ -129,10 +119,8 @@ const ChatWindow = ({
               {!msg.isMe && (
                 <div className={`w-11 h-11 rounded-2xl bg-gray-100 overflow-hidden flex-shrink-0 mt-1 shadow-sm flex items-center justify-center ${isLeftUser ? 'bg-gray-200/50 opacity-60' : ''}`}>
                   {isLeftUser ? (
-                    /* 1. 진짜 퇴장한 사람만 깔끔하게 기본 User 아이콘 태그 처리 */
                     <User className="w-5 h-5 text-gray-400" />
                   ) : (
-                    /* 2. 퇴장 안 한 일반 참여자 중 프로필 사진이 없으면 기본 이미지(DEFAULT_USER_AVATAR) 바인딩 */
                     <img
                       src={userProfileImg || DEFAULT_IMAGES.PROFILE}
                       alt={displayNickname}
