@@ -56,6 +56,17 @@ export const resetPassword = (data) => {
   return maxios.post(`/member/password/reset`, data);
 };
 
+// 비밀번호 변경 (로그인 상태)
+export const updatePassword = (data) => {
+  return maxios.put(`/member/password/update`, data);
+};
+
+
+/**
+ * 회원 탈퇴
+ * @param {string} userId 
+ */
+export const deleteMember = (userId) => maxios.delete(`/member/${userId}`);
 
 /**
  * 유저 프로필 정보 조회 (관심 지역, 테마, 활동 로그 포함)
