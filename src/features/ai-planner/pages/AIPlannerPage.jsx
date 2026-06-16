@@ -439,7 +439,7 @@ const AIPlannerPage = () => {
         festivalId: Number(contentId),
         keyword: reason || userInput,
         searchQuery: reason || userInput,
-        type: type === 'LIKE' ? 'AI_LIKE' : 'AI_DISLIKE'
+        type: type === 'LIKE' ? 'AI_LIKE' : 'AI_DISLIKE' // 이전 버전에서 동작했던 필드명
       };
 
       await saveActivityLog(activityData);

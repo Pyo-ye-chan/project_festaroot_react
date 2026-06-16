@@ -67,7 +67,7 @@ function App() {
     const storedUser = localStorage.getItem("user");
 
     if (!token || !storedUser) {
-      if (floatingChatIds.length > 0 || minimizedChatIds.includes("id")) {
+      if (floatingChatIds.length > 0 || minimizedChatIds.length > 0) {
         clearChatStore(); // 플로팅 및 접힌 창 상태 전부 초기화 (끈 효과)
       }
     }
