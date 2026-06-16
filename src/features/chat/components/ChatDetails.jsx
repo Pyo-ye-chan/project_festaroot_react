@@ -14,7 +14,7 @@ const ChatDetails = ({
   currentUserId,        // 로그인한 사용자 ID
   isCurrentUserHost,    // 현재 사용자가 방장인지 여부
   onKickParticipant,    // 강퇴 핸들러 함수
-  onStartPrivateChat    // 1:1 채팅 시작
+  onStartDirectChat    // 1:1 채팅 시작
 }) => {
   const isOpen = showParticipants || showDetails;
   const navigate = useNavigate();
@@ -69,22 +69,24 @@ const ChatDetails = ({
                   (selectedChat?.owner_id && String(memberId) === String(selectedChat.owner_id));
 
                 const isMe = String(memberId) === String(currentUserId);
-
                 return (
                   <div key={memberId} className="flex flex-col border-b border-gray-50/50 pb-2 last:border-none">
                     <div className="flex items-center justify-between p-2">
-                      {/* ✨ 본인이어도 메뉴를 열 수 있도록 cursor-pointer와 클릭 핸들러를 상시 허용하고, hover 효과를 위해 group 클래스 적용 */}
+                      {/* ✨ [수정] 본인이거나, 1:1 방이 아닐 때만 유저 메뉴를 펼치도록 cursor 및 토글 이벤트 가드 적용 */}
                       <div
-                        className="flex items-center gap-3 cursor-pointer group"
-                        onClick={() => setActiveMenuMemberId(activeMenuMemberId === memberId ? null : memberId)}
+                        className={`flex items-center gap-3 group ${isMe || chatType !== 'DIRECT' ? 'cursor-pointer' : 'cursor-default'}`}
+                        onClick={() => {
+                          if (isMe || chatType !== 'DIRECT') {
+                            setActiveMenuMemberId(activeMenuMemberId === memberId ? null : memberId);
+                          }
+                        }}
                       >
                         <img
                           src={profileImg}
                           className="w-10 h-10 rounded-full object-cover transition-transform group-hover:scale-105"
                           alt={nickname}
                         />
-                        {/* ✨ group-hover:text-purple-600 클래스로 마우스를 올렸을 때 이름 색상이 직관적으로 변하도록 수정 */}
-                        <span className="text-base font-bold transition-colors group-hover:text-purple-600">
+                        <span className={`text-base font-bold transition-colors ${isMe || chatType !== 'DIRECT' ? 'group-hover:text-purple-600' : ''}`}>
                           {nickname}
                         </span>
                         {isHost && (
@@ -119,17 +121,19 @@ const ChatDetails = ({
                             내 프로필 수정
                           </button>
                         ) : (
-                          /* 타인 프로필일 때: 기존 1:1 채팅 보내기 버튼 노출 */
-                          <button
-                            onClick={() => {
-                              onStartPrivateChat(memberId, nickname);
-                              setActiveMenuMemberId(null);
-                            }}
-                            className="w-full py-1.5 px-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-2xs"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                            1:1 채팅 보내기
-                          </button>
+                          /* 타인 프로필일 때: 현재 방이 1:1(DIRECT)이 아닐 때만 1:1 채팅 버튼 노출 */
+                          chatType !== 'DIRECT' && (
+                            <button
+                              onClick={() => {
+                                onStartDirectChat(memberId, nickname);
+                                setActiveMenuMemberId(null);
+                              }}
+                              className="w-full py-1.5 px-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-2xs"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              1:1 채팅 보내기
+                            </button>
+                          )
                         )}
                       </div>
                     )}
@@ -198,7 +202,7 @@ const ChatDetails = ({
           )}
         </div>
 
-        {chatType !== 'PRIVATE' && (
+        {/* {chatType !== 'DIRECT' && ( */}
           <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex-shrink-0">
             <button
               onClick={onLeaveRoom}
@@ -208,7 +212,7 @@ const ChatDetails = ({
               채팅방 나가기
             </button>
           </div>
-        )}
+        {/* )} */}
       </aside>
     </>
   );

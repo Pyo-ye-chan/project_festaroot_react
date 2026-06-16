@@ -34,7 +34,18 @@ const ChatListPage = () => {
   const [displayChatId, setDisplayChatId] = useState(null);
   const [message, setMessage] = useState('');
 
+  const sections = [
+    { id: 'festival', label: '축제 채팅' },
+    { id: 'group', label: '모임 채팅' },
+    { id: 'direct', label: '1:1 채팅' },
+  ];
+
   const { startLoading, stopLoading } = useLoadingStore();
+  // const { chatRooms, setChatRooms, setActiveChatId, ...chatStore } = useChatStore();
+
+  // 로그인 유저 ID 추출
+  const user = JSON.parse(localStorage.getItem('user'));
+  const userId = user?.member_id || user?.id || user?.userId;
 
   // 참여자 목록
   const fetchParticipants = async () => {
@@ -58,10 +69,6 @@ const ChatListPage = () => {
       console.error("참여자 목록 로드 실패", e);
     }
   };
-
-  // 로컬스토리지에서 로그인한 유저 ID 추출
-  const user = JSON.parse(localStorage.getItem('user'));
-  const userId = user?.member_id || user?.id;
 
   // 선택된 채팅 및 상세정보 매핑 변수를 함수들이 참조
   const selectedChat = chatRooms.find(c => Number(c.id) === Number(activeChatId || displayChatId));
@@ -132,7 +139,7 @@ const ChatListPage = () => {
 
       // 2. 채팅창에 강퇴 안내 시스템 메시지 전송
       // 백엔드 웹소켓 프로토콜 구조에 따라 'TALK' 대신 'NOTICE'나 'SYSTEM' 타입을 사용할 수도 있습니다.
-      // 여기서는 기본 구현된 'TALK' 핸들러를 기반으로 메시지를 보냅니다.
+      // 여기서는 기본 구현된 'TALK' 핸들러를 기반으로 메시지를 보냄
       if (sendMessage) {
         sendMessage(activeChatId, `방장님이 ${targetNickname}님을 퇴장시켰습니다.`, 'KICK');
       }
@@ -266,7 +273,7 @@ const ChatListPage = () => {
   const [expandedSections, setExpandedSections] = useState({
     festival: true,
     group: true,
-    private: true
+    direct: true
   });
   const scrollRef = useRef(null);
 
@@ -279,28 +286,28 @@ const ChatListPage = () => {
       setShowParticipants(!showParticipants);
       setShowDetails(false);
     } else {
-      if (selectedChat?.type?.toUpperCase() === 'PRIVATE') return;
+      if (selectedChat?.type?.toUpperCase() === 'DIRECT') return;
       setShowDetails(!showDetails);
       setShowParticipants(false);
     }
   };
 
-  useEffect(() => {
-    const fetchMyChatRooms = async () => {
-      try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        const userId = user?.userId || user?.id || user?.member_id;
-        if (!userId) return;
+  const fetchMyChatRooms = async () => {
+    try {
+      if (!userId) return;
 
-        const responseData = await gatheringApi.getJoinedGatherings(userId, 1, 100, '전체');
-        const rawRooms = Array.isArray(responseData) ? responseData : (responseData.list || []);
+      const responseData = await gatheringApi.getJoinedGatherings(userId, 1, 100, '전체');
+      const rawRooms = Array.isArray(responseData) ? responseData : (responseData.list || []);
 
-        const formattedRooms = rawRooms.map(room => ({
+      const formattedRooms = rawRooms.map(room => {
+
+        const isDirect = room.room_type === 'DIRECT';
+        return {
           id: Number(room.room_id),
           type: room.room_type,
-          title: room.room_title,
+          title: isDirect ? (room.nickname || '상대방') : room.room_title,
           description: room.room_description,
-          room_image: room.room_image,
+          room_image: isDirect ? room.profile_image_url : room.room_image,
           current_count: room.current_count,
           max_capacity: room.max_capacity,
           nickname: room.nickname,
@@ -308,41 +315,40 @@ const ChatListPage = () => {
           unread_count: room.unread_count || 0, // 미확인 메세지 수
           lastMessage: room.lastMessage || room.last_message || room.LAST_MESSAGE || '대화 내용이 없습니다.', // 백엔드에서 넘겨준 마지막 메시지 필드를 프론트 상태에 매핑 
           owner_id: room.owner_id
-        }));
+        }
+      });
 
-        setChatRooms(formattedRooms);
-      } catch (error) {
-        console.error("채팅방 목록 로드 실패:", error);
-      }
-    };
+      setChatRooms(formattedRooms);
+    } catch (error) {
+      console.error("채팅방 목록 로드 실패:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchMyChatRooms();
-  }, [setChatRooms]);
-
-  const sections = [
-    { id: 'festival', label: '축제 채팅' },
-    { id: 'group', label: '모임 채팅' },
-    { id: 'private', label: '1:1 채팅' },
-  ];
+  }, [userId])
 
   // 1:1 채팅방 생성 및 이동 요청 핸들러 추가
-  const handleStartPrivateChat = async (targetMemberId, targetNickname) => {
+  const handleStartDirectChat = async (targetMemberId, targetNickname) => {
     try {
       startLoading();
 
-      // [백엔드 API 호출 조율 필요] 예시: gatheringApi.createOrGetPrivateRoom(현재유저ID, 상대방ID)
-      // 이 API는 기존 방이 있으면 해당 room_id를, 없으면 새로 만들어서 room_id를 반환해야 합니다.
-      const response = await gatheringApi.createOrGetPrivateRoom(userId, targetMemberId);
+      console.log(userId, targetMemberId)
+
+      // 백엔드로 현재 유저 ID와 상대방 ID 전송
+      const response = await gatheringApi.createOrGetDirectRoom(userId, targetMemberId);
       const targetRoomId = response?.room_id || response;
 
+      console.log(response)
+
       if (targetRoomId) {
-        // 1. 목록 리프레시하여 새 1:1 채팅방 정보 가져오기
+        // 이제 스코프 에러 없이 정상 작동함
         await fetchMyChatRooms();
 
-        // 2. 해당 방 ID를 활성화하고 해당 URL 경로로 이동
+        // 생성되거나 찾아온 룸 ID로 활성화 및 페이지 이동
         setActiveChatId(Number(targetRoomId));
         navigate(`/community/chat/${targetRoomId}`);
 
-        // 사이드바가 모바일 등에서 열려있다면 닫아주기 위해 상태 초기화
         setShowParticipants(false);
       }
     } catch (error) {
@@ -445,7 +451,7 @@ const ChatListPage = () => {
                       currentUserId={userId}
                       isCurrentUserHost={isCurrentUserHost}
                       onKickParticipant={handleKickParticipant}
-                      onStartPrivateChat={handleStartPrivateChat}
+                      onStartDirectChat={handleStartDirectChat}
                     />
                   </div>
                 )}
