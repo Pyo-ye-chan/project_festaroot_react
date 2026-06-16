@@ -106,7 +106,6 @@ const Header = () => {
   ];
 
   const currentUserId = user?.member_id || user?.id;
-  console.log(currentUserId)
 
   // 3. 로그인 상태일 때 백엔드로부터 최신 프로필 정보(이미지) 로드
   useEffect(() => {
@@ -114,7 +113,6 @@ const Header = () => {
       if (isLoggedIn && currentUserId) {
         try {
           const resp = await getMemberProfile(currentUserId);
-          console.log(resp)
 
           const imgUrl = resp.data?.member?.profile_image_url ||
             resp.data?.profile_image_url || // 기존 예외 대비 유지
