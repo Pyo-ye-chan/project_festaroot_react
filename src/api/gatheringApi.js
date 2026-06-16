@@ -143,6 +143,13 @@ const gatheringApi = {
         });
         return response.data;
     },
+
+    // 채팅방 목록 조회
+    getUserChatRooms: async (userId) => {
+        const response = await maxios.get(`/api/chat/rooms/user/${userId}`);
+        return response.data;
+    },
+    
 };
 
 export default gatheringApi;

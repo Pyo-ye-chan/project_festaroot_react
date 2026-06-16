@@ -379,8 +379,11 @@ const ChatListPage = () => {
     try {
       if (!userId) return;
 
-      const responseData = await gatheringApi.getJoinedGatherings(userId, 1, 100, '전체');
+      const responseData = await gatheringApi.getUserChatRooms(userId);
       const rawRooms = Array.isArray(responseData) ? responseData : (responseData.list || []);
+
+      console.log("responseData =", responseData);
+      console.log("isArray =", Array.isArray(responseData));
 
       const formattedRooms = rawRooms.map(room => {
 
@@ -388,9 +391,9 @@ const ChatListPage = () => {
         return {
           id: Number(room.room_id),
           type: room.room_type,
-          title: isDirect ? (room.nickname || '상대방') : room.room_title,
+          title: room.room_title,
           description: room.room_description,
-          room_image: isDirect ? room.profile_image_url : room.room_image,
+          room_image: room.room_image,
           current_count: room.current_count,
           max_capacity: room.max_capacity,
           nickname: room.nickname,
@@ -400,6 +403,8 @@ const ChatListPage = () => {
           owner_id: room.owner_id
         }
       });
+
+      console.log("formattedRooms", formattedRooms);
 
       setChatRooms(formattedRooms);
     } catch (error) {
@@ -505,6 +510,7 @@ const ChatListPage = () => {
                 selectedChatId={activeChatId}
                 setSelectedChatId={handleRoomClick}
                 customScrollbarClass={customScrollbarClass}
+                currentUserId={userId}
               />
 
               <div className={`hidden md:flex flex-grow min-w-0 bg-[#F8F9FF] relative overflow-hidden transition-all duration-500 ease-in-out ${activeChatId ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
@@ -525,6 +531,7 @@ const ChatListPage = () => {
                       setMessage={setMessage}
                       handleSendMessage={handleSendMessage}
                       participants={participants}
+                      currentUserId={userId}
                     />
 
                     <ChatDetails
@@ -644,7 +651,9 @@ const ChatListPage = () => {
 
             <p className="text-sm font-medium text-gray-500 mb-6 leading-relaxed">
               정말 이 채팅방에서 나가시겠습니까?<br />
-              원하시는 퇴장 방식을 선택해주세요. 차단 시 상대방이 보내는 메시지를 더 이상 수신하지 않습니다.
+              원하시는 퇴장 방식을 선택해주세요.<br /><br />
+              * 차단 시 상대방이 보내는 메시지를 더 이상 수신하지 않으며, <br />
+              차단 해제가 불가능 합니다.
             </p>
 
             {/* 버튼 제어 영역 */}

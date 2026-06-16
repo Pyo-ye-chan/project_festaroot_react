@@ -17,7 +17,8 @@ const ChatWindow = ({
   setMessage,
   handleSendMessage,
   participants,
-  onStartPrivateChat // 1:1 채팅 시작
+  onStartPrivateChat, // 1:1 채팅 시작
+  currentUserId // ✨ [추정] 로그인한 본인 아이디 받아오기 추가
 }) => {
 
   const navigate = useNavigate();
@@ -32,6 +33,23 @@ const ChatWindow = ({
   const chatType = selectedChat?.type?.toUpperCase() || selectedChat?.room_type?.toUpperCase();
   const isPrivateChat = chatType === 'DIRECT'; // 현재 방이 1:1 채팅방인지 여부 확인
 
+  // ✨ [추가] 1:1 채팅방일 때 참여자 목록(participants)에서 내가 아닌 상대방 추출
+  const opponent = isPrivateChat
+    ? participants.find(p => {
+      const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
+      return String(pId) !== String(currentUserId);
+    })
+    : null;
+
+  // ✨ [추가] 상대방 존재 여부에 따른 타이틀 및 이미지 가공
+  const displayRoomTitle = opponent
+    ? (opponent.nickname || opponent.NICKNAME || opponent.username || selectedChat?.title || selectedChat?.room_title)
+    : (selectedChat?.title || selectedChat?.room_title || '채팅방');
+
+  const displayRoomImage = opponent
+    ? (opponent.profile_image_url || opponent.PROFILE_IMAGE_URL)
+    : selectedChat?.room_image;
+
   // 타입별 기본 룸 이미지 선택 함수
   const getDefaultRoomImage = (type) => {
     return type === 'FESTIVAL' ? DEFAULT_IMAGES.FESTIVAL_FALLBACK : DEFAULT_IMAGES.ROOM_COVER;
@@ -42,32 +60,33 @@ const ChatWindow = ({
       {/* 헤더 영역 */}
       <header className="h-20 border-b border-gray-100 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md z-10 flex-shrink-0">
         <div
-          className={`flex items-center gap-4 min-w-0 ${selectedChat?.type !== 'private' ? 'cursor-pointer group' : ''}`}
-          onClick={() => selectedChat?.type !== 'private' && toggleSidebar('details')}
+          className={`flex items-center gap-4 min-w-0 ${!isPrivateChat ? 'cursor-pointer group' : ''}`}
+          onClick={() => !isPrivateChat && toggleSidebar('details')}
         >
           <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden">
+            {/* 가공된 디스플레이 이미지 경로 및 폴백 이미지 적용 */}
             <img
-              src={selectedChat?.room_image || getDefaultRoomImage(selectedChat?.title)}
-              alt={selectedChat?.title}
+              src={displayRoomImage || (isPrivateChat ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(chatType))}
+              alt={displayRoomTitle}
               className="w-full h-full object-cover"
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = getDefaultRoomImage(selectedChat?.title);
+                e.target.src = isPrivateChat ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(chatType);
               }}
             />
           </div>
-          {/* 변경된 부분: font-bold 클래스 추가 및 텍스트 크기(text-lg) 조정 */}
+          {/* 가공된 상대방 닉네임 타이틀 실시간 바인딩 */}
           <h2
             className="font-bold text-lg cursor-pointer hover:text-purple-600 transition-colors"
             onClick={() => toggleSidebar('details')}
           >
-            {selectedChat.title}
+            {displayRoomTitle}
           </h2>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
-              openFloatingChat(selectedChat.id);
+              openFloatingChat(currentRoomId);
               navigate('/community/chat');
             }}
             className="p-2.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all"
@@ -133,8 +152,8 @@ const ChatWindow = ({
                       }
                     }}
                     className={`w-11 h-11 rounded-2xl bg-gray-100 overflow-hidden flex-shrink-0 mt-1 shadow-sm flex items-center justify-center transition-all ${isLeftUser || isPrivateChat
-                        ? 'bg-gray-200/50 cursor-default'
-                        : 'cursor-pointer hover:scale-105 active:scale-95 group'
+                      ? 'bg-gray-200/50 cursor-default'
+                      : 'cursor-pointer hover:scale-105 active:scale-95 group'
                       }`}
                   >
                     {isLeftUser ? (
@@ -178,7 +197,7 @@ const ChatWindow = ({
 
               <div className={`flex flex-col gap-1.5 max-w-[75%] ${msg.isMe ? 'items-end' : 'items-start'}`}>
                 {!msg.isMe && (
-                  /* ✨ [수정] 닉네임 클릭 시에도 1:1 채팅방이면 팝업 방지 및 스타일링 분기 */
+                  /* 닉네임 클릭 시에도 1:1 채팅방이면 팝업 방지 및 스타일링 분기 */
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
@@ -186,9 +205,9 @@ const ChatWindow = ({
                         setActiveProfileMenuId(activeProfileMenuId === msg.id ? null : msg.id);
                       }
                     }}
-                    className={`text-sm font-black ml-1 select-none ${isLeftUser || isPrivateChat
-                        ? 'text-gray-400 cursor-default'
-                        : 'text-gray-700 cursor-pointer hover:text-purple-600 transition-colors'
+                    className={`text-sm font-black ml-1 select-none ${isLeftUser
+                      ? 'text-gray-400 cursor-default'
+                      : 'text-black cursor-default'
                       }`}
                   >
                     {isSenderHost && <span className="text-amber-500 text-xs" title="방장">👑 </span>}

@@ -10,11 +10,12 @@ const ChatSidebar = ({
   chatRooms,
   selectedChatId,
   setSelectedChatId,
-  customScrollbarClass
+  customScrollbarClass,
+  currentUserId // 상대방 매핑을 필터링하기 위해 로그인한 본인 아이디 수신
 }) => {
   const navigate = useNavigate();
 
-  // 검색어 입력을 관리할 로컬 상태 추가
+  // 검색어 입력을 관리할 로컬 상태
   const [searchKeyword, setSearchKeyword] = useState('');
 
   // roomType에 맞게 축제 또는 일반 커버 이미지를 반환하는 함수
@@ -44,10 +45,27 @@ const ChatSidebar = ({
       <div className={`flex-grow overflow-y-auto pt-4 ${customScrollbarClass}`}>
         {sections.map(section => {
           const filteredRooms = chatRooms.filter(c => {
-            const matchesSection = (c.type || c.room_type)?.toLowerCase() === section.id;
-            const roomTitle = c.title || c.room_title || '';
-            const matchesKeyword = roomTitle.toLowerCase().includes(searchKeyword.toLowerCase());
+            // 대/소문자 모두 방어하도록 수정
+            const roomType = (c.type || c.room_type || c.ROOM_TYPE)?.toUpperCase();
+            const matchesSection = roomType?.toLowerCase() === section.id;
 
+            // 검색 필터링 시에도 1:1 채팅방의 상대방 닉네임 기준으로 검색되도록 개선
+            let displayTitle = c.room_title || c.ROOM_TITLE || c.title || c.TITLE || '';
+            
+            if (roomType === 'PRIVATE' || roomType === 'DIRECT') {
+              const opponent = c.participants?.find(p => {
+                const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
+                return String(pId) !== String(currentUserId);
+              });
+
+              if (opponent) {
+                displayTitle = opponent.nickname || opponent.NICKNAME || opponent.username || displayTitle;
+              } else {
+                displayTitle = c.opponent_nickname || c.OPPONENT_NICKNAME || c.target_nickname || c.TARGET_NICKNAME || displayTitle;
+              }
+            }
+
+            const matchesKeyword = displayTitle.toLowerCase().includes(searchKeyword.toLowerCase());
             return matchesSection && matchesKeyword;
           });
 
@@ -77,7 +95,6 @@ const ChatSidebar = ({
                         }
                       </p>
 
-                      {/* 검색 중이 아닐 때만 이동 버튼 노출 */}
                       {!searchKeyword && section.id === 'festival' && (
                         <div className='flex gap-2 justify-center w-full'>
                           <button
@@ -109,9 +126,34 @@ const ChatSidebar = ({
                     </div>
                   ) : (
                     filteredRooms.map((chat) => {
-                      const currentRoomId = chat.id || chat.room_id;
-                      const currentRoomTitle = chat.title || chat.room_title;
-                      const roomType = (chat.type || chat.room_type)?.toUpperCase();
+                      // Oracle MyBatis 대문자 키 대응 변환 및 방어코드 추가
+                      const currentRoomId = chat.id || chat.room_id || chat.ROOM_ID;
+                      const roomType = (chat.type || chat.room_type || chat.ROOM_TYPE)?.toUpperCase();
+
+                      let currentRoomTitle = chat.room_title || chat.ROOM_TITLE || chat.title || chat.TITLE || '채팅방';
+                      let currentRoomImage = chat.room_image || chat.ROOM_IMAGE;
+
+                      const unreadCount = chat.unread_count ?? chat.UNREAD_COUNT ?? 0;
+                      const currentCount = chat.current_count ?? chat.CURRENT_COUNT;
+                      const maxCapacity = chat.max_capacity ?? chat.MAX_CAPACITY;
+                      const lastMessage = chat.lastMessage || chat.last_message || chat.LAST_MESSAGE;
+
+                      if (roomType === 'PRIVATE' || roomType === 'DIRECT') {
+                        // 1) 만약 내부 participants 배열이 존재하는 경우 탐색
+                        const opponent = chat.participants?.find(p => {
+                          const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
+                          return String(pId) !== String(currentUserId);
+                        });
+
+                        if (opponent) {
+                          currentRoomTitle = opponent.nickname || opponent.NICKNAME || opponent.username || currentRoomTitle;
+                          currentRoomImage = opponent.profile_image_url || opponent.PROFILE_IMAGE_URL || opponent.profile_image || opponent.PROFILE_IMAGE || currentRoomImage;
+                        } else {
+                          // 2) MyBatis 단층 Join 결과(flat object)인 경우 대/소문자 모두 조회해서 매핑
+                          currentRoomTitle = chat.opponent_nickname || chat.OPPONENT_NICKNAME || chat.target_nickname || chat.TARGET_NICKNAME || currentRoomTitle;
+                          currentRoomImage = chat.opponent_profile || chat.OPPONENT_PROFILE || chat.target_profile_image || chat.TARGET_PROFILE_IMAGE || chat.opponent_profile_image || chat.OPPONENT_PROFILE_IMAGE || currentRoomImage;
+                        }
+                      }
 
                       return (
                         <button
@@ -129,19 +171,19 @@ const ChatSidebar = ({
                           <div className="relative flex-shrink-0">
                             <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden">
                               <img
-                                src={chat.room_image || getDefaultRoomImage(roomType)}
+                                src={currentRoomImage || (roomType === 'DIRECT' ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(roomType))}
                                 alt={currentRoomTitle}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   e.target.onerror = null;
-                                  e.target.src = getDefaultRoomImage(roomType);
+                                  e.target.src = (roomType === 'PRIVATE' || roomType === 'DIRECT') ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(roomType);
                                 }}
                               />
                             </div>
 
-                            {chat.unread_count > 0 && (
+                            {unreadCount > 0 && (
                               <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white ring-2 ring-white select-none animate-bounce z-10">
-                                {chat.unread_count}
+                                {unreadCount}
                               </span>
                             )}
                           </div>
@@ -152,18 +194,18 @@ const ChatSidebar = ({
                                 {currentRoomTitle}
                               </h3>
 
-                              {roomType !== 'PRIVATE' && chat.current_count !== undefined && (
+                              {roomType !== 'PRIVATE' && roomType !== 'DIRECT' && currentCount !== undefined && (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full flex-shrink-0 select-none">
                                   <Users className="w-3 h-3" />
                                   <span>
-                                    {chat.current_count}
-                                    {chat.max_capacity ? `/${chat.max_capacity}` : ''}
+                                    {currentCount}
+                                    {maxCapacity ? `/${maxCapacity}` : ''}
                                   </span>
                                 </span>
                               )}
                             </div>
                             <p className="text-sm font-medium text-gray-500 truncate mt-0.5">
-                              {chat.lastMessage}
+                              {lastMessage || '대화 내용이 없습니다.'}
                             </p>
                           </div>
                         </button>
