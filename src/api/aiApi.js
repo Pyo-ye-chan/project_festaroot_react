@@ -1,40 +1,22 @@
 import { maxios } from './axiosApi';
 
+
 /**
- * AI 축제 추천 목록 조회 API
+ * AI 플래너 미리보기 생성
  *
- * GET /ai/recommendations
- *
- * 역할:
- * - 사용자의 한마디 입력값을 백엔드로 전달
- * - 백엔드에서 RAG/Gemini 기반 추천 축제 목록을 반환받음
- *
- * @param {string} userInput 사용자의 검색/추천 요청 문장
- * @returns {Promise} Axios 응답 Promise
+ * DB에 저장하지 않고 화면에 보여줄 코스만 생성한다.
  */
-export const getAIRecommendations = (userInput) => {
-  return maxios.get('/ai/recommendations', {
-    params: {
-      userInput
-    }
-  });
+export const previewAIPlanner = (data) => {
+  return maxios.post('/ai/planner/preview', data);
 };
 
 /**
- * AI 축제 주변 추천 생성 API
+ * AI 플래너 저장
  *
- * POST /ai/planner
- *
- * 역할:
- * - 선택한 축제 content_id와 사용자 조건을 백엔드로 전달
- * - 백엔드에서 축제장 좌표, 날씨, 주변 장소 정보를 기반으로 주변 추천 장소 생성
- * - 생성된 planner_id와 steps를 반환받음
- *
- * @param {Object} data AI 주변 추천 생성 요청 데이터
- * @returns {Promise} Axios 응답 Promise
+ * 사용자가 마음에 든 경우에만 마이페이지 저장용으로 호출한다.
  */
-export const createAIPlanner = (data) => {
-  return maxios.post('/ai/planner', data);
+export const saveAIPlanner = (data) => {
+  return maxios.post('/ai/planner/save', data);
 };
 
 /**
