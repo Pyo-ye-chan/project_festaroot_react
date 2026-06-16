@@ -1,5 +1,6 @@
 import React from 'react';
-import { Ban, MapPin, X, Calendar } from 'lucide-react';
+import { Ban, MapPin, X, Calendar, LogOut, Crown } from 'lucide-react';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const ChatDetails = ({
   showParticipants,
@@ -7,11 +8,15 @@ const ChatDetails = ({
   participants,
   selectedChat,
   customScrollbarClass,
-  toggleSidebar
+  toggleSidebar,
+  onLeaveRoom,
+  currentUserId,        // 로그인한 사용자 ID
+  isCurrentUserHost,    // 현재 사용자가 방장인지 여부
+  onKickParticipant     // 강퇴 핸들러 함수
 }) => {
   const isOpen = showParticipants || showDetails;
 
-  // 💡 Oracle 대소문자 이슈 방어를 위한 데이터 정규화 추출
+  // Oracle 대소문자 이슈 방어를 위한 데이터 정규화 추출
   const chatType = selectedChat?.type?.toUpperCase() || selectedChat?.room_type?.toUpperCase();
 
   // 시작일 / 모임일 추출
@@ -33,18 +38,17 @@ const ChatDetails = ({
         />
       )}
 
-      <aside className={`absolute right-0 top-0 h-full border-l border-gray-100 flex flex-col bg-white z-30 transition-all duration-300 ease-in-out ${isOpen ? 'w-72 translate-x-0 shadow-[-20px_0_40px_-20px_rgba(0,0,0,0.15)]' : 'w-72 translate-x-full'} ${customScrollbarClass}`}>
-        <div className="p-4 border-b border-gray-50 flex items-center justify-between">
-          <h3 className="font-black text-gray-900 text-base">
-            {showParticipants ? '참여 인원' : '채팅방 상세 정보'}
-          </h3>
-          <button
-            onClick={() => toggleSidebar(showParticipants ? 'participants' : 'details')}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-400"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+      <aside className={`absolute right-0 top-0 h-full border-l border-gray-100 flex flex-col bg-white z-30 transition-all duration-300 ease-in-out ${isOpen ? 'w-72 translate-x-0 shadow-[-20px_0_40px_-20px_rgba(0,0,0,0.15)]' : 'w-72 translate-x-full'}`}>       <div className="p-4 border-b border-gray-50 flex items-center justify-between">
+        <h3 className="font-black text-gray-900 text-base">
+          {showParticipants ? '참여 인원' : '채팅방 상세 정보'}
+        </h3>
+        <button
+          onClick={() => toggleSidebar(showParticipants ? 'participants' : 'details')}
+          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-400"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
         <div className="flex-grow overflow-y-auto">
           {showParticipants && (
@@ -52,7 +56,7 @@ const ChatDetails = ({
               {participants.map(p => {
                 const memberId = p.member_id || p.MEMBER_ID || p.id;
                 const nickname = p.nickname || p.NICKNAME || '이름 없음';
-                const profileImg = p.profile_image_url || p.PROFILE_IMAGE_URL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(nickname)}`;
+                const profileImg = p.profile_image_url || p.PROFILE_IMAGE_URL || DEFAULT_IMAGES.PROFILE;;
 
                 const isHost =
                   p.is_host === 'Y' || p.IS_HOST === 'Y' ||
@@ -70,14 +74,20 @@ const ChatDetails = ({
                       />
                       <span className="text-base font-bold">{nickname}</span>
                       {isHost && (
-                        <span className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded-md font-black border border-amber-200 shadow-sm flex items-center gap-0.5">
-                          👑 방장
-                        </span>
+                        <Crown className="w-4 h-4 text-amber-500 fill-amber-500" />
                       )}
                     </div>
-                    <button className="text-gray-300 hover:text-rose-500">
-                      <Ban className="w-5 h-5" />
-                    </button>
+
+                    {/* 내가 방장이고, 본인이 아닐 때만 강퇴(Ban) 아이콘 표시 */}
+                    {isCurrentUserHost && String(memberId) !== String(currentUserId) && (
+                      <button
+                        onClick={() => onKickParticipant(memberId, nickname)}
+                        className="text-gray-300 hover:text-rose-500 transition-colors"
+                        title="추방하기"
+                      >
+                        <Ban className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -86,7 +96,7 @@ const ChatDetails = ({
 
           {showDetails && (
             <div className="p-6 space-y-6">
-              {/* 💡 축제(FESTIVAL) 및 일반 모임(GROUP) 정보 레이아웃 다변화 노출 */}
+              {/* 축제(FESTIVAL) 및 일반 모임(GROUP) 정보 레이아웃 다변화 노출 */}
               {(chatType === 'FESTIVAL' || chatType === 'GROUP') && (
                 <>
                   {/* 일정 정보 매핑 */}
@@ -134,6 +144,21 @@ const ChatDetails = ({
             </div>
           )}
         </div>
+
+        {/* 최하단 고정 나가기 버튼 영역 추가 */}
+        {/* 1:1 채팅방(PRIVATE)이 아닐 때만 나가기 버튼이 보이도록 안전장치를 둘 수도 있습니다. */}
+        {chatType !== 'PRIVATE' && (
+          <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex-shrink-0">
+            <button
+              onClick={onLeaveRoom}
+              className="w-full py-3 px-4 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 shadow-sm group"
+            >
+              <LogOut className="w-4 h-4 text-red-500 group-hover:translate-x-0.5 transition-transform" />
+              채팅방 나가기
+            </button>
+          </div>
+        )}
+
       </aside>
     </>
   );

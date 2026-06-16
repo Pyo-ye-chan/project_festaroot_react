@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 // 모임 페이지의 상태(탭, 페이지 번호, 필터 등)를 전역으로 관리하여 
-// 상세 페이지 이동 후 돌아와도 URL 파라미터 없이 상태를 복구할 수 있게 합니다.
+// 상세 페이지 이동 후 돌아와도 URL 파라미터 없이 상태를 복구
 const useGatheringStore = create((set) => ({
   activeTab: '전체 모임',
   currentPage: 1,

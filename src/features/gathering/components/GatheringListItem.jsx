@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, CalendarDays, Users, ChevronRight } from 'lucide-react';
 import useAuthStore from '../../../store/useAuthStore';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab }) => {
   const { user } = useAuthStore();
@@ -26,7 +27,7 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
   const festivalName = roomTitle ? roomTitle.replace(' 공식 모임', '') : '';
 
   // 🌟 이미지 우선순위 설정 (다양한 백엔드 필드 대응)
-  const gatheringImage = item.room_image || 'https://picsum.photos/seed/gathering/100/100'
+  const gatheringImage = item.room_image || DEFAULT_IMAGES.ROOM_COVER;
 
   const formattedDate = freeDate ? freeDate.replace(/-/g, '.') : '';
 
