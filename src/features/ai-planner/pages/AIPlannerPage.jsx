@@ -330,18 +330,20 @@ const AIPlannerPage = () => {
       themes: userDetails?.interestThemes?.map((t) => t.theme_name) || []
     },
     likedFestivals: userDetails?.likedFestivals || [],
-    recentHistory: (userDetails?.recentLogs || []).map((log, idx) => ({
-      id: log.log_id || idx,
-      title: log.title || log.searchQuery || '최근 활동',
-      type:
-        log.type === 'VIEW'
-          ? '조회'
-          : log.type === 'SEARCH'
-            ? '검색'
-            : log.type === 'MAP'
-              ? '지도'
-              : '기타'
-    }))
+    recentHistory: (userDetails?.recentLogs || [])
+      .filter(log => ['VIEW', 'SEARCH', 'MAP'].includes(log.type))
+      .map((log, idx) => ({
+        id: log.log_id || idx,
+        title: log.title || log.searchQuery || '최근 활동',
+        type:
+          log.type === 'VIEW'
+            ? '조회'
+            : log.type === 'SEARCH'
+              ? '검색'
+              : log.type === 'MAP'
+                ? '지도'
+                : '기타'
+      }))
   };
 
   const handleRecommend = async () => {
