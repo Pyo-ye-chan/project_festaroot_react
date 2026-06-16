@@ -29,11 +29,13 @@ const ChatWindow = ({
   const currentRoomId = selectedChat?.id || selectedChat?.room_id;
   const currentRoomTitle = selectedChat?.title || selectedChat?.room_title;
 
+  const chatType = selectedChat?.type?.toUpperCase() || selectedChat?.room_type?.toUpperCase();
+  const isPrivateChat = chatType === 'DIRECT'; // 현재 방이 1:1 채팅방인지 여부 확인
+
   // 타입별 기본 룸 이미지 선택 함수
   const getDefaultRoomImage = (type) => {
     return type === 'FESTIVAL' ? DEFAULT_IMAGES.FESTIVAL_FALLBACK : DEFAULT_IMAGES.ROOM_COVER;
   };
-
 
   return (
     <div className="flex flex-col flex-grow min-w-0 bg-white">
@@ -122,12 +124,18 @@ const ChatWindow = ({
             <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-start gap-3`}>
               {!msg.isMe && (
                 <div className="relative">
+                  {/* 이미 1:1 채팅방(isPrivateChat)일 경우 클릭 이벤트 및 마우스 커서 비활성화 */}
                   <div
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!isLeftUser) setActiveProfileMenuId(activeProfileMenuId === msg.id ? null : msg.id);
+                      if (!isLeftUser && !isPrivateChat) {
+                        setActiveProfileMenuId(activeProfileMenuId === msg.id ? null : msg.id);
+                      }
                     }}
-                    className={`w-11 h-11 rounded-2xl bg-gray-100 overflow-hidden flex-shrink-0 mt-1 shadow-sm flex items-center justify-center transition-all ${isLeftUser ? 'bg-gray-200/50 opacity-60' : 'cursor-pointer hover:scale-105 active:scale-95 group'}`}
+                    className={`w-11 h-11 rounded-2xl bg-gray-100 overflow-hidden flex-shrink-0 mt-1 shadow-sm flex items-center justify-center transition-all ${isLeftUser || isPrivateChat
+                        ? 'bg-gray-200/50 cursor-default'
+                        : 'cursor-pointer hover:scale-105 active:scale-95 group'
+                      }`}
                   >
                     {isLeftUser ? (
                       <User className="w-5 h-5 text-gray-400" />
@@ -145,7 +153,7 @@ const ChatWindow = ({
                   </div>
 
                   {/* 채팅방 내부 프로필 사진 클릭 시 뜨는 1:1 채팅 미니 팝업 UI */}
-                  {activeProfileMenuId === msg.id && !isLeftUser && (
+                  {activeProfileMenuId === msg.id && !isLeftUser && !isPrivateChat && (
                     <div className="absolute left-0 top-14 w-44 bg-white border border-gray-150/80 rounded-2xl shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                       <div className="px-3 py-1 border-b border-gray-50 mb-1">
                         <p className="text-[10px] font-black text-gray-400">유저 메뉴</p>
@@ -170,13 +178,18 @@ const ChatWindow = ({
 
               <div className={`flex flex-col gap-1.5 max-w-[75%] ${msg.isMe ? 'items-end' : 'items-start'}`}>
                 {!msg.isMe && (
-                  /* 닉네임 클릭 시에도 프로필 미니 메뉴 작동 */
+                  /* ✨ [수정] 닉네임 클릭 시에도 1:1 채팅방이면 팝업 방지 및 스타일링 분기 */
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!isLeftUser) setActiveProfileMenuId(activeProfileMenuId === msg.id ? null : msg.id);
+                      if (!isLeftUser && !isPrivateChat) {
+                        setActiveProfileMenuId(activeProfileMenuId === msg.id ? null : msg.id);
+                      }
                     }}
-                    className={`text-sm font-black ml-1 select-none ${isLeftUser ? 'text-gray-400' : 'text-gray-700 cursor-pointer hover:text-purple-600 transition-colors'}`}
+                    className={`text-sm font-black ml-1 select-none ${isLeftUser || isPrivateChat
+                        ? 'text-gray-400 cursor-default'
+                        : 'text-gray-700 cursor-pointer hover:text-purple-600 transition-colors'
+                      }`}
                   >
                     {isSenderHost && <span className="text-amber-500 text-xs" title="방장">👑 </span>}
                     {displayNickname}

@@ -127,13 +127,22 @@ const gatheringApi = {
 
     // 1:1 채팅 생성
     createOrGetDirectRoom: async (currentUserId, targetMemberId) => {
-        // 백엔드 엔드포인트 구조에 맞춰 구현 (POST 방식 추천)
-        const response = await maxios.post('/api/chat/private', {
+        const response = await maxios.post('/api/chat/direct', {
             currentUserId,
             targetMemberId
         });
         return response.data;
-    }
+    },
+
+    // 1:1 채팅방 나가기 / 차단하고 나가기 연동 API
+    leavePrivateRoom: async (room_id, member_id, isBlock = false, targetMemberId = null) => {
+        const response = await maxios.post(`/api/chat/rooms/${room_id}/leave`, {
+            memberId: member_id,
+            isBlock,
+            targetMemberId
+        });
+        return response.data;
+    },
 };
 
 export default gatheringApi;

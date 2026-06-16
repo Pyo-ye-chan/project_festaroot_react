@@ -6,13 +6,14 @@ import ChatDetails from '../components/ChatDetails';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import gatheringApi from '../../../api/gatheringApi';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Crown, X } from 'lucide-react';
+import { Ban, Crown, LogOut, X } from 'lucide-react';
 import useLoadingStore from '../../../store/useLoadingStore';
 
 const ChatListPage = () => {
   const [participants, setParticipants] = useState([]);
   const [roomDetail, setRoomDetail] = useState(null);
   const [showDelegateModal, setShowDelegateModal] = useState(false); // 위임 팝업 모달
+  const [showDirectLeaveModal, setShowDirectLeaveModal] = useState(false); // 1:1 채팅 전용 나가기
   const { roomId } = useParams();
   const navigate = useNavigate();
 
@@ -194,8 +195,22 @@ const ChatListPage = () => {
   const handleLeaveRoom = async () => {
     if (!activeChatId || !userId) return;
 
+    // 현재 방 타입이 1:1(DIRECT)인지 확인
+    const isDirect = selectedChat?.type?.toUpperCase() === 'DIRECT' || roomDetail?.room_type?.toUpperCase() === 'DIRECT';
+
+    // 1:1 채팅방일 경우 전용 커스텀 모달 오픈 후 얼리 리턴
+    if (isDirect) {
+      // 참여자가 1명 이하(혼자)이면 모달 없이 바로 나가기 실행
+      if (participants.length <= 1) {
+
+        handleDirectLeaveOnly();
+      } else {
+        setShowDirectLeaveModal(true);
+      }
+      return;
+    }
+
     // 1. 현재 사용자가 이 방의 방장(Owner)인지 확인
-    // detailedChat 이나 selectedChat 에 owner_id 가 포함되어 있는지 확인하세요.
     const isOwner = selectedChat?.owner_id === userId || roomDetail?.owner_id === userId;
 
     if (isOwner) {
@@ -250,6 +265,74 @@ const ChatListPage = () => {
       return () => clearTimeout(timer);
     }
   }, [activeChatId]);
+
+  // 1:1 채팅방 그냥 나가기 실행 함수
+  const handleDirectLeaveOnly = async () => {
+    // 채팅방에 혼자 남은 경우, 바로 나가지 않고 한 번 더 확인 받기
+    if (participants.length <= 1) {
+      if (!window.confirm("정말 이 채팅방에서 나가시겠습니까?")) {
+        return; // '취소'를 누르면 함수를 종료하여 나가지 않음
+      }
+    }
+
+    try {
+      const target = participants.find(p => {
+        const pId = p.member_id || p.MEMBER_ID || p.id;
+        return String(pId) !== String(userId);
+      });
+
+      // 상대방이 이미 나가서 없는 경우 null로 처리하여 본인은 나갈 수 있도록 방어
+      const targetMemberId = target?.member_id || target?.MEMBER_ID || target?.id || null;
+
+      // 1. 백엔드 API 호출
+      await gatheringApi.leavePrivateRoom(activeChatId, userId, false, targetMemberId);
+
+      // 상대방이 아직 방에 남아있을 때만 웹소켓으로 퇴장 알림 전송
+      if (targetMemberId && sendMessage) {
+        const myNickname = user?.nickname || user?.NICKNAME || '상대방';
+        sendMessage(activeChatId, `${myNickname}님이 퇴장하셨습니다.`, 'LEAVE');
+      }
+
+      // '확인'을 누르고 정상 처리되면 브라우저 알림창 출력
+      alert("채팅방에서 퇴장하였습니다.");
+
+      setShowDirectLeaveModal(false);
+      setActiveChatId(null);
+      navigate('/community/chat');
+      setChatRooms(chatRooms.filter((room) => room.id !== activeChatId));
+    } catch (error) {
+      console.error("채팅방 나가기 실패:", error);
+      alert("채팅방을 나가는 도중 오류가 발생했습니다.");
+    }
+  };
+
+  // 1:1 채팅방 차단하고 나가기 실행 함수
+  const handleDirectBlockAndLeave = async () => {
+    try {
+      const target = participants.find(p => {
+        const pId = p.member_id || p.MEMBER_ID || p.id;
+        return String(pId) !== String(userId);
+      });
+      const targetMemberId = target?.member_id || target?.MEMBER_ID || target?.id;
+
+      if (!targetMemberId) {
+        alert("상대방 정보를 찾을 수 없습니다.");
+        return;
+      }
+
+      // 차단 여부(isBlock)를 true로 설정하여 순서대로 넘기기
+      await gatheringApi.leavePrivateRoom(activeChatId, userId, true, targetMemberId);
+
+      alert("상대방을 차단하고 채팅방에서 퇴장하였습니다.");
+      setShowDirectLeaveModal(false);
+      setActiveChatId(null);
+      navigate('/community/chat');
+      setChatRooms(chatRooms.filter((room) => room.id !== activeChatId));
+    } catch (error) {
+      console.error("차단 및 나가기 실패:", error);
+      alert("처리 도중 오류가 발생했습니다.");
+    }
+  };
 
   // URL 주소에 roomId가 없을 때는 자동으로 빈 화면(목록만) 렌더링하도록 분기 처리
   useEffect(() => {
@@ -352,8 +435,12 @@ const ChatListPage = () => {
         setShowParticipants(false);
       }
     } catch (error) {
-      console.error("1:1 채팅방 생성 실패:", error);
-      alert("채팅방을 여는 중 오류가 발생했습니다.");
+      if (error.response && error.response.status === 403) {
+        alert("차단 목록에 등록되었거나 대화를 나눌 수 없는 유저입니다.")
+      } else {
+        console.error("1:1 채팅방 생성 실패:", error);
+        alert("채팅방을 생성하는 중 오류가 발생했습니다.")
+      }
     } finally {
       stopLoading();
     }
@@ -460,7 +547,7 @@ const ChatListPage = () => {
           </main>
         </div>
       </div>
-      {/* 👑 신규 반영: 방장 권한 위임 선택용 팝업 모달 UI */}
+      {/* 방장 권한 위임 선택용 팝업 모달 UI */}
       {showDelegateModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in backdrop-blur-xs">
           <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-2xl border border-gray-100 mx-4 animate-in zoom-in-95 duration-200">
@@ -531,6 +618,55 @@ const ChatListPage = () => {
               <button
                 onClick={() => setShowDelegateModal(false)}
                 className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-xs rounded-xl transition-colors"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 1:1 채팅방 전용 나가기/차단 선택 모달 UI */}
+      {showDirectLeaveModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in backdrop-blur-xs">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-2xl border border-gray-100 mx-4 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                <LogOut className="w-5 h-5 text-red-500" />
+                1:1 채팅방 나가기
+              </h3>
+              <button
+                onClick={() => setShowDirectLeaveModal(false)}
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm font-medium text-gray-500 mb-6 leading-relaxed">
+              정말 이 채팅방에서 나가시겠습니까?<br />
+              원하시는 퇴장 방식을 선택해주세요. 차단 시 상대방이 보내는 메시지를 더 이상 수신하지 않습니다.
+            </p>
+
+            {/* 버튼 제어 영역 */}
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleDirectBlockAndLeave}
+                className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-black text-sm rounded-xl transition-colors shadow-md shadow-red-600/10 flex items-center justify-center gap-1.5"
+              >
+                <Ban className="w-4 h-4" />
+                차단하고 나가기
+              </button>
+
+              <button
+                onClick={handleDirectLeaveOnly}
+                className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-xl transition-colors flex items-center justify-center"
+              >
+                그냥 나가기
+              </button>
+
+              <button
+                onClick={() => setShowDirectLeaveModal(false)}
+                className="w-full py-3 px-4 bg-white border border-gray-200 text-gray-400 hover:text-gray-500 font-medium text-sm rounded-xl transition-colors mt-1"
               >
                 취소
               </button>
