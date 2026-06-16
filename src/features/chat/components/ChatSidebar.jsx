@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Search, ChevronDown, ChevronUp, Users, ArrowRight } from 'lucide-react';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
@@ -14,6 +14,9 @@ const ChatSidebar = ({
 }) => {
   const navigate = useNavigate();
 
+  // 검색어 입력을 관리할 로컬 상태 추가
+  const [searchKeyword, setSearchKeyword] = useState('');
+
   // roomType에 맞게 축제 또는 일반 커버 이미지를 반환하는 함수
   const getDefaultRoomImage = (roomType) => {
     return roomType === 'FESTIVAL' ? DEFAULT_IMAGES.FESTIVAL_FALLBACK : DEFAULT_IMAGES.ROOM_COVER;
@@ -27,17 +30,26 @@ const ChatSidebar = ({
           메시지
         </h1>
         <div className="relative group">
-          <input type="text" placeholder="채팅방 검색..." className="w-full bg-gray-50 border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-purple-600/20 transition-all" />
+          <input
+            type="text"
+            placeholder="채팅방 검색..."
+            value={searchKeyword}
+            onChange={(e) => setSearchKeyword(e.target.value)}
+            className="w-full bg-gray-50 border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-purple-600/20 transition-all"
+          />
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-purple-600 w-4 h-4" />
         </div>
       </div>
 
       <div className={`flex-grow overflow-y-auto pt-4 ${customScrollbarClass}`}>
         {sections.map(section => {
-          // 각 섹션 ID 유형('festival', 'group', 'private')에 맞는 채팅방 필터링
-          const filteredRooms = chatRooms.filter(
-            c => (c.type || c.room_type)?.toLowerCase() === section.id
-          );
+          const filteredRooms = chatRooms.filter(c => {
+            const matchesSection = (c.type || c.room_type)?.toLowerCase() === section.id;
+            const roomTitle = c.title || c.room_title || '';
+            const matchesKeyword = roomTitle.toLowerCase().includes(searchKeyword.toLowerCase());
+
+            return matchesSection && matchesKeyword;
+          });
 
           return (
             <div key={section.id} className="mb-2 last:mb-0">
@@ -54,19 +66,20 @@ const ChatSidebar = ({
 
               {expandedSections[section.id] && (
                 <div className="animate-in slide-in-from-top-2 duration-300">
-                  {/* 참여 중인 방이 없을 때 섹션별 맞춤 안내 및 이동 버튼 분기 처리 */}
                   {filteredRooms.length === 0 ? (
                     <div className="text-center py-8 px-6 text-xs font-medium text-gray-400 tracking-tight select-none flex flex-col items-center gap-3">
                       <p className="leading-relaxed whitespace-pre-line">
-                        {section.id === 'festival'
-                          ? '축제 찾기를 통해 원하는 축제 채팅에 참여해보세요 !'
-                          : `아직 참여 중인 ${section.label}방이 없습니다.`}
+                        {searchKeyword
+                          ? '검색 결과와 일치하는 채팅방이 없습니다.'
+                          : section.id === 'festival'
+                            ? '축제 찾기를 통해 원하는 축제 채팅에 참여해보세요 !'
+                            : `아직 참여 중인 ${section.label}방이 없습니다.`
+                        }
                       </p>
 
-                      {/* 축제 채팅방이 비었을 때 버튼 컴포넌트 */}
-                      {section.id === 'festival' && (
+                      {/* 검색 중이 아닐 때만 이동 버튼 노출 */}
+                      {!searchKeyword && section.id === 'festival' && (
                         <div className='flex gap-2 justify-center w-full'>
-                          {/* 메인 액션 버튼 (크기 축소) */}
                           <button
                             onClick={() => navigate('/search')}
                             className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] rounded-lg transition-all shadow-sm shadow-purple-600/5 flex items-center gap-1 group/btn whitespace-nowrap"
@@ -74,8 +87,6 @@ const ChatSidebar = ({
                             축제 찾으러 가기
                             <ArrowRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-0.5" />
                           </button>
-
-                          {/* 서브 이동 버튼 (회색 톤 + 크기 축소) */}
                           <button
                             onClick={() => navigate('/community/gathering')}
                             className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 group/btn whitespace-nowrap"
@@ -86,8 +97,7 @@ const ChatSidebar = ({
                         </div>
                       )}
 
-                      {/* 모임 채팅방이 비었을 때 버튼 (회색 톤 + 크기 축소) */}
-                      {section.id === 'group' && (
+                      {!searchKeyword && section.id === 'group' && (
                         <button
                           onClick={() => navigate('/community/gathering')}
                           className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-[10px] rounded-lg transition-all flex items-center gap-1 group/btn"
