@@ -12,6 +12,8 @@ const CreateGatheringModal = ({ onClose, festivalId = null, initialData = null }
   const [roomDescription, setRoomDescription] = useState(initialData?.room_description || '');
   const [freeDate, setFreeDate] = useState(initialData?.free_date || '');
   const [freeLocation, setFreeLocation] = useState(initialData?.free_location || '');
+
+  // 1:1 채팅방 분리를 위해 최소 인원 Default 값을 고려한 상태 관리
   const [maxCapacity, setMaxCapacity] = useState(initialData?.max_capacity || 5);
 
   const [imageFile, setImageFile] = useState(null);
@@ -37,7 +39,6 @@ const CreateGatheringModal = ({ onClose, festivalId = null, initialData = null }
     }
   };
 
-  // 🌟 이미지 업로드 후 JSON으로 모임 생성/수정 요청 처리
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -46,21 +47,25 @@ const CreateGatheringModal = ({ onClose, festivalId = null, initialData = null }
       return;
     }
 
-    try {
-      let uploadedImageUrl = imagePreview; // 기본값은 기존 이미지 (수정 시 변경 없을 수 있음)
+    // 최소 인원 안전장치 벨리데이션 검사 추가
+    if (Number(maxCapacity) < 3) {
+      alert('모임방은 최소 3명 이상부터 생성이 가능합니다. (2인 이하는 1:1 메시지를 이용해주세요)');
+      return;
+    }
 
-      // [Step 1] 새 이미지 파일이 선택되었다면 백엔드 /image 엔드포인트로 먼저 업로드
+    try {
+      let uploadedImageUrl = imagePreview;
+
       if (imageFile) {
         const uploadResult = await gatheringApi.uploadImage(imageFile);
         if (uploadResult.success) {
-          uploadedImageUrl = uploadResult.imageUrl; // GCP Storage 주소 확보
+          uploadedImageUrl = uploadResult.imageUrl;
         } else {
           alert('이미지 업로드에 실패했습니다.');
           return;
         }
       }
 
-      // [Step 2] 백엔드 GatheringDTO 스펙에 맞춘 객체 생성
       const requestPayload = {
         room_title: roomTitle,
         room_description: roomDescription,
@@ -73,12 +78,11 @@ const CreateGatheringModal = ({ onClose, festivalId = null, initialData = null }
         room_image: uploadedImageUrl
       };
 
-      // [Step 3] 데이터 전송 (수정 또는 생성)
       if (isEditMode) {
         const data = await gatheringApi.updateGathering(initialData.room_id, requestPayload);
         if (data.success) {
           alert('모임 정보가 성공적으로 수정되었습니다!');
-          onClose(true); // 수정 성공 신호를 보냄
+          onClose(true);
         }
       } else {
         const data = await gatheringApi.createGathering(requestPayload);
@@ -107,7 +111,7 @@ const CreateGatheringModal = ({ onClose, festivalId = null, initialData = null }
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 이미지 업로드 섹션 */}
           <div className="flex flex-col items-center mb-6">
-            <div 
+            <div
               onClick={() => fileInputRef.current?.click()}
               className="relative w-full h-48 bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl overflow-hidden cursor-pointer hover:bg-gray-100 transition-all group"
             >
@@ -121,11 +125,11 @@ const CreateGatheringModal = ({ onClose, festivalId = null, initialData = null }
               )}
               <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-10 transition-opacity" />
             </div>
-            <input 
-              type="file" 
+            <input
+              type="file"
               ref={fileInputRef}
               onChange={handleImageChange}
-              className="hidden" 
+              className="hidden"
               accept="image/*"
             />
           </div>
@@ -194,7 +198,7 @@ const CreateGatheringModal = ({ onClose, festivalId = null, initialData = null }
             </div>
           </div>
 
-          {/* 최대 인원 */}
+          {/* 최대 인원 - 최소값 3명으로 수정 */}
           <div>
             <label htmlFor="maxCapacity" className="block text-sm font-bold text-gray-700 mb-2 flex items-center">
               <Users className="w-4 h-4 mr-2 text-[var(--festival-purple)]" /> 최대 인원
@@ -204,11 +208,12 @@ const CreateGatheringModal = ({ onClose, festivalId = null, initialData = null }
               id="maxCapacity"
               value={maxCapacity}
               onChange={(e) => setMaxCapacity(e.target.value)}
-              min="2"
+              min="3"
               max="20"
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20 focus:border-[var(--festival-purple)] transition-all"
               required
             />
+            <p className="text-xs text-gray-400 mt-1 pl-1">※ 자유 모임방은 최소 3명부터 최대 20명까지 개설이 가능합니다.</p>
           </div>
 
           {/* 하단 버튼 */}
