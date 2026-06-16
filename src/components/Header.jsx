@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { User } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
 import NotificationDropdown from './notifications/NotificationDropdown';
 import { getUnreadNotifications } from '../api/notificationApi';
+import { DEFAULT_IMAGES } from '../constants/DefaultImages';
+import { getMemberProfile } from '../api/memberApi';
 
 const Header = () => {
   const [region, setRegion] = useState('서울');
@@ -12,6 +15,9 @@ const Header = () => {
   const [isWeatherDropdownOpen, setIsWeatherDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+
+  // 2. 헤더에서 관리할 프로필 이미지 URL 상태 추가
+  const [profileImageUrl, setProfileImageUrl] = useState(null);
 
   const dropdownRef = useRef(null);
   const notificationRef = useRef(null);
@@ -84,7 +90,6 @@ const Header = () => {
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  // Colors aligned with Footer
   const primaryPurple = '#6B46FE';
   const regions = [
     '서울', '경기', '인천', '강원', '충북', '충남', '대전', '세종',
@@ -100,6 +105,33 @@ const Header = () => {
     { name: '마이페이지', href: '/mypage' },
   ];
 
+  const currentUserId = user?.member_id || user?.id;
+  console.log(currentUserId)
+
+  // 3. 로그인 상태일 때 백엔드로부터 최신 프로필 정보(이미지) 로드
+  useEffect(() => {
+    const fetchHeaderProfile = async () => {
+      if (isLoggedIn && currentUserId) {
+        try {
+          const resp = await getMemberProfile(currentUserId);
+          console.log(resp)
+
+          const imgUrl = resp.data?.member?.profile_image_url ||
+            resp.data?.profile_image_url || // 기존 예외 대비 유지
+            resp.data?.data?.profile_image_url;
+          setProfileImageUrl(imgUrl);
+        } catch (error) {
+          console.error('헤더 프로필 이미지 로드 실패:', error);
+        }
+      } else {
+        // 로그아웃 상태면 이미지 상태 초기화
+        setProfileImageUrl(null);
+      }
+    };
+
+    fetchHeaderProfile();
+  }, [isLoggedIn, user, currentUserId]);
+
   const handleLoginLogout = () => {
     if (isLoggedIn) {
       logout();
@@ -107,8 +139,7 @@ const Header = () => {
     } else {
       navigate('/login');
     }
-
-  }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -172,12 +203,21 @@ const Header = () => {
               className="group flex items-center gap-0 hover:gap-2 p-1 bg-white border border-gray-200 rounded-full hover:shadow-md transition-all duration-300 overflow-hidden"
               title={isLoggedIn ? '로그아웃' : '로그인'}
             >
-              <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                <img
-                  src={isLoggedIn ? "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" : "https://api.dicebear.com/7.x/avataaars/svg?seed=Guest"}
-                  alt="Profile"
-                  className="w-full h-full object-cover"
-                />
+              <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                {isLoggedIn ? (
+                  // 4. API로 받아온 profileImageUrl 적용 (없으면 기본 이미지 지정)
+                  <img
+                    src={profileImageUrl || DEFAULT_IMAGES.PROFILE}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = DEFAULT_IMAGES.PROFILE;
+                    }}
+                  />
+                ) : (
+                  <User className="w-5 h-5 text-gray-400" />
+                )}
               </div>
               <span className="max-w-0 group-hover:max-w-[80px] opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap text-sm font-bold text-gray-700 overflow-hidden pr-0 group-hover:pr-3">
                 {isLoggedIn ? '로그아웃' : '로그인'}
@@ -207,7 +247,7 @@ const Header = () => {
           <ul className="flex gap-10">
             {navItems.map((item) => (
               <li key={item.name}>
-                <Link 
+                <Link
                   to={item.href}
                   className="block py-4 text-[16px] font-bold text-gray-600 hover:text-purple-600 transition-colors border-b-2 border-transparent hover:border-purple-600"
                   style={{ '--hover-color': primaryPurple }}
@@ -219,7 +259,6 @@ const Header = () => {
           </ul>
 
           <div className="flex items-center gap-3 py-3 relative" ref={dropdownRef}>
-            {/* Custom Smooth Dropdown for Weather Region */}
             <div className="flex items-center bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 gap-2 cursor-pointer hover:bg-blue-100 transition-colors"
               onClick={() => setIsWeatherDropdownOpen(!isWeatherDropdownOpen)}>
               <span className="text-sm font-bold text-blue-700">{region}</span>
@@ -232,7 +271,6 @@ const Header = () => {
               </div>
             </div>
 
-            {/* Smooth Transition Menu */}
             <div className={`absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden transition-all duration-300 origin-top-right
                             ${isWeatherDropdownOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'}`}>
               <div className="grid grid-cols-3 gap-1 p-2">

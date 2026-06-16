@@ -69,9 +69,12 @@ const useChatStore = create((set, get) => ({
   connected: false,
   messagesByRoom: {},
 
-  fetchChatHistory: async (roomId) => {
+  fetchChatHistory: async (roomId, memberId) => {
     try {
-      const response = await maxios.get(`/api/chat/room/${roomId}/messages`);
+      const response = await maxios.get(`/api/chat/rooms/${roomId}/messages`, {
+        params: { member_id: memberId }
+      });
+
       const rawList = response.data || [];
       const loggedUser = getLocalUser();
 
@@ -142,11 +145,28 @@ const useChatStore = create((set, get) => ({
         const currentRoomMsgs = state.messagesByRoom[roomId] || [];
         if (currentRoomMsgs.some(m => m.id === mappedMsg.id)) return state;
 
+        // 새로운 메시지가 왔을 때 채팅방 목록(chatRooms) 실시간 갱신
+        const updatedRooms = state.chatRooms.map((room) => {
+          if (Number(room.id) === Number(roomId)) {
+            // 메시지가 도착한 방이 현재 유저가 활성화해서 보고 있는 방인지 확인
+            const isCurrentActive = Number(roomId) === Number(state.activeChatId);
+
+            return {
+              ...room,
+              lastMessage: mappedMsg.text, // 사이드바의 마지막 말풍선 실시간 변경
+              // 내가 이미 방에 들어와 있다면 0 유지, 다른 방에 있다면 기존 카운트 + 1
+              unread_count: isCurrentActive ? 0 : (room.unread_count || 0) + 1
+            };
+          }
+          return room;
+        });
+
         return {
           messagesByRoom: {
             ...state.messagesByRoom,
             [roomId]: [...currentRoomMsgs, mappedMsg]
-          }
+          },
+          chatRooms: updatedRooms
         };
       });
     });

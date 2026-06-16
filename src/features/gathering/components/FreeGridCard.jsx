@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Users, MapPin, CalendarDays } from 'lucide-react';
 import useAuthStore from '../../../store/useAuthStore';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
   const { user } = useAuthStore();
@@ -11,7 +12,7 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
   const currentCount = item.current_count || item.CURRENT_COUNT || 0;
   const maxCapacity = item.max_capacity || item.MAX_CAPACITY || 5;
   const isFull = currentCount >= maxCapacity;
-  
+
   const roomTitle = item.room_title || item.ROOM_TITLE || '';
   const freeLocation = item.free_location || item.FREE_LOCATION || '';
   const freeDate = item.free_date || item.FREE_DATE || '';
@@ -24,7 +25,7 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
   const isJoined = item.is_joined || item.IS_JOINED || (loggedInUserId && loggedInUserId === ownerId);
 
   // 프로필 이미지가 아닌 모임 생성 시 등록한 이미지를 우선적으로 보여줍니다.
-  const gatheringImage = item.room_image ||'https://picsum.photos/seed/gathering/300/200'; // 지정 이미지
+  const gatheringImage = item.room_image || DEFAULT_IMAGES.ROOM_COVER; // 지정 이미지
 
   const formattedDate = freeDate ? freeDate.replace(/-/g, '.') : '';
 
@@ -34,18 +35,18 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
       className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl hover:shadow-blue-100/50 transition-all flex flex-col"
     >
       <div className="relative h-32 w-full overflow-hidden">
-        <img 
-          src={gatheringImage} 
-          alt={roomTitle} 
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+        <img
+          src={gatheringImage}
+          alt={roomTitle}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
         <div className="absolute top-2 left-2 flex flex-col gap-1.5 items-start">
           <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur px-2 py-1 rounded-full shadow-sm">
             {profileImage && (
-              <img 
-                src={profileImage} 
-                alt={nickname} 
-                className="w-5 h-5 rounded-full object-cover border border-blue-100" 
+              <img
+                src={profileImage}
+                alt={nickname}
+                className="w-5 h-5 rounded-full object-cover border border-blue-100"
               />
             )}
             <span className="text-[10px] font-black text-blue-600">
@@ -59,7 +60,7 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
           )}
         </div>
       </div>
-      
+
       <div className="p-4 flex-grow min-w-0">
         <h5 className="font-bold text-gray-900 text-sm truncate group-hover:text-blue-600 transition-colors mb-2">
           {roomTitle}
