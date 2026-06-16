@@ -31,8 +31,10 @@ import {
   toggleCommentLike,
   reportComment,
 } from '../../../api/boardApi';
+import { getMemberProfile } from '../../../api/memberApi';
 
 import useAuthStore from '../../../store/useAuthStore';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const PostDetailPage = () => {
   const { id } = useParams();
@@ -69,13 +71,34 @@ const PostDetailPage = () => {
   // 댓글 좋아요 상태
   const [commentLikes, setCommentLikes] = useState({});
 
+  // 현재 로그인 사용자 프로필 이미지 상태
+  const [profileImageUrl, setProfileImageUrl] = useState(null);
+
   // 현재 로그인 사용자
-  const user = useAuthStore((state) => state.user);
+  const { user, isLoggedIn } = useAuthStore();
 
   const currentUserId =
     user?.member_id ||
     user?.id ||
     user?.userId;
+
+  // 현재 로그인 사용자 프로필 이미지 로드 (헤더와 동일한 방식)
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (isLoggedIn && currentUserId) {
+        try {
+          const resp = await getMemberProfile(currentUserId);
+          const imgUrl = resp.data?.member?.profile_image_url ||
+            resp.data?.profile_image_url ||
+            resp.data?.data?.profile_image_url;
+          setProfileImageUrl(imgUrl);
+        } catch (error) {
+          console.error('사용자 프로필 이미지 로드 실패:', error);
+        }
+      }
+    };
+    fetchUserProfile();
+  }, [isLoggedIn, currentUserId]);
 
   // 게시글 상세 조회
   useEffect(() => {
@@ -444,7 +467,7 @@ const PostDetailPage = () => {
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-full bg-gray-100 overflow-hidden border border-gray-200">
                   <img
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${writerName}`}
+                    src={post.profile_image_url || DEFAULT_IMAGES.PROFILE}
                     alt={writerName}
                   />
                 </div>
@@ -632,9 +655,9 @@ const PostDetailPage = () => {
               <div className="flex gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
                   <img
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUserId || 'currentUser'
-                      }`}
+                    src={profileImageUrl || DEFAULT_IMAGES.PROFILE}
                     alt=""
+                    className="w-full h-full object-cover"
                   />
                 </div>
 
@@ -679,9 +702,9 @@ const PostDetailPage = () => {
                       <div className="flex gap-3">
                         <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
                           <img
-                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.nickname || comment.member_id
-                              }`}
+                            src={comment.profile_image_url || DEFAULT_IMAGES.PROFILE}
                             alt=""
+                            className="w-full h-full object-cover"
                           />
                         </div>
 
@@ -854,9 +877,9 @@ const PostDetailPage = () => {
                                   <div key={reply.comment_id} className="flex gap-3">
                                     <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
                                       <img
-                                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${reply.nickname || reply.member_id
-                                          }`}
+                                        src={reply.profile_image_url || DEFAULT_IMAGES.PROFILE}
                                         alt=""
+                                        className="w-full h-full object-cover"
                                       />
                                     </div>
 
