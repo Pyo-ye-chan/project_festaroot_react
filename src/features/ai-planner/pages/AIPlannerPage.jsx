@@ -1,30 +1,34 @@
 import React, { useState, useEffect } from 'react';
+import { maxios } from '../../../api/axiosApi';
 import useAuthStore from '../../../store/useAuthStore';
 import { getMemberProfile } from '../../../api/memberApi';
 import { saveActivityLog } from '../../../api/activityApi';
-import {
-  createAIPlanner,
-  getMyAIPlanners,
-  getAIPlannerDetail,
-  deleteAIPlanner
-} from '../../../api/aiApi';
+import { createAIPlanner } from '../../../api/aiApi';
 
 const AIPlannerPage = () => {
   const { user, isLoggedIn } = useAuthStore();
+
   const [isRecommending, setIsRecommending] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
   const [selectedFestival, setSelectedFestival] = useState(null);
   const [showItinerary, setShowItinerary] = useState(false);
-  const [recommendList, setRecommendList] = useState([]); // 서버 추천 데이터 저장
-  const [userInput, setUserInput] = useState(''); // 사용자의 한 마디
-  const [feedbackMap, setFeedbackMap] = useState({}); // contentId -> 'LIKE' | 'DISLIKE'
-  const [showDislikeReason, setShowDislikeReason] = useState(null); // feedback 중인 축제 ID
 
-  const [userDetails, setUserDetails] = useState(null); // 유저 상세 정보
+  // 축제 상세 모달 상태
+  const [selectedDetailFestival, setSelectedDetailFestival] = useState(null);
+  const [showFestivalDetailModal, setShowFestivalDetailModal] = useState(false);
+
+  const [recommendList, setRecommendList] = useState([]);
+  const [userInput, setUserInput] = useState('');
+
+  const [feedbackMap, setFeedbackMap] = useState({});
+  const [showDislikeReason, setShowDislikeReason] = useState(null);
+
+  const [userDetails, setUserDetails] = useState(null);
   const [isLoadingContext, setIsLoadingContext] = useState(false);
 
-  // AI 플래너 생성 관련 상태
+  // 축제 하루 코스 설정 모달 상태
   const [showPlannerModal, setShowPlannerModal] = useState(false);
   const [plannerForm, setPlannerForm] = useState({
     visitDate: '',
@@ -34,11 +38,11 @@ const AIPlannerPage = () => {
     extraRequest: ''
   });
 
-  const [routeNotice, setRouteNotice] = useState('');
-
+  // 축제 하루 코스 결과 상태
   const [itineraryList, setItineraryList] = useState([]);
   const [plannerId, setPlannerId] = useState(null);
   const [plannerWeather, setPlannerWeather] = useState(null);
+  const [routeNotice, setRouteNotice] = useState('');
 
   // 관심사 섹션 펼침/접힘 상태
   const [isRegionsOpen, setIsRegionsOpen] = useState(true);
@@ -50,6 +54,7 @@ const AIPlannerPage = () => {
     if (isLoggedIn && (user?.member_id || user?.id)) {
       const fetchUserData = async () => {
         setIsLoadingContext(true);
+
         try {
           const userId = user.member_id || user.id;
           const resp = await getMemberProfile(userId);
@@ -66,94 +71,18 @@ const AIPlannerPage = () => {
     }
   }, [isLoggedIn, user?.member_id, user?.id]);
 
-  // 카카오 지도 렌더링 Effect
-  useEffect(() => {
-    if (!showItinerary || itineraryList.length === 0) return;
-    // window.kakao 객체가 로드되었는지 확인
-    if (!window.kakao || !window.kakao.maps) {
-      console.warn("Kakao Maps API not loaded.");
-      // 지도 영역 대신 메시지 표시 등을 고려할 수 있음
-      return;
-    }
+  // 유저의 생년월일을 바탕으로 연령대 계산
+  const getAgeGroup = (birthdate) => {
+    if (!birthdate) return '연령대 미정';
 
-    const markerSteps = itineraryList.filter(step => step.x && step.y);
-    if (markerSteps.length === 0) {
-      console.warn("No valid coordinates in itineraryList for map markers.");
-      return;
-    }
+    const year = parseInt(birthdate.substring(0, 4), 10);
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - year;
 
-    const container = document.getElementById('plannerMap');
-    if (!container) {
-      console.warn("Map container element not found.");
-      return;
-    }
-
-    // 기존 지도가 있다면 제거
-    if (container.hasChildNodes()) {
-      container.innerHTML = '';
-    }
-
-    const first = markerSteps[0];
-
-    const map = new window.kakao.maps.Map(container, {
-      center: new window.kakao.maps.LatLng(Number(first.y), Number(first.x)),
-      level: 5
-    });
-
-    const bounds = new window.kakao.maps.LatLngBounds();
-    const linePath = [];
-
-    markerSteps.forEach((step, idx) => {
-      const position = new window.kakao.maps.LatLng(Number(step.y), Number(step.x));
-      bounds.extend(position);
-      linePath.push(position);
-
-      const marker = new window.kakao.maps.Marker({
-        position,
-        map
-      });
-
-      const infoWindow = new window.kakao.maps.InfoWindow({
-        content: `
-          <div style="padding:8px;font-size:12px;min-width:150px;">
-            <strong>${idx + 1}. ${step.title || ''}</strong><br/>
-            <span>${step.placeName || ''}</span>
-          </div>
-        `
-      });
-
-      window.kakao.maps.event.addListener(marker, 'click', () => {
-        infoWindow.open(map, marker);
-      });
-    });
-
-    if (linePath.length >= 2) {
-      const polyline = new window.kakao.maps.Polyline({
-        path: linePath,
-        strokeWeight: 4,
-        strokeColor: '#AD5FEE', // 보라색 계열
-        strokeOpacity: 0.8,
-        strokeStyle: 'solid'
-      });
-
-      polyline.setMap(map);
-    }
-
-    map.setBounds(bounds);
-  }, [showItinerary, itineraryList]);
-
-  // 일정 단계 타입에 따른 아이콘 반환 함수
-  const getStepIcon = (type) => {
-    switch (type) {
-      case 'FESTIVAL': return '🎪';
-      case 'FOOD': return '🍽️';
-      case 'TOUR': return '📸';
-      case 'CULTURE': return '🏛️';
-      case 'REST': return '🌿';
-      default: return '📍';
-    }
+    return `${Math.floor(age / 10) * 10}대`;
   };
 
+  // 추천 API 응답의 contentId 필드명이 달라도 안전하게 꺼내기
   const getFestivalContentId = (festival) => {
     return (
       festival?.CONTENT_ID ||
@@ -164,30 +93,190 @@ const AIPlannerPage = () => {
     );
   };
 
-  // 유저의 생년월일을 바탕으로 연령대 계산
-  const getAgeGroup = (birthdate) => {
-    if (!birthdate) return '연령대 미정';
-    const year = parseInt(birthdate.substring(0, 4));
-    const currentYear = new Date().getFullYear();
-    const age = currentYear - year;
-    return `${Math.floor(age / 10) * 10}대`;
+  // 추천 장소 타입별 아이콘
+  const getStepIcon = (type) => {
+    switch (type) {
+      case 'FESTIVAL':
+        return '🎪';
+      case 'FOOD':
+        return '🍽️';
+      case 'TOUR':
+        return '📸';
+      case 'CULTURE':
+        return '🏛️';
+      case 'REST':
+        return '🌿';
+      default:
+        return '📍';
+    }
+  };
+
+  // 화면에 보여줄 동행 유형 한글 변환
+  const getCompanionLabel = (type) => {
+    switch (type) {
+      case 'ALONE':
+        return '혼자';
+      case 'FRIEND':
+        return '친구와';
+      case 'COUPLE':
+        return '연인과';
+      case 'FAMILY':
+        return '가족과';
+      case 'CHILD':
+        return '아이와 함께';
+      case 'PARENT':
+        return '부모님과';
+      case 'PET':
+        return '반려동물과';
+      default:
+        return '동행 미정';
+    }
+  };
+
+  // 화면에 보여줄 코스 스타일 한글 변환
+  const getCourseStyleLabel = (style) => {
+    switch (style) {
+      case 'RELAXED':
+        return '느긋하게 쉬엄쉬엄';
+      case 'FOOD':
+        return '맛집은 꼭 챙기기';
+      case 'TOUR':
+        return '주변 명소까지 알차게';
+      case 'CULTURE':
+        return '문화 감성 코스';
+      case 'INDOOR':
+        return '실내 위주';
+      case 'PHOTO':
+        return '사진 명소 위주';
+      case 'FAMILY':
+        return '가족이 편한 동선';
+      default:
+        return '맞춤형 코스';
+    }
+  };
+
+  // 코스 컨셉 제목 생성
+  const getCourseTitle = () => {
+    switch (plannerForm.courseStyle) {
+      case 'FOOD':
+        return '맛집까지 챙긴 든든한 축제 코스';
+      case 'TOUR':
+        return '주변 명소까지 둘러보는 알찬 코스';
+      case 'CULTURE':
+        return '문화 감성 가득한 축제 코스';
+      case 'INDOOR':
+        return '날씨 걱정 적은 실내 중심 코스';
+      case 'PHOTO':
+        return '사진 남기기 좋은 감성 코스';
+      case 'FAMILY':
+        return '가족과 편하게 즐기는 코스';
+      default:
+        return '여유롭게 즐기는 축제 나들이 코스';
+    }
+  };
+
+  // 코스 배지 생성
+  const getCourseBadges = () => {
+    const badges = ['축제 연계 코스'];
+
+    if (plannerForm.courseStyle === 'FOOD') badges.push('맛집 포함');
+    if (plannerForm.courseStyle === 'TOUR') badges.push('주변 명소');
+    if (plannerForm.courseStyle === 'CULTURE') badges.push('문화시설');
+    if (plannerForm.courseStyle === 'INDOOR') badges.push('실내 중심');
+    if (plannerForm.courseStyle === 'PHOTO') badges.push('사진 명소');
+    if (plannerForm.companionType === 'CHILD') badges.push('아이와 함께');
+    if (plannerForm.companionType === 'FAMILY') badges.push('가족 추천');
+    if (plannerWeather) badges.push('날씨 반영');
+    if (routeNotice) badges.push('동선 안내');
+
+    return badges;
+  };
+
+  // 각 코스 순서에 대한 설명
+  const getStepOrderReason = (idx, step) => {
+    if (idx === 0) {
+      return '축제 하루를 시작하기 좋은 첫 번째 장소로 배치했어요.';
+    }
+
+    if (step.type === 'FOOD') {
+      return '이동 후 식사하기 좋은 타이밍에 맞춰 배치했어요.';
+    }
+
+    if (step.type === 'REST') {
+      return '중간에 잠시 쉬어가기 좋은 흐름으로 넣었어요.';
+    }
+
+    if (idx === itineraryList.length - 1) {
+      return '축제 나들이를 마무리하기 좋은 마지막 코스예요.';
+    }
+
+    return '이전 장소와 다음 장소의 흐름을 고려해 배치했어요.';
+  };
+
+  // 좌표 꺼내기
+  const getStepLat = (step) => {
+    return step.mapY || step.map_y || step.latitude || step.lat;
+  };
+
+  const getStepLng = (step) => {
+    return step.mapX || step.map_x || step.longitude || step.lng;
+  };
+
+  // 카카오맵 장소 검색 fallback
+  const getKakaoSearchUrl = (step) => {
+    const keyword = encodeURIComponent(
+      step.placeName || step.title || step.address || ''
+    );
+
+    if (!keyword) return null;
+
+    return `https://map.kakao.com/link/search/${keyword}`;
+  };
+
+  // 다음 장소 길찾기 링크 생성
+  const getKakaoDirectionUrl = (fromStep, toStep) => {
+    const fromLat = getStepLat(fromStep);
+    const fromLng = getStepLng(fromStep);
+    const toLat = getStepLat(toStep);
+    const toLng = getStepLng(toStep);
+
+    if (!fromLat || !fromLng || !toLat || !toLng) {
+      return null;
+    }
+
+    const fromName = encodeURIComponent(fromStep.placeName || fromStep.title || '출발지');
+    const toName = encodeURIComponent(toStep.placeName || toStep.title || '도착지');
+
+    return `https://map.kakao.com/link/from/${fromName},${fromLat},${fromLng}/to/${toName},${toLat},${toLng}`;
   };
 
   // 실제 데이터를 기반으로 컨텍스트 구성
   const userContext = {
     profile: {
       age: getAgeGroup(userDetails?.member?.birthdate),
-      gender: userDetails?.member?.gender === 'M' ? '남성' : userDetails?.member?.gender === 'F' ? '여성' : (userDetails?.member?.gender || '성별 미정')
+      gender:
+        userDetails?.member?.gender === 'M'
+          ? '남성'
+          : userDetails?.member?.gender === 'F'
+            ? '여성'
+            : userDetails?.member?.gender || '성별 미정'
     },
     interests: {
-      regions: userDetails?.interestRegions?.map(r => r.region_name) || [],
-      themes: userDetails?.interestThemes?.map(t => t.theme_name) || []
+      regions: userDetails?.interestRegions?.map((r) => r.region_name) || [],
+      themes: userDetails?.interestThemes?.map((t) => t.theme_name) || []
     },
     likedFestivals: userDetails?.likedFestivals || [],
     recentHistory: (userDetails?.recentLogs || []).map((log, idx) => ({
       id: log.log_id || idx,
       title: log.title || log.searchQuery || '최근 활동',
-      type: log.type === 'VIEW' ? '조회' : log.type === 'SEARCH' ? '검색' : log.type === 'MAP' ? '지도' : '기타'
+      type:
+        log.type === 'VIEW'
+          ? '조회'
+          : log.type === 'SEARCH'
+            ? '검색'
+            : log.type === 'MAP'
+              ? '지도'
+              : '기타'
     }))
   };
 
@@ -196,9 +285,16 @@ const AIPlannerPage = () => {
     setShowRecommendations(false);
     setSelectedFestival(null);
     setShowItinerary(false);
+    setItineraryList([]);
+    setPlannerId(null);
+    setPlannerWeather(null);
+    setRouteNotice('');
 
     try {
-      const resp = await getAIRecommendations(userInput.trim());
+      const resp = await maxios.get('/ai/recommendations', {
+        params: { userInput: userInput.trim() }
+      });
+
       setRecommendList(resp.data || []);
       setShowRecommendations(true);
     } catch (error) {
@@ -209,26 +305,44 @@ const AIPlannerPage = () => {
     }
   };
 
+  // 축제 카드 클릭 시 상세 모달 열기
+  const handleOpenFestivalDetail = (festival) => {
+    setSelectedDetailFestival(festival);
+    setShowFestivalDetailModal(true);
+  };
+
+  // 축제 상세 모달 닫기
+  const handleCloseFestivalDetail = () => {
+    setShowFestivalDetailModal(false);
+    setSelectedDetailFestival(null);
+  };
+
+  // 축제 하루 코스 설정 모달 열기
   const handleSelectFestival = (festival) => {
     setSelectedFestival(festival);
 
+    // 기존 결과 초기화
+    setIsGenerating(false);
     setShowItinerary(false);
     setItineraryList([]);
-    setPlannerWeather(null);
     setPlannerId(null);
+    setPlannerWeather(null);
     setRouteNotice('');
 
-    setPlannerForm(prev => ({
-      ...prev,
+    // 설정 기본값 초기화
+    setPlannerForm({
       visitDate: '',
+      peopleCount: 2,
+      companionType: 'FRIEND',
       courseStyle: 'RELAXED',
       extraRequest: ''
-    }));
+    });
 
+    // 설정 모달 열기
     setShowPlannerModal(true);
   };
 
-  // AI 플래너 생성 함수
+  // 축제 하루 코스 생성
   const handleCreatePlanner = async () => {
     if (!selectedFestival) {
       alert('축제를 먼저 선택해주세요.');
@@ -268,7 +382,7 @@ const AIPlannerPage = () => {
       });
 
       const data = response?.data ?? response;
-      console.log('AI 코스 생성 응답:', data);
+      console.log('축제 하루 코스 응답:', data);
 
       if (data.success) {
         const normalizedSteps = (data.steps || []).map((step) => ({
@@ -279,7 +393,9 @@ const AIPlannerPage = () => {
           sourceContentId: step.sourceContentId || step.source_content_id,
           contentTypeId: step.contentTypeId || step.content_type_id,
           firstImage: step.firstImage || step.first_image,
-          sourceApi: step.sourceApi || step.source_api
+          sourceApi: step.sourceApi || step.source_api,
+          mapX: step.mapX || step.map_x || step.longitude || step.lng,
+          mapY: step.mapY || step.map_y || step.latitude || step.lat
         }));
 
         setPlannerId(data.plannerId || data.planner_id);
@@ -289,21 +405,21 @@ const AIPlannerPage = () => {
         setShowPlannerModal(false);
         setShowItinerary(true);
       } else {
-        alert(data.message || 'AI 축제 코스 생성에 실패했습니다.');
+        alert(data.message || '축제 하루 코스 생성에 실패했습니다.');
       }
     } catch (error) {
-      console.error('AI 축제 코스 생성 실패:', error);
-      alert(error.response?.data?.message || 'AI 축제 코스 생성 중 오류가 발생했습니다.');
+      console.error('축제 하루 코스 생성 실패:', error);
+      alert(error.response?.data?.message || '축제 하루 코스 생성 중 오류가 발생했습니다.');
     } finally {
       setIsGenerating(false);
     }
   };
 
-
-  // 플래너 폼 입력 변경 핸들러
+  // 축제 하루 코스 설정 폼 변경
   const handlePlannerFormChange = (e) => {
     const { name, value } = e.target;
-    setPlannerForm(prev => ({
+
+    setPlannerForm((prev) => ({
       ...prev,
       [name]: value
     }));
@@ -312,6 +428,7 @@ const AIPlannerPage = () => {
   const handleFeedback = async (contentId, type, reason = '') => {
     try {
       const userId = user?.member_id || user?.id;
+
       const activityData = {
         member_id: userId,
         memberId: userId,
@@ -322,12 +439,12 @@ const AIPlannerPage = () => {
         festivalId: Number(contentId),
         keyword: reason || userInput,
         searchQuery: reason || userInput,
-        type: type === 'LIKE' ? 'AI_LIKE' : 'AI_DISLIKE' // 이전 버전에서 동작했던 필드명
+        type: type === 'LIKE' ? 'AI_LIKE' : 'AI_DISLIKE'
       };
 
       await saveActivityLog(activityData);
 
-      setFeedbackMap(prev => ({
+      setFeedbackMap((prev) => ({
         ...prev,
         [contentId]: type
       }));
@@ -346,16 +463,21 @@ const AIPlannerPage = () => {
       <section className="bg-gradient-to-br from-purple-700 via-purple-600 to-indigo-700 text-white py-20 px-4">
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-sm font-bold animate-pulse">
-            <span>✨</span> AI RAG 기반 맞춤형 여행 설계
+            <span>🎪</span> 취향 기반 축제 코스 추천
           </div>
+
           <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-            당신만을 위한<br />가장 완벽한 축제 여행
+            어디 갈지 고민될 때,<br />
+            AI가 축제 하루를 짜드려요
           </h1>
 
           <div className="max-w-2xl mx-auto pt-4">
             <div className="bg-white rounded-[32px] p-2 shadow-2xl shadow-indigo-900/40 border border-white/20 flex flex-col md:flex-row items-stretch gap-2">
               <div className="flex-grow relative group">
-                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-xl text-purple-600 opacity-50 group-focus-within:opacity-100 transition-opacity">🤖</div>
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-xl text-purple-600 opacity-50 group-focus-within:opacity-100 transition-opacity">
+                  🤖
+                </div>
+
                 <input
                   type="text"
                   value={userInput}
@@ -365,6 +487,7 @@ const AIPlannerPage = () => {
                   onKeyDown={(e) => e.key === 'Enter' && handleRecommend()}
                 />
               </div>
+
               <button
                 onClick={handleRecommend}
                 disabled={isRecommending}
@@ -376,7 +499,7 @@ const AIPlannerPage = () => {
 
             {/* Quick Keyword Chips */}
             <div className="flex flex-wrap justify-center gap-2 mt-6">
-              {['#아이와함께', '#조용한', '#먹거리풍부', '#수도권', '#이색체험', '#가족여행'].map(chip => (
+              {['#아이와함께', '#조용한', '#먹거리풍부', '#수도권', '#이색체험', '#가족여행'].map((chip) => (
                 <button
                   key={chip}
                   onClick={() => setUserInput(chip.replace('#', ''))}
@@ -392,7 +515,7 @@ const AIPlannerPage = () => {
 
       <div className="max-w-6xl mx-auto px-4 -mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left: User Context Analysis */}
-        <aside className="lg:col-span-1 space-y-6 order-2 lg:order-1">
+        <aside className="lg:col-span-1 space-y-6">
           <div className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 sticky top-24">
             <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
               <span className="text-2xl">🧠</span> 분석 데이터 소스
@@ -400,7 +523,9 @@ const AIPlannerPage = () => {
 
             <div className="space-y-6">
               <div>
-                <p className="text-xs font-black text-purple-600 uppercase tracking-wider mb-3">사용자 프로필</p>
+                <p className="text-xs font-black text-purple-600 uppercase tracking-wider mb-3">
+                  사용자 프로필
+                </p>
                 <div className="flex gap-2">
                   <span className="px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-bold rounded-lg border border-gray-100">
                     {userContext.profile.age} {userContext.profile.gender}
@@ -414,18 +539,26 @@ const AIPlannerPage = () => {
                   className="w-full flex items-center justify-between text-xs font-black text-purple-600 uppercase tracking-wider mb-3 group"
                 >
                   <span>📍 관심 지역</span>
-                  <span className={`transition-transform duration-300 ${isRegionsOpen ? 'rotate-180' : ''}`}>▼</span>
+                  <span className={`transition-transform duration-300 ${isRegionsOpen ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
                 </button>
+
                 {isRegionsOpen && (
                   <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
                     {userContext.interests.regions.length > 0 ? (
                       userContext.interests.regions.map((tag) => (
-                        <span key={tag} className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg border border-purple-100">
+                        <span
+                          key={tag}
+                          className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg border border-purple-100"
+                        >
                           #{tag}
                         </span>
                       ))
                     ) : (
-                      <span className="text-[11px] text-gray-400 font-medium">설정된 관심 지역이 없습니다.</span>
+                      <span className="text-[11px] text-gray-400 font-medium">
+                        설정된 관심 지역이 없습니다.
+                      </span>
                     )}
                   </div>
                 )}
@@ -437,18 +570,26 @@ const AIPlannerPage = () => {
                   className="w-full flex items-center justify-between text-xs font-black text-purple-600 uppercase tracking-wider mb-3 group"
                 >
                   <span>🎨 관심 테마</span>
-                  <span className={`transition-transform duration-300 ${isThemesOpen ? 'rotate-180' : ''}`}>▼</span>
+                  <span className={`transition-transform duration-300 ${isThemesOpen ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
                 </button>
+
                 {isThemesOpen && (
                   <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
                     {userContext.interests.themes.length > 0 ? (
                       userContext.interests.themes.map((tag) => (
-                        <span key={tag} className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg border border-purple-100">
+                        <span
+                          key={tag}
+                          className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg border border-purple-100"
+                        >
                           #{tag}
                         </span>
                       ))
                     ) : (
-                      <span className="text-[11px] text-gray-400 font-medium">설정된 관심 테마가 없습니다.</span>
+                      <span className="text-[11px] text-gray-400 font-medium">
+                        설정된 관심 테마가 없습니다.
+                      </span>
                     )}
                   </div>
                 )}
@@ -460,19 +601,27 @@ const AIPlannerPage = () => {
                   className="w-full flex items-center justify-between text-xs font-black text-purple-600 uppercase tracking-wider mb-3 group"
                 >
                   <span>❤️ 찜한 축제</span>
-                  <span className={`transition-transform duration-300 ${isLikesOpen ? 'rotate-180' : ''}`}>▼</span>
+                  <span className={`transition-transform duration-300 ${isLikesOpen ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
                 </button>
+
                 {isLikesOpen && (
                   <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                     {userContext.likedFestivals.length > 0 ? (
                       userContext.likedFestivals.map((festival) => (
-                        <div key={festival.CONTENT_ID} className="p-2.5 bg-pink-50/50 text-pink-700 text-[11px] font-bold rounded-xl border border-pink-100 flex items-center gap-2 transition-colors hover:bg-pink-50">
+                        <div
+                          key={festival.CONTENT_ID}
+                          className="p-2.5 bg-pink-50/50 text-pink-700 text-[11px] font-bold rounded-xl border border-pink-100 flex items-center gap-2 transition-colors hover:bg-pink-50"
+                        >
                           <span className="shrink-0">🎡</span>
                           <span className="truncate">{festival.TITLE}</span>
                         </div>
                       ))
                     ) : (
-                      <span className="text-[11px] text-gray-400 font-medium">찜한 축제가 없습니다.</span>
+                      <span className="text-[11px] text-gray-400 font-medium">
+                        찜한 축제가 없습니다.
+                      </span>
                     )}
                   </div>
                 )}
@@ -480,16 +629,30 @@ const AIPlannerPage = () => {
 
               {userContext.recentHistory.length > 0 && (
                 <div>
-                  <p className="text-xs font-black text-purple-600 uppercase tracking-wider mb-3">최근 활동 내역</p>
+                  <p className="text-xs font-black text-purple-600 uppercase tracking-wider mb-3">
+                    최근 활동 내역
+                  </p>
+
                   <div className="space-y-2">
                     {userContext.recentHistory.slice(0, 3).map((history, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-gray-100">
-                        <span className="text-[11px] font-bold text-gray-700 truncate max-w-[120px]">{history.title}</span>
-                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${history.type === '조회' ? 'bg-blue-100 text-blue-600' :
-                          history.type === '검색' ? 'bg-amber-100 text-amber-600' :
-                            history.type === '지도' ? 'bg-emerald-100 text-emerald-600' :
-                              'bg-gray-100 text-gray-600'
-                          }`}>
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-gray-100"
+                      >
+                        <span className="text-[11px] font-bold text-gray-700 truncate max-w-[120px]">
+                          {history.title}
+                        </span>
+                        <span
+                          className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
+                            history.type === '조회'
+                              ? 'bg-blue-100 text-blue-600'
+                              : history.type === '검색'
+                                ? 'bg-amber-100 text-amber-600'
+                                : history.type === '지도'
+                                  ? 'bg-emerald-100 text-emerald-600'
+                                  : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
                           {history.type}
                         </span>
                       </div>
@@ -500,7 +663,9 @@ const AIPlannerPage = () => {
 
               <div className="pt-6 border-t border-gray-50">
                 <p className="text-sm text-gray-400 font-medium leading-relaxed">
-                  {isLoadingContext ? '사용자 데이터를 분석하고 있습니다...' : '사용자의 최근 활동 로그 및 프로필을 기반으로 실시간 벡터 검색(RAG)을 수행합니다.'}
+                  {isLoadingContext
+                    ? '사용자 데이터를 분석하고 있습니다...'
+                    : '사용자의 최근 활동 로그 및 프로필을 기반으로 맞춤 축제와 코스를 추천합니다.'}
                 </p>
               </div>
             </div>
@@ -508,17 +673,25 @@ const AIPlannerPage = () => {
         </aside>
 
         {/* Right: Steps Section */}
-        <main className="lg:col-span-2 space-y-6 sm:space-y-8 order-1 lg:order-2">
+        <main className="lg:col-span-2 space-y-8">
           {/* Step 1: Recommendations */}
           {(isRecommending || showRecommendations) && (
             <section className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h3 className="text-2xl font-black text-gray-800">STEP 1. 추천 축제 목록</h3>
-                  <p className="text-sm text-gray-500 font-medium mt-1">AI가 선별한 취향 저격 축제들입니다.</p>
+                  <h3 className="text-2xl font-black text-gray-800">
+                    STEP 1. 추천 축제 목록
+                  </h3>
+                  <p className="text-sm text-gray-500 font-medium mt-1">
+                    AI가 선별한 취향 저격 축제들입니다.
+                  </p>
                 </div>
+
                 {showRecommendations && (
-                  <button onClick={handleRecommend} className="text-xs font-bold text-gray-400 hover:text-purple-600 transition-colors">
+                  <button
+                    onClick={handleRecommend}
+                    className="text-xs font-bold text-gray-400 hover:text-purple-600 transition-colors"
+                  >
                     다시 추천받기 🔄
                   </button>
                 )}
@@ -532,15 +705,22 @@ const AIPlannerPage = () => {
                       🔍
                     </div>
                   </div>
+
                   <div className="text-center max-w-sm px-6">
                     <p className="text-lg font-black text-gray-800 leading-tight">
                       {userInput ? (
                         <>
-                          <span className="text-purple-600">"{userInput}"</span><br />조건에 맞춰 분석 중...
+                          <span className="text-purple-600">"{userInput}"</span>
+                          <br />
+                          조건에 맞춰 분석 중...
                         </>
-                      ) : '사용자 취향 분석 중...'}
+                      ) : (
+                        '사용자 취향 분석 중...'
+                      )}
                     </p>
-                    <p className="text-sm text-gray-400 mt-2">전국 축제 데이터에서 최적의 장소를 찾고 있습니다.</p>
+                    <p className="text-sm text-gray-400 mt-2">
+                      전국 축제 데이터에서 최적의 장소를 찾고 있습니다.
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -548,15 +728,27 @@ const AIPlannerPage = () => {
                   {recommendList.map((item) => (
                     <div
                       key={item.CONTENT_ID}
-                      onClick={() => handleSelectFestival(item)}
-                      className={`group cursor-pointer p-6 rounded-[32px] border-2 transition-all duration-300 ${selectedFestival?.CONTENT_ID === item.CONTENT_ID
-                        ? 'border-purple-600 bg-purple-50/30'
-                        : 'border-transparent bg-slate-50 hover:border-purple-200 hover:bg-white hover:shadow-lg'
-                        }`}
+                      onClick={() => handleOpenFestivalDetail(item)}
+                      className={`group cursor-pointer p-6 rounded-[32px] border-2 transition-all duration-300 ${
+                        selectedFestival?.CONTENT_ID === item.CONTENT_ID
+                          ? 'border-purple-600 bg-purple-50/30'
+                          : 'border-transparent bg-slate-50 hover:border-purple-200 hover:bg-white hover:shadow-lg'
+                      }`}
                     >
                       <div className="flex flex-col md:flex-row gap-6">
-                        <div className="relative w-full md:w-48 h-48 shrink-0 rounded-2xl overflow-hidden">
-                          <img src={item.FIRST_IMAGE} alt={item.TITLE} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                        <div className="relative w-full md:w-48 h-48 shrink-0 rounded-2xl overflow-hidden bg-gray-100">
+                          {item.FIRST_IMAGE ? (
+                            <img
+                              src={item.FIRST_IMAGE}
+                              alt={item.TITLE}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm font-bold">
+                              이미지 없음
+                            </div>
+                          )}
+
                           {selectedFestival?.CONTENT_ID === item.CONTENT_ID && (
                             <div className="absolute inset-0 bg-purple-600/20 flex items-center justify-center">
                               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg text-purple-600 text-xl font-bold">
@@ -565,9 +757,12 @@ const AIPlannerPage = () => {
                             </div>
                           )}
                         </div>
+
                         <div className="flex-grow">
                           <div className="flex justify-between items-start">
-                            <h4 className="text-xl font-black text-gray-800 group-hover:text-purple-600 transition-colors">{item.TITLE}</h4>
+                            <h4 className="text-xl font-black text-gray-800 group-hover:text-purple-600 transition-colors">
+                              {item.TITLE}
+                            </h4>
 
                             {/* Feedback Buttons */}
                             <div className="flex gap-2 shrink-0 ml-4">
@@ -576,31 +771,39 @@ const AIPlannerPage = () => {
                                   e.stopPropagation();
                                   handleFeedback(item.CONTENT_ID, 'LIKE');
                                 }}
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${feedbackMap[item.CONTENT_ID] === 'LIKE'
-                                  ? 'bg-blue-500 text-white shadow-lg'
-                                  : 'bg-white text-gray-400 hover:text-blue-500 border border-gray-100'
-                                  }`}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                                  feedbackMap[item.CONTENT_ID] === 'LIKE'
+                                    ? 'bg-blue-500 text-white shadow-lg'
+                                    : 'bg-white text-gray-400 hover:text-blue-500 border border-gray-100'
+                                }`}
                               >
                                 👍
                               </button>
+
                               <div className="relative">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setShowDislikeReason(showDislikeReason === item.CONTENT_ID ? null : item.CONTENT_ID);
+                                    setShowDislikeReason(
+                                      showDislikeReason === item.CONTENT_ID ? null : item.CONTENT_ID
+                                    );
                                   }}
-                                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${feedbackMap[item.CONTENT_ID] === 'DISLIKE'
-                                    ? 'bg-red-500 text-white shadow-lg'
-                                    : 'bg-white text-gray-400 hover:text-red-500 border border-gray-100'
-                                    }`}
+                                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                                    feedbackMap[item.CONTENT_ID] === 'DISLIKE'
+                                      ? 'bg-red-500 text-white shadow-lg'
+                                      : 'bg-white text-gray-400 hover:text-red-500 border border-gray-100'
+                                  }`}
                                 >
                                   👎
                                 </button>
 
-                                {/* Dislike Reason Modal (Small Popover) */}
+                                {/* Dislike Reason Modal */}
                                 {showDislikeReason === item.CONTENT_ID && (
                                   <div className="absolute right-0 top-12 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50 animate-in zoom-in-95 duration-200">
-                                    <p className="text-xs font-black text-gray-800 mb-3">어떤 점이 별로였나요? 🤔</p>
+                                    <p className="text-xs font-black text-gray-800 mb-3">
+                                      어떤 점이 별로였나요? 🤔
+                                    </p>
+
                                     <div className="flex flex-wrap gap-2">
                                       {[
                                         '거리가 너무 멀어요',
@@ -611,7 +814,7 @@ const AIPlannerPage = () => {
                                         '일정이 안 맞아요',
                                         '아이와 가기 별로예요',
                                         '테마가 지루해요'
-                                      ].map(reason => (
+                                      ].map((reason) => (
                                         <button
                                           key={reason}
                                           onClick={(e) => {
@@ -630,8 +833,13 @@ const AIPlannerPage = () => {
                             </div>
                           </div>
 
-                          <p className="text-xs text-gray-400 font-bold mt-2 flex items-center gap-1">📍 {item.ADDR1}</p>
-                          <p className="text-sm text-gray-500 font-medium mt-3 line-clamp-3">{item.OVERVIEW}</p>
+                          <p className="text-xs text-gray-400 font-bold mt-2 flex items-center gap-1">
+                            📍 {item.ADDR1}
+                          </p>
+
+                          <p className="text-sm text-gray-500 font-medium mt-3 line-clamp-3">
+                            {item.OVERVIEW}
+                          </p>
 
                           <div className="mt-4 p-4 bg-purple-50 rounded-2xl border border-purple-100">
                             <p className="text-[11px] font-black text-purple-600 uppercase mb-1 flex items-center gap-1">
@@ -641,7 +849,7 @@ const AIPlannerPage = () => {
                               {item.recommendation_reason}
                             </p>
                           </div>
-                          {/* 추천 카드 버튼 문구 변경 */}
+
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -649,7 +857,7 @@ const AIPlannerPage = () => {
                             }}
                             className="mt-4 w-full bg-purple-600 text-white py-3 rounded-2xl font-black hover:bg-purple-700 transition-all"
                           >
-                            이 축제로 AI 코스 추천받기
+                            이 축제로 하루 코스 만들기
                           </button>
                         </div>
                       </div>
@@ -660,19 +868,88 @@ const AIPlannerPage = () => {
             </section>
           )}
 
-          {/* Step 2: Itinerary Loading / Result */}
+          {/* Step 2: 축제 하루 코스 Result */}
           {(isGenerating || showItinerary) && (
             <section className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 animate-in fade-in slide-in-from-top-8 duration-700">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h3 className="text-2xl font-black text-gray-800">STEP 2. 축제장 주변 추천 코스</h3>
+                  <h3 className="text-2xl font-black text-gray-800">
+                    STEP 2. 축제 하루 코스
+                  </h3>
                   <p className="text-sm text-gray-500 font-medium mt-1">
-                    <span className="text-purple-600 font-bold">[{selectedFestival?.TITLE}]</span> 주변의 음식점·관광지·문화시설 추천 순서입니다.
+                    <span className="text-purple-600 font-bold">[{selectedFestival?.TITLE}]</span>을 중심으로 하루 나들이 코스를 만들었어요.
                   </p>
                 </div>
               </div>
 
-              {/* 날씨 요약 표시 */}
+              {showItinerary && itineraryList.length > 0 && (
+                <div className="mb-8 p-6 rounded-[28px] bg-gradient-to-br from-yellow-50 via-orange-50 to-purple-50 border border-yellow-100 shadow-sm">
+                  <div className="flex items-center justify-between gap-4 mb-4">
+                    <div>
+                      <p className="text-xs font-black text-orange-500 mb-2">
+                        🎪 오늘의 코스 컨셉
+                      </p>
+
+                      <h4 className="text-2xl font-black text-gray-800 leading-tight">
+                        {getCourseTitle()}
+                      </h4>
+                    </div>
+
+                    <div className="hidden sm:flex w-14 h-14 rounded-2xl bg-white/80 items-center justify-center text-3xl shadow-sm">
+                      🧭
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-600 font-medium leading-7">
+                    <span className="font-bold text-purple-600">
+                      [{selectedFestival?.TITLE}]
+                    </span>
+                    을 중심으로 방문 날짜, 동행 유형, 추천 스타일을 반영해 만든 맞춤형 코스예요.
+                  </p>
+
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {getCourseBadges().map((badge) => (
+                      <span
+                        key={badge}
+                        className="px-3 py-1.5 rounded-full bg-white text-xs font-black text-purple-600 border border-purple-100"
+                      >
+                        #{badge}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+                    <div className="p-3 rounded-2xl bg-white/80 border border-white">
+                      <p className="text-[10px] font-black text-gray-400">방문일</p>
+                      <p className="text-sm font-black text-gray-800">
+                        {plannerForm.visitDate || '미정'}
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-white/80 border border-white">
+                      <p className="text-[10px] font-black text-gray-400">동행</p>
+                      <p className="text-sm font-black text-gray-800">
+                        {getCompanionLabel(plannerForm.companionType)}
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-white/80 border border-white">
+                      <p className="text-[10px] font-black text-gray-400">스타일</p>
+                      <p className="text-sm font-black text-gray-800">
+                        {getCourseStyleLabel(plannerForm.courseStyle)}
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-white/80 border border-white">
+                      <p className="text-[10px] font-black text-gray-400">추천 장소</p>
+                      <p className="text-sm font-black text-gray-800">
+                        {itineraryList.length}곳
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {plannerWeather && (
                 <div className="mb-6 p-4 rounded-2xl bg-blue-50 border border-blue-100 text-blue-700 text-sm font-bold">
                   🌦 방문일 날씨 반영: {plannerWeather}
@@ -685,10 +962,21 @@ const AIPlannerPage = () => {
                 </div>
               )}
 
-              {/* 저장 완료 안내 */}
               {plannerId && (
-                <div className="mb-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm font-bold">
-                  ✅ 생성된 플래너가 저장되었습니다. 마이페이지에서 다시 확인할 수 있습니다.
+                <div className="mb-6 p-5 rounded-3xl bg-emerald-50 border border-emerald-100">
+                  <p className="text-lg font-black text-emerald-700">
+                    ✅ 내 축제 코스가 완성됐어요!
+                  </p>
+                  <p className="text-sm text-emerald-700 font-bold mt-1">
+                    마이페이지에서 다시 확인하고, 방문 후 기록으로 남길 수 있어요.
+                  </p>
+
+                  <button
+                    onClick={() => setShowPlannerModal(true)}
+                    className="mt-4 px-4 py-2 rounded-xl bg-white text-emerald-700 text-sm font-black border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                  >
+                    조건 바꿔 다시 만들기
+                  </button>
                 </div>
               )}
 
@@ -698,9 +986,14 @@ const AIPlannerPage = () => {
                     <div className="w-20 h-20 border-4 border-purple-100 border-t-purple-600 rounded-full animate-spin" />
                     <div className="absolute inset-0 flex items-center justify-center text-2xl">✨</div>
                   </div>
+
                   <div className="text-center space-y-2">
-                    <p className="text-xl font-black text-gray-800">AI가 축제장 주변 코스를 구성하고 있습니다</p>
-                    <p className="text-sm text-gray-400 font-medium">날씨와 주변 장소 정보를 분석 중입니다...</p>
+                    <p className="text-xl font-black text-gray-800">
+                      AI가 축제 하루 코스를 만들고 있습니다
+                    </p>
+                    <p className="text-sm text-gray-400 font-medium">
+                      방문일, 동행 유형, 주변 장소와 날씨를 함께 분석 중입니다...
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -708,29 +1001,60 @@ const AIPlannerPage = () => {
                   {itineraryList.length === 0 ? (
                     <div className="py-20 flex flex-col items-center justify-center text-center text-gray-500">
                       <span className="text-5xl mb-4">🤔</span>
-                      <p className="text-lg font-bold">일정을 생성하지 못했습니다.</p>
-                      <p className="text-sm text-gray-400 mt-2">조건을 조금 바꿔 다시 시도해주세요.</p>
+                      <p className="text-lg font-bold">축제 하루 코스를 생성하지 못했습니다.</p>
+                      <p className="text-sm text-gray-400 mt-2">
+                        조건을 조금 바꿔 다시 시도해주세요.
+                      </p>
                     </div>
                   ) : (
-                    <>
-                      <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent pt-4">
-                        {itineraryList.map((step, idx) => (
-                          <div key={idx} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group">
+                    <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent pt-4">
+                      {itineraryList.map((step, idx) => {
+                        const nextStep = itineraryList[idx + 1];
+                        const directionUrl = nextStep ? getKakaoDirectionUrl(step, nextStep) : null;
+                        const searchUrl = getKakaoSearchUrl(step);
+
+                        return (
+                          <div
+                            key={idx}
+                            className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group"
+                          >
                             <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-purple-600 text-white shadow-lg shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 font-bold">
                               <span className="text-xs">{getStepIcon(step.type)}</span>
                             </div>
+
                             <div className="w-[calc(100%-4rem)] md:w-[45%] p-5 rounded-3xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-xl hover:border-purple-200">
                               <div className="flex items-center justify-between space-x-2 mb-2">
                                 <h4 className="font-black text-gray-800">{step.title}</h4>
-                                <time className="font-black text-[10px] text-purple-600 bg-purple-50 px-2 py-1 rounded-md">{step.time}</time>
+                                <time className="font-black text-[10px] text-purple-600 bg-purple-50 px-2 py-1 rounded-md shrink-0">
+                                  {step.time}
+                                </time>
                               </div>
-                              <p className="text-sm text-gray-500 font-medium leading-relaxed">{step.description}</p>
-                              {step.placeName && <p className="text-xs text-gray-400 font-bold mt-2">📍 {step.placeName}</p>}
-                              {step.address && <p className="text-xs text-gray-400 font-bold">{step.address}</p>}
-                              {step.reason && <p className="text-xs text-purple-700 font-bold mt-2">💡 {step.reason}</p>}
+
+                              <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                {step.description}
+                              </p>
+
+                              {step.placeName && (
+                                <p className="text-xs text-gray-400 font-bold mt-2">
+                                  📍 {step.placeName}
+                                </p>
+                              )}
+
+                              {step.address && (
+                                <p className="text-xs text-gray-400 font-bold">
+                                  {step.address}
+                                </p>
+                              )}
+
                               {step.distance != null && (
                                 <p className="text-xs text-emerald-600 font-bold mt-2">
                                   📏 축제장 기준 약 {Math.round(Number(step.distance))}m
+                                </p>
+                              )}
+
+                              {step.reason && (
+                                <p className="text-xs text-purple-700 font-bold mt-2">
+                                  💡 {step.reason}
                                 </p>
                               )}
 
@@ -739,76 +1063,237 @@ const AIPlannerPage = () => {
                                   출처: {step.sourceApi === 'TOUR_API' ? 'TourAPI 주변정보' : step.sourceApi}
                                 </p>
                               )}
-                              {step.kakaoPlaceUrl && (
-                                <a
-                                  href={step.kakaoPlaceUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-xs text-blue-500 hover:underline mt-2 inline-block font-bold"
-                                >
-                                  카카오맵에서 보기
-                                </a>
-                              )}
+
+                              <div className="mt-3 p-3 rounded-2xl bg-purple-50 border border-purple-100">
+                                <p className="text-[10px] font-black text-purple-500 mb-1">
+                                  AI 동선 포인트
+                                </p>
+                                <p className="text-xs text-purple-800 font-bold leading-relaxed">
+                                  {getStepOrderReason(idx, step)}
+                                </p>
+                              </div>
+
+                              <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                                {step.kakaoPlaceUrl ? (
+                                  <a
+                                    href={step.kakaoPlaceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-black hover:bg-gray-200 transition-colors"
+                                  >
+                                    지도에서 보기
+                                  </a>
+                                ) : (
+                                  searchUrl && (
+                                    <a
+                                      href={searchUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-black hover:bg-gray-200 transition-colors"
+                                    >
+                                      장소 검색하기
+                                    </a>
+                                  )
+                                )}
+
+                                {directionUrl && (
+                                  <a
+                                    href={directionUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-yellow-300 text-gray-900 text-xs font-black hover:bg-yellow-400 transition-colors"
+                                  >
+                                    다음 장소 길찾기
+                                  </a>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
-
-                      {/* 카카오 지도 표시 영역 */}
-                      <div id="plannerMap" className="w-full h-[360px] rounded-[28px] border border-gray-100 mt-8 overflow-hidden" />
-                    </>
+                        );
+                      })}
+                    </div>
                   )}
                 </>
               )}
             </section>
           )}
 
-          {(!showRecommendations && !isRecommending) || (showRecommendations && recommendList.length === 0) ? (
+          {!showRecommendations && !isRecommending && (
             <div className="bg-white rounded-[32px] p-20 shadow-xl shadow-purple-900/5 border border-purple-50 flex flex-col items-center justify-center text-center">
               <div className="w-24 h-24 bg-purple-50 rounded-full flex items-center justify-center mb-8 text-4xl animate-bounce">
-                {showRecommendations && recommendList.length === 0 ? '😢' : '🤖'}
+                🤖
               </div>
               <h3 className="text-2xl font-black text-gray-800 mb-4">
-                {showRecommendations && recommendList.length === 0 ?
-                  "조건에 맞는 추천 축제가 없습니다." :
-                  "나만을 위한 특별한 여행 준비"
-                }
+                나만을 위한 특별한 축제 하루
               </h3>
               <p className="text-gray-500 font-medium leading-relaxed">
-                {showRecommendations && recommendList.length === 0 ?
-                  "다른 검색어를 입력하거나 조건을 변경하여 다시 시도해 보세요." :
-                  <>
-                    상단의 <span className="text-purple-600 font-bold">'한 마디 입력창'</span>에 원하는 조건을 적거나<br />
-                    <span className="text-purple-600 font-bold">'추천받기'</span> 버튼을 클릭하여 AI 분석 시스템을 시작해 보세요.
-                  </>
-                }
+                상단의 <span className="text-purple-600 font-bold">'한 마디 입력창'</span>에 원하는 조건을 적거나
+                <br />
+                <span className="text-purple-600 font-bold">'추천받기'</span> 버튼을 클릭하여 축제 추천을 시작해 보세요.
               </p>
             </div>
-          ) : null}
+          )}
 
-          {showRecommendations && recommendList.length > 0 && !selectedFestival && (
+          {showRecommendations && !selectedFestival && (
             <div className="bg-slate-100/50 rounded-[32px] p-12 border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
               <div className="text-4xl mb-4">👆</div>
-              <p className="text-slate-400 font-bold">위의 추천 목록에서 축제를 선택하면<br />축제장 주변 추천 코스가 이곳에 생성됩니다.</p>
+              <p className="text-slate-400 font-bold">
+                위의 추천 목록에서 축제를 선택하면
+                <br />
+                축제 하루 코스를 만들 수 있습니다.
+              </p>
             </div>
           )}
         </main>
       </div>
 
-      {/* AI Planner 설정 모달 */}
+      {/* 축제 상세 내용 모달 */}
+      {showFestivalDetailModal && selectedDetailFestival && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-gray-700/40 backdrop-blur-[2px]"
+          onClick={handleCloseFestivalDetail}
+        >
+          <div
+            className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto scrollbar-hide relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative h-64 sm:h-80 bg-gray-100 rounded-t-3xl overflow-hidden">
+              {selectedDetailFestival.FIRST_IMAGE ? (
+                <img
+                  src={selectedDetailFestival.FIRST_IMAGE}
+                  alt={selectedDetailFestival.TITLE}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold">
+                  이미지가 없습니다
+                </div>
+              )}
+
+              <button
+                onClick={handleCloseFestivalDetail}
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/40 text-white font-black hover:bg-black/60 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-8">
+              <div className="mb-5">
+                <p className="text-xs font-black text-purple-600 mb-2">
+                  AI 추천 축제 상세
+                </p>
+
+                <h3 className="text-2xl sm:text-3xl font-black text-gray-800 leading-tight">
+                  {selectedDetailFestival.TITLE}
+                </h3>
+
+                {selectedDetailFestival.ADDR1 && (
+                  <p className="mt-3 text-sm text-gray-500 font-bold">
+                    📍 {selectedDetailFestival.ADDR1}
+                    {selectedDetailFestival.ADDR2 ? ` ${selectedDetailFestival.ADDR2}` : ''}
+                  </p>
+                )}
+              </div>
+
+              {(selectedDetailFestival.EVENT_START_DATE || selectedDetailFestival.EVENT_END_DATE) && (
+                <div className="mb-5 p-4 rounded-2xl bg-purple-50 border border-purple-100">
+                  <p className="text-xs font-black text-purple-600 mb-1">
+                    축제 기간
+                  </p>
+                  <p className="text-sm font-bold text-purple-800">
+                    {selectedDetailFestival.EVENT_START_DATE || '시작일 미정'}
+                    {' ~ '}
+                    {selectedDetailFestival.EVENT_END_DATE || '종료일 미정'}
+                  </p>
+                </div>
+              )}
+
+              {selectedDetailFestival.recommendation_reason && (
+                <div className="mb-5 p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                  <p className="text-xs font-black text-amber-600 mb-1">
+                    ✨ AI의 추천 사유
+                  </p>
+                  <p className="text-sm font-bold text-amber-800 leading-relaxed">
+                    {selectedDetailFestival.recommendation_reason}
+                  </p>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <p className="text-sm font-black text-gray-800 mb-2">
+                  축제 소개
+                </p>
+
+                <p className="text-sm text-gray-600 font-medium leading-7 whitespace-pre-line">
+                  {selectedDetailFestival.OVERVIEW || '상세 설명이 없습니다.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+                {selectedDetailFestival.TEL && (
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                    <p className="text-xs font-black text-gray-400 mb-1">전화번호</p>
+                    <p className="text-sm font-bold text-gray-700">
+                      {selectedDetailFestival.TEL}
+                    </p>
+                  </div>
+                )}
+
+                {selectedDetailFestival.HOMEPAGE && (
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                    <p className="text-xs font-black text-gray-400 mb-1">홈페이지</p>
+                    <p
+                      className="text-sm font-bold text-purple-600 line-clamp-2"
+                      dangerouslySetInnerHTML={{ __html: selectedDetailFestival.HOMEPAGE }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleCloseFestivalDetail}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors"
+                >
+                  닫기
+                </button>
+
+                <button
+                  onClick={() => {
+                    const targetFestival = selectedDetailFestival;
+                    handleCloseFestivalDetail();
+                    handleSelectFestival(targetFestival);
+                  }}
+                  className="w-full sm:flex-1 px-6 py-3 rounded-xl bg-purple-600 text-white font-black hover:bg-purple-700 transition-colors"
+                >
+                  이 축제로 하루 코스 만들기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 축제 하루 코스 설정 모달 */}
       {showPlannerModal && selectedFestival && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-gray-700/40 backdrop-blur-[2px]">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto scrollbar-hide p-5 sm:p-8 relative">
-            <h3 className="text-2xl font-black text-gray-800 mb-2">AI 축제 코스 설정</h3>
+            <h3 className="text-2xl font-black text-gray-800 mb-2">
+              축제 하루 코스 만들기
+            </h3>
             <p className="text-sm text-gray-500 mb-6">
-              <span className="font-bold text-purple-600">[{selectedFestival.TITLE}]</span> 주변의 음식점·관광지·문화시설 코스를 추천합니다.
+              <span className="font-bold text-purple-600">[{selectedFestival.TITLE}]</span>을 중심으로
+              방문 일정과 주변 장소를 묶어 하루 코스를 만들어드릴게요.
             </p>
 
             <div className="space-y-4">
-              {/* 방문 날짜 */}
               <div>
                 <label htmlFor="visitDate" className="block text-sm font-bold text-gray-700 mb-1">
-                  방문 날짜
+                  언제 축제를 즐길까요?
                 </label>
                 <input
                   type="date"
@@ -820,10 +1305,9 @@ const AIPlannerPage = () => {
                 />
               </div>
 
-              {/* 인원 수 */}
               <div>
                 <label htmlFor="peopleCount" className="block text-sm font-bold text-gray-700 mb-1">
-                  인원 수
+                  몇 명이 함께 가나요?
                 </label>
                 <input
                   type="number"
@@ -836,10 +1320,9 @@ const AIPlannerPage = () => {
                 />
               </div>
 
-              {/* 동행 유형 */}
               <div>
                 <label htmlFor="companionType" className="block text-sm font-bold text-gray-700 mb-1">
-                  동행 유형
+                  누구와 함께 가나요?
                 </label>
                 <select
                   id="companionType"
@@ -849,19 +1332,18 @@ const AIPlannerPage = () => {
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
                 >
                   <option value="ALONE">혼자</option>
-                  <option value="FRIEND">친구</option>
-                  <option value="COUPLE">연인</option>
-                  <option value="FAMILY">가족</option>
+                  <option value="FRIEND">친구와</option>
+                  <option value="COUPLE">연인과</option>
+                  <option value="FAMILY">가족과</option>
                   <option value="CHILD">아이와 함께</option>
                   <option value="PARENT">부모님과</option>
                   <option value="PET">반려동물과</option>
                 </select>
               </div>
 
-              {/* 코스 스타일 */}
               <div>
                 <label htmlFor="courseStyle" className="block text-sm font-bold text-gray-700 mb-1">
-                  코스 스타일
+                  오늘 코스의 분위기를 골라주세요
                 </label>
                 <select
                   id="courseStyle"
@@ -870,20 +1352,19 @@ const AIPlannerPage = () => {
                   onChange={handlePlannerFormChange}
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
                 >
-                  <option value="RELAXED">여유롭게</option>
-                  <option value="FOOD">맛집 중심</option>
-                  <option value="TOUR">관광지 중심</option>
-                  <option value="CULTURE">문화시설 중심</option>
-                  <option value="INDOOR">실내 중심</option>
-                  <option value="PHOTO">사진 명소 중심</option>
-                  <option value="FAMILY">가족 중심</option>
+                  <option value="RELAXED">느긋하게 쉬엄쉬엄</option>
+                  <option value="FOOD">맛집은 꼭 챙기기</option>
+                  <option value="TOUR">주변 명소까지 알차게</option>
+                  <option value="CULTURE">전시·문화 감성으로</option>
+                  <option value="INDOOR">날씨 걱정 없는 실내 위주</option>
+                  <option value="PHOTO">사진 남기기 좋은 곳 위주</option>
+                  <option value="FAMILY">가족이 편한 동선으로</option>
                 </select>
               </div>
 
-              {/* 추가 요청사항 */}
               <div>
                 <label htmlFor="extraRequest" className="block text-sm font-bold text-gray-700 mb-1">
-                  추가 요청사항
+                  꼭 반영하고 싶은 요청이 있나요?
                 </label>
                 <textarea
                   id="extraRequest"
@@ -909,7 +1390,7 @@ const AIPlannerPage = () => {
                 className="w-full sm:w-auto px-6 py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors disabled:opacity-50"
                 disabled={isGenerating}
               >
-                {isGenerating ? '코스 생성 중...' : 'AI 코스 추천받기'}
+                {isGenerating ? '코스 만드는 중...' : '축제 하루 코스 만들기'}
               </button>
             </div>
           </div>

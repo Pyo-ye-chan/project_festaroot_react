@@ -9,8 +9,18 @@ export const maxios = axios.create({
 // 요청 인터셉터 추가
 maxios.interceptors.request.use(
   (config) => {
-    // 로컬 스토리지에서 토큰을 가져옵니다.
-    const token = localStorage.getItem('accessToken');
+    // 스토리지에서 토큰을 가져옵니다.
+
+
+
+    const storageType = localStorage.getItem('authStorageType');
+
+    const storage = storageType === 'session'
+      ? sessionStorage
+      : localStorage;
+
+    const token = storage.getItem('accessToken');
+
 
     // 토큰이 존재한다면 헤더에 담습니다.
     if (token) {

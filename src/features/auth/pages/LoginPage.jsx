@@ -68,9 +68,9 @@ const LoginPage = () => {
       }
 
       if (data.token) {
-        
 
-        
+
+
 
         // 소셜 로그인 성공 시에도 백엔드가 축제 찜 목록
         if (data.likedFestivalIds) {
@@ -82,7 +82,7 @@ const LoginPage = () => {
           nickname: data.nickname,
           email: data.email,
           social_provider: data.social_provider || provider
-        });
+        }, true);
 
         navigate('/');
         return;
@@ -142,9 +142,11 @@ const LoginPage = () => {
           setInitialLikes(userLikedIds);
         }
 
-        setAuthLogin(token, {
-          id: formData.id
-        });
+        setAuthLogin(
+          token,
+          { id: formData.id },
+          formData.rememberMe
+        );
 
         alert(data.message);
 
