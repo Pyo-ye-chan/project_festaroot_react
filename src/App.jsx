@@ -39,6 +39,19 @@ import 'react-toastify/dist/ReactToastify.css';
 import { MessageCircle } from 'lucide-react';
 import MinimizedChatManager from './components/MinimizedChatManager'
 
+// Admin Page Imports
+import MainAdminLayout from './features/admin/MainAdminLayout';
+import AdminDashboardPage from './features/admin/AdminDashboardPage';
+import MemberManagementPage from './features/admin/MemberManagementPage';
+import FestivalDataManagementPage from './features/admin/FestivalDataManagementPage';
+import PostManagementPage from './features/admin/PostManagementPage';
+import CommentManagementPage from './features/admin/CommentManagementPage';
+import ChatManagementPage from './features/admin/ChatManagementPage';
+import GatheringManagementPage from './features/admin/GatheringManagementPage';
+import NoticeManagementPage from './features/admin/NoticeManagementPage';
+import InquiryManagementPage from './features/admin/InquiryManagementPage';
+
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -105,6 +118,21 @@ function App() {
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/ai-planner" element={<AIPlannerPage />} />
         </Route>
+        
+        {/* Admin Routes */}
+        <Route path="/admin" element={<MainAdminLayout />}>
+          <Route index element={<AdminDashboardPage />} /> {/* Default admin page */}
+          <Route path="dashboard" element={<AdminDashboardPage />} />
+          <Route path="members" element={<MemberManagementPage />} />
+          <Route path="festivals" element={<FestivalDataManagementPage />} />
+          <Route path="posts" element={<PostManagementPage />} />
+          <Route path="comments" element={<CommentManagementPage />} />
+          <Route path="chats" element={<ChatManagementPage />} />
+          <Route path="gatherings" element={<GatheringManagementPage />} />
+          <Route path="notices" element={<NoticeManagementPage />} />
+          <Route path="inquiries" element={<InquiryManagementPage />} />
+        </Route>
+
         <Route path="/login" element={<LoginPage />} />
         <Route path="/oauth/kakao/callback" element={<KakaoCallbackPage />} />
         <Route path="/oauth/naver/callback" element={<NaverCallbackPage />} />

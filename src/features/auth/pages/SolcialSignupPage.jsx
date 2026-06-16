@@ -14,6 +14,7 @@ import {
 import useMemberStore from '../../../store/useMemberStore';
 import AuthLayout from '../components/AuthLayout';
 import { getSidoList, getSigunguList } from '../../../api/regionApi';
+import { checkNicknameDuplicate } from '../../../api/memberApi';
 
 const SocialSignupPage = () => {
   const navigate = useNavigate();
@@ -49,6 +50,12 @@ const SocialSignupPage = () => {
   const [sigunguList, setSigunguList] = useState([]);
   const [isSigunguLoading, setIsSigunguLoading] = useState(false);
 
+  // 닉네임 중복확인 상태
+  const [isCheckingNickname, setIsCheckingNickname] = useState(false);
+  const [isNicknameConfirmed, setIsNicknameConfirmed] = useState(false);
+  const [confirmedNicknameValue, setConfirmedNicknameValue] = useState('');
+  const [nicknameMessage, setNicknameMessage] = useState('');
+
   useEffect(() => {
     const fetchSidoList = async () => {
       try {
@@ -81,6 +88,70 @@ const SocialSignupPage = () => {
     fetchSigunguList();
   }, [formData.reside_area_code]);
 
+  // 백엔드 응답 형태가 달라도 사용 가능 여부를 공통 처리
+  const isAvailableResponse = (data) => {
+    return (
+      data?.isAvailable === true ||
+      data?.available === true ||
+      data?.success === true
+    );
+  };
+
+  const clearError = (name) => {
+    setErrors((prev) => ({
+      ...prev,
+      [name]: ''
+    }));
+  };
+
+  const saveFormData = (newData) => {
+    setFormData(newData);
+    setSignupData(newData);
+  };
+
+  // 닉네임 중복 확인
+  const handleCheckNicknameDuplicate = async () => {
+    if (!formData.nickname.trim()) {
+      setNicknameMessage('');
+      setIsNicknameConfirmed(false);
+      setConfirmedNicknameValue('');
+
+      setErrors((prev) => ({
+        ...prev,
+        nickname: '닉네임을 입력해주세요.'
+      }));
+
+      return;
+    }
+
+    try {
+      setIsCheckingNickname(true);
+      setNicknameMessage('');
+      setIsNicknameConfirmed(false);
+
+      const response = await checkNicknameDuplicate(formData.nickname);
+      const data = response?.data ?? response;
+
+      if (isAvailableResponse(data)) {
+        setIsNicknameConfirmed(true);
+        setConfirmedNicknameValue(formData.nickname);
+        setNicknameMessage('사용 가능한 닉네임입니다.');
+        clearError('nickname');
+      } else {
+        setIsNicknameConfirmed(false);
+        setConfirmedNicknameValue('');
+        setNicknameMessage(data?.message || '이미 사용 중인 닉네임입니다.');
+      }
+    } catch (error) {
+      console.error('닉네임 중복 확인 실패:', error);
+      setIsNicknameConfirmed(false);
+      setConfirmedNicknameValue('');
+      setNicknameMessage('닉네임 중복 확인 중 오류가 발생했습니다.');
+    } finally {
+      setIsCheckingNickname(false);
+    }
+  };
+
   const validate = () => {
     const newErrors = {};
 
@@ -101,6 +172,8 @@ const SocialSignupPage = () => {
 
     if (!formData.nickname.trim()) {
       newErrors.nickname = '닉네임을 입력해주세요.';
+    } else if (!isNicknameConfirmed || confirmedNicknameValue !== formData.nickname) {
+      newErrors.nickname = '닉네임 중복 확인을 완료해주세요.';
     }
 
     if (!emailRegex.test(formData.email || '')) {
@@ -127,24 +200,67 @@ const SocialSignupPage = () => {
       newErrors.addr_sigungu = '시/군/구를 선택해주세요.';
     }
 
+    if (!formData.agreeTerms || !formData.agreePrivacy || !formData.agreeLocation) {
+      newErrors.terms = '필수 약관에 모두 동의해주세요.';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const saveFormData = (newData) => {
-    setFormData(newData);
-    setSignupData(newData);
-  };
-
+  // 입력값 변경
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
+    let val = type === 'checkbox' ? checked : value;
+
+    // 전화번호 자동 하이픈 처리
+    if (name === 'phone') {
+      val = val.replace(/[^0-9]/g, '');
+
+      if (val.length <= 3) {
+        val = val;
+      } else if (val.length <= 7) {
+        val = `${val.slice(0, 3)}-${val.slice(3)}`;
+      } else {
+        val =
+          `${val.slice(0, 3)}-` +
+          `${val.slice(3, 7)}-` +
+          `${val.slice(7, 11)}`;
+      }
+    }
+
     const newData = {
       ...formData,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: val
     };
 
     saveFormData(newData);
+    clearError(name);
+
+    // 닉네임을 수정하면 다시 중복확인 필요
+    if (name === 'nickname') {
+      if (val !== confirmedNicknameValue) {
+        setIsNicknameConfirmed(false);
+        setNicknameMessage(
+          confirmedNicknameValue
+            ? '닉네임이 변경되었습니다. 다시 중복 확인해주세요.'
+            : ''
+        );
+      }
+    }
+
+    // 약관 에러 제거
+    if (
+      name === 'agreeTerms' ||
+      name === 'agreePrivacy' ||
+      name === 'agreeLocation'
+    ) {
+      setErrors((prev) => ({
+        ...prev,
+        terms: ''
+      }));
+    }
   };
 
   const handleSidoChange = (e) => {
@@ -164,6 +280,12 @@ const SocialSignupPage = () => {
 
     setSigunguList([]);
     saveFormData(newData);
+
+    setErrors((prev) => ({
+      ...prev,
+      addr_sido: '',
+      addr_sigungu: ''
+    }));
   };
 
   const handleSigunguChange = (e) => {
@@ -180,6 +302,7 @@ const SocialSignupPage = () => {
     };
 
     saveFormData(newData);
+    clearError('addr_sigungu');
   };
 
   const handleGenderChange = (gender) => {
@@ -189,6 +312,7 @@ const SocialSignupPage = () => {
     };
 
     saveFormData(newData);
+    clearError('gender');
   };
 
   const handleAllAgreeChange = (e) => {
@@ -202,21 +326,17 @@ const SocialSignupPage = () => {
     };
 
     saveFormData(newData);
+
+    setErrors((prev) => ({
+      ...prev,
+      terms: ''
+    }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
     if (!validate()) return;
-
-    if (
-      !formData.agreeTerms ||
-      !formData.agreePrivacy ||
-      !formData.agreeLocation
-    ) {
-      alert('필수 약관에 동의해주세요.');
-      return;
-    }
 
     setSignupData({
       ...signupData,
@@ -225,9 +345,6 @@ const SocialSignupPage = () => {
 
       social_provider: formData.social_provider,
       social_id: formData.social_id,
-
-
-
 
       name: formData.name,
       nickname: formData.nickname,
@@ -248,8 +365,8 @@ const SocialSignupPage = () => {
       profile_image_url: formData.profile_image_url || ''
     });
 
-    console.log("소셜페이지 formData:", formData);
-    console.log("소셜페이지 signupData:", signupData);
+    console.log('소셜페이지 formData:', formData);
+    console.log('소셜페이지 signupData:', signupData);
 
     navigate('/signup/preferences');
   };
@@ -284,13 +401,22 @@ const SocialSignupPage = () => {
     outline-none transition-all focus:border-festival-purple focus:ring-4 focus:ring-[#f5f0ff]
   `;
 
+  const isNicknameConfirmedNow =
+    isNicknameConfirmed && confirmedNicknameValue === formData.nickname;
+
+  const allChecked = !!(
+    formData.agreeTerms &&
+    formData.agreePrivacy &&
+    formData.agreeLocation
+  );
+
   return (
     <AuthLayout
       title="소셜 간편가입"
       subtitle="추가 정보를 입력하고 축제로를 시작하세요"
       maxWidth="max-w-2xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} noValidate className="space-y-8">
         <section className="bg-[#faf7ff] border border-[#e7e2f7] rounded-[28px] p-5">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shadow-sm">
@@ -327,7 +453,6 @@ const SocialSignupPage = () => {
                 onChange={handleChange}
                 placeholder="실명 입력"
                 className={`${inputClass} px-5`}
-                required
               />
 
               <ErrorText message={errors.name} />
@@ -338,17 +463,50 @@ const SocialSignupPage = () => {
                 닉네임
               </label>
 
-              <input
-                type="text"
-                name="nickname"
-                value={formData.nickname || ''}
-                onChange={handleChange}
-                placeholder="닉네임"
-                className={`${inputClass} px-5`}
-                required
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  name="nickname"
+                  value={formData.nickname || ''}
+                  onChange={handleChange}
+                  placeholder="닉네임"
+                  className={`${inputClass} px-5 flex-1 ${
+                    isNicknameConfirmedNow ? 'border-green-500 bg-green-50' : ''
+                  }`}
+                  disabled={isCheckingNickname}
+                />
+
+                <button
+                  type="button"
+                  onClick={handleCheckNicknameDuplicate}
+                  disabled={isCheckingNickname || !formData.nickname}
+                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${
+                    isCheckingNickname || !formData.nickname
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
+                  }`}
+                >
+                  {isCheckingNickname
+                    ? '확인 중...'
+                    : isNicknameConfirmedNow
+                      ? '확인완료'
+                      : confirmedNicknameValue
+                        ? '다시확인'
+                        : '중복확인'}
+                </button>
+              </div>
 
               <ErrorText message={errors.nickname} />
+
+              {nicknameMessage && (
+                <p
+                  className={`text-sm mt-2 ml-2 ${
+                    isNicknameConfirmedNow ? 'text-green-600' : 'text-red-500'
+                  }`}
+                >
+                  {nicknameMessage}
+                </p>
+              )}
             </div>
 
             <div>
@@ -368,7 +526,6 @@ const SocialSignupPage = () => {
                   onChange={handleChange}
                   placeholder="example@email.com"
                   className={`${inputClass} pl-11`}
-                  required
                 />
               </div>
 
@@ -391,8 +548,8 @@ const SocialSignupPage = () => {
                   value={formData.phone || ''}
                   onChange={handleChange}
                   placeholder="010-0000-0000"
+                  maxLength={13}
                   className={`${inputClass} pl-11`}
-                  required
                 />
               </div>
 
@@ -409,10 +566,11 @@ const SocialSignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('M')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'M'
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
+                      formData.gender === 'M'
                         ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
                         : 'text-gray-400'
-                      }`}
+                    }`}
                   >
                     남성
                   </button>
@@ -420,10 +578,11 @@ const SocialSignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('F')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'F'
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
+                      formData.gender === 'F'
                         ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
                         : 'text-gray-400'
-                      }`}
+                    }`}
                   >
                     여성
                   </button>
@@ -448,7 +607,6 @@ const SocialSignupPage = () => {
                     value={formData.birthdate || ''}
                     onChange={handleChange}
                     className={`${inputClass} pl-11 pr-4`}
-                    required
                   />
                 </div>
 
@@ -468,7 +626,6 @@ const SocialSignupPage = () => {
                   value={formData.reside_area_code || ''}
                   onChange={handleSidoChange}
                   className={`${inputClass} px-5 bg-white appearance-none`}
-                  required
                 >
                   <option value="">시/도 선택</option>
                   {sidoList.map((sido) => (
@@ -491,11 +648,11 @@ const SocialSignupPage = () => {
                   name="reside_sigungu_code"
                   value={formData.reside_sigungu_code || ''}
                   onChange={handleSigunguChange}
-                  className={`${inputClass} px-5 bg-white appearance-none ${!formData.reside_area_code
+                  className={`${inputClass} px-5 bg-white appearance-none ${
+                    !formData.reside_area_code
                       ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
                       : ''
-                    }`}
-                  required
+                  }`}
                   disabled={!formData.reside_area_code || isSigunguLoading}
                 >
                   <option value="">
@@ -518,26 +675,27 @@ const SocialSignupPage = () => {
           </div>
         </section>
 
-        <section className="bg-gray-50 rounded-[32px] p-7 border border-[#eee]">
+        <section
+          className={`rounded-[32px] p-7 border ${
+            errors.terms
+              ? 'bg-red-50 border-red-300'
+              : 'bg-gray-50 border-[#eee]'
+          }`}
+        >
           <label className="flex items-center gap-3 cursor-pointer mb-6">
             <input
               type="checkbox"
               className="hidden"
-              checked={
-                !!formData.agreeTerms &&
-                !!formData.agreePrivacy &&
-                !!formData.agreeLocation
-              }
+              checked={allChecked}
               onChange={handleAllAgreeChange}
             />
 
             <div
-              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.agreeTerms &&
-                  formData.agreePrivacy &&
-                  formData.agreeLocation
+              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                allChecked
                   ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-100'
                   : 'bg-white border-gray-300'
-                }`}
+              }`}
             >
               <Check size={16} className="text-white" />
             </div>
@@ -564,10 +722,11 @@ const SocialSignupPage = () => {
                   />
 
                   <div
-                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData[item.id]
+                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                      formData[item.id]
                         ? 'bg-festival-purple border-festival-purple'
                         : 'bg-white border-gray-300 group-hover:border-festival-purple'
-                      }`}
+                    }`}
                   >
                     <Check size={14} className="text-white" />
                   </div>
@@ -586,58 +745,56 @@ const SocialSignupPage = () => {
               </div>
             ))}
           </div>
+
+          <ErrorText message={errors.terms} />
         </section>
 
         <div className="pt-4 sm:pt-6 flex gap-3">
-
-          {/* Cancel */}
           <button
             type="button"
             onClick={() => navigate('/login')}
             className="
-      flex-1 sm:flex-none
-      sm:w-[140px]
-      h-[52px] sm:h-[56px]
-      rounded-2xl
-      border border-[#e5e7eb]
-      bg-white
-      text-[#666]
-      text-[14px] sm:text-[15px]
-      font-[700]
-      transition-all
-      hover:bg-gray-50
-      hover:border-gray-300
-      active:scale-[0.98]
-      flex items-center justify-center gap-1.5 sm:gap-2
-      whitespace-nowrap
-    "
+              flex-1 sm:flex-none
+              sm:w-[140px]
+              h-[52px] sm:h-[56px]
+              rounded-2xl
+              border border-[#e5e7eb]
+              bg-white
+              text-[#666]
+              text-[14px] sm:text-[15px]
+              font-[700]
+              transition-all
+              hover:bg-gray-50
+              hover:border-gray-300
+              active:scale-[0.98]
+              flex items-center justify-center gap-1.5 sm:gap-2
+              whitespace-nowrap
+            "
           >
             취소
           </button>
 
-          {/* Next */}
           <button
             type="submit"
             className="
-      flex-[1.5]
-      h-[52px] sm:h-[56px]
-      rounded-2xl
-      bg-[#5b21b6]
-      text-white
-      text-[14px] sm:text-[16px]
-      font-[800]
-      shadow-[0_10px_24px_rgba(91,33,182,0.18)]
-      transition-all
-      hover:bg-[#4c1d95]
-      active:scale-[0.98]
-      flex items-center justify-center gap-2
-      whitespace-nowrap
-    "
+              flex-[1.5]
+              h-[52px] sm:h-[56px]
+              rounded-2xl
+              bg-[#5b21b6]
+              text-white
+              text-[14px] sm:text-[16px]
+              font-[800]
+              shadow-[0_10px_24px_rgba(91,33,182,0.18)]
+              transition-all
+              hover:bg-[#4c1d95]
+              active:scale-[0.98]
+              flex items-center justify-center gap-2
+              whitespace-nowrap
+            "
           >
             다음 단계로 진행
             <ChevronRight size={20} />
           </button>
-
         </div>
       </form>
     </AuthLayout>

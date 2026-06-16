@@ -30,7 +30,6 @@ body {
 }
 
 
-
 /* tiptap */
 .ProseMirror {
   min-height: 400px;
@@ -55,4 +54,17 @@ body {
   max-width: 100%;
   border-radius: 1.5rem;
 }
+
+/* AI PLANNER Scroller-bar */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE, Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari */
+}
+
+
+
 

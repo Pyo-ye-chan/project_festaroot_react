@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User,
@@ -59,13 +59,13 @@ const SignupPage = () => {
   const [countdown, setCountdown] = useState(0);
 
   const [isCheckingId, setIsCheckingId] = useState(false);
-  const [isIdAvailable, setIsIdAvailable] = useState(false);
   const [isIdConfirmed, setIsIdConfirmed] = useState(false);
+  const [confirmedIdValue, setConfirmedIdValue] = useState('');
   const [idMessage, setIdMessage] = useState('');
 
   const [isCheckingNickname, setIsCheckingNickname] = useState(false);
-  const [isNicknameAvailable, setIsNicknameAvailable] = useState(false);
   const [isNicknameConfirmed, setIsNicknameConfirmed] = useState(false);
+  const [confirmedNicknameValue, setConfirmedNicknameValue] = useState('');
   const [nicknameMessage, setNicknameMessage] = useState('');
 
   const [errors, setErrors] = useState({});
@@ -74,10 +74,39 @@ const SignupPage = () => {
   const [isSigunguLoading, setIsSigunguLoading] = useState(false);
 
   const [termsList, setTermsList] = useState([]);
-  const [selectedTerms, setSelectedTerms] = useState(null); // 약관 상태 관련 모달
+  const [selectedTerms, setSelectedTerms] = useState(null);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isValidEmail = emailRegex.test(formData.email || '');
+
+  // 첫 번째 오류 위치로 이동하기 위한 ref
+  const memberIdRef = useRef(null);
+  const passwordRef = useRef(null);
+  const confirmPasswordRef = useRef(null);
+  const nameRef = useRef(null);
+  const nicknameRef = useRef(null);
+  const emailRef = useRef(null);
+  const phoneRef = useRef(null);
+  const genderRef = useRef(null);
+  const birthdateRef = useRef(null);
+  const sidoRef = useRef(null);
+  const sigunguRef = useRef(null);
+  const termsRef = useRef(null);
+
+  const fieldRefs = {
+    member_id: memberIdRef,
+    password: passwordRef,
+    confirmPassword: confirmPasswordRef,
+    name: nameRef,
+    nickname: nicknameRef,
+    email: emailRef,
+    phone: phoneRef,
+    gender: genderRef,
+    birthdate: birthdateRef,
+    addr_sido: sidoRef,
+    addr_sigungu: sigunguRef,
+    terms: termsRef,
+  };
 
   useEffect(() => {
     const fetchSidoList = async () => {
@@ -96,13 +125,7 @@ const SignupPage = () => {
     const loadTerms = async () => {
       try {
         const res = await getActiveTerms();
-
-        console.log('약관 API 응답:', res);
-
         const data = res?.data ?? res;
-
-        console.log('약관 data:', data);
-
         setTermsList(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('약관 조회 실패:', error);
@@ -112,37 +135,7 @@ const SignupPage = () => {
     loadTerms();
   }, []);
 
-
-  const closeTermsModal = () => {
-    setSelectedTerms(null);
-  };
-
-  const getTermsByType = (type) => {
-    return termsList.find((terms) => terms.terms_type === type);
-  };
-
-  const handleShowTerms = (id) => {
-    const typeMap = {
-      agreeTerms: 'TERMS',
-      agreePrivacy: 'PRIVACY',
-      agreeLocation: 'LOCATION'
-    };
-
-    console.log('termsList:', termsList);
-    console.log('찾는 타입:', typeMap[id]);
-
-    const term = termsList.find(
-      item =>
-        item.terms_type === typeMap[id] ||
-        item.termsType === typeMap[id]
-    );
-
-    console.log('선택된 약관:', term);
-
-    setSelectedTerms(term || null);
-  };
-
-  // 이전 단계나 store에 저장된 회원가입 데이터 복원
+  // 이전 단계에서 돌아왔을 때 입력값 복원
   useEffect(() => {
     if (signupData) {
       setFormData((prev) => ({
@@ -156,7 +149,7 @@ const SignupPage = () => {
     formData.confirmPassword === '' ||
     formData.password === formData.confirmPassword;
 
-  // 백엔드 응답 키가 isAvailable / available / success 중 무엇이 와도 처리
+  // 백엔드 응답 형태가 달라도 사용 가능 여부를 공통 처리
   const isAvailableResponse = (data) => {
     return (
       data?.isAvailable === true ||
@@ -165,10 +158,27 @@ const SignupPage = () => {
     );
   };
 
+  const formatCountdown = () => {
+    const minutes = Math.floor(countdown / 60).toString().padStart(2, '0');
+    const seconds = (countdown % 60).toString().padStart(2, '0');
+    return `${minutes}:${seconds}`;
+  };
+
+  const clearError = (name) => {
+    setErrors((prev) => ({
+      ...prev,
+      [name]: ''
+    }));
+  };
+
   // 이메일 인증번호 발송
   const handleSendVerificationCode = async () => {
     if (!isValidEmail) {
       setVerificationMessage('유효한 이메일 주소를 입력해주세요.');
+      setErrors((prev) => ({
+        ...prev,
+        email: '이메일 형식이 올바르지 않습니다.'
+      }));
       return;
     }
 
@@ -177,11 +187,9 @@ const SignupPage = () => {
     setEmailVerified(false);
 
     try {
-      // 1. 이메일 중복 확인
       const emailCheck = await checkEmailDuplicate(formData.email);
       const emailData = emailCheck?.data ?? emailCheck;
 
-      console.log(emailData);
       if (!isAvailableResponse(emailData)) {
         setVerificationMessage(
           emailData?.message || '이미 사용 중인 이메일입니다.'
@@ -189,15 +197,13 @@ const SignupPage = () => {
         return;
       }
 
-      // 2. 인증번호 발송
       const response = await sendVerificationCode(formData.email);
       const data = response?.data ?? response;
 
       if (data.success) {
-        setVerificationMessage(
-          '인증번호가 발송되었습니다. 5분 이내로 입력해주세요.'
-        );
+        setVerificationMessage('인증번호가 발송되었습니다. 5분 이내로 입력해주세요.');
         setCountdown(300);
+        clearError('email');
       } else {
         setVerificationMessage(
           data?.message || '인증번호 발송 실패. 이메일을 확인해주세요.'
@@ -213,7 +219,7 @@ const SignupPage = () => {
 
   // 이메일 인증번호 확인
   const handleVerifyCode = async () => {
-    if (!emailCode) {
+    if (!emailCode.trim()) {
       setVerificationMessage('인증번호를 입력해주세요.');
       return;
     }
@@ -229,9 +235,12 @@ const SignupPage = () => {
         setEmailVerified(true);
         setVerificationMessage('이메일 인증이 완료되었습니다.');
         setCountdown(0);
+        clearError('email');
       } else {
         setEmailVerified(false);
-        setVerificationMessage(data?.message || '인증번호가 일치하지 않습니다. 다시 입력해 주세요.');
+        setVerificationMessage(
+          data?.message || '인증번호가 일치하지 않습니다. 다시 입력해 주세요.'
+        );
       }
     } catch (error) {
       console.error('인증번호 확인 실패:', error);
@@ -245,48 +254,38 @@ const SignupPage = () => {
   const handleCheckIdDuplicate = async () => {
     const idRegex = /^[a-zA-Z0-9]{6,20}$/;
 
-    if (!formData.member_id || !idRegex.test(formData.member_id)) {
-      setIsIdAvailable(false);
+    if (!idRegex.test(formData.member_id || '')) {
       setIsIdConfirmed(false);
-      setIdMessage('아이디는 6~20자 영문, 숫자여야 합니다.');
+      setConfirmedIdValue('');
+      setErrors((prev) => ({
+        ...prev,
+        member_id: '아이디는 6~20자 영문, 숫자여야 합니다.'
+      }));
       return;
     }
 
     setIsCheckingId(true);
     setIdMessage('');
-    setIsIdAvailable(false);
     setIsIdConfirmed(false);
 
     try {
       const response = await checkIdDuplicate(formData.member_id);
       const data = response?.data ?? response;
 
-      console.log('아이디 중복체크 응답:', data);
-
       if (isAvailableResponse(data)) {
-        const confirmUse = window.confirm(
-          `'${formData.member_id}' 아이디를 사용하시겠습니까?\n\n확인: 사용하기\n취소: 다시 입력하기`
-        );
-
-        if (confirmUse) {
-          setIsIdAvailable(true);
-          setIsIdConfirmed(true);
-          setIdMessage('사용하기로 확정된 아이디입니다.');
-          setErrors((prev) => ({ ...prev, member_id: '' }));
-        } else {
-          setIsIdAvailable(false);
-          setIsIdConfirmed(false);
-          setIdMessage('아이디를 다시 입력해주세요.');
-        }
+        setIsIdConfirmed(true);
+        setConfirmedIdValue(formData.member_id);
+        setIdMessage('사용 가능한 아이디입니다.');
+        clearError('member_id');
       } else {
-        setIsIdAvailable(false);
         setIsIdConfirmed(false);
+        setConfirmedIdValue('');
         setIdMessage(data?.message || '이미 사용 중인 아이디입니다.');
       }
     } catch (error) {
       console.error('아이디 중복 확인 실패:', error);
-      setIsIdAvailable(false);
       setIsIdConfirmed(false);
+      setConfirmedIdValue('');
       setIdMessage('아이디 중복 확인 중 오류가 발생했습니다.');
     } finally {
       setIsCheckingId(false);
@@ -295,48 +294,39 @@ const SignupPage = () => {
 
   // 닉네임 중복 확인
   const handleCheckNicknameDuplicate = async () => {
-    if (!formData.nickname) {
-      setIsNicknameAvailable(false);
+    if (!formData.nickname.trim()) {
       setIsNicknameConfirmed(false);
+      setConfirmedNicknameValue('');
       setNicknameMessage('닉네임을 입력해주세요.');
+      setErrors((prev) => ({
+        ...prev,
+        nickname: '닉네임을 입력해주세요.'
+      }));
       return;
     }
 
     setIsCheckingNickname(true);
     setNicknameMessage('');
-    setIsNicknameAvailable(false);
     setIsNicknameConfirmed(false);
 
     try {
       const response = await checkNicknameDuplicate(formData.nickname);
       const data = response?.data ?? response;
 
-      console.log('닉네임 중복체크 응답:', data);
-
       if (isAvailableResponse(data)) {
-        const confirmUse = window.confirm(
-          `'${formData.nickname}' 닉네임을 사용하시겠습니까?\n\n확인: 사용하기\n취소: 다시 입력하기`
-        );
-
-        if (confirmUse) {
-          setIsNicknameAvailable(true);
-          setIsNicknameConfirmed(true);
-          setNicknameMessage('사용하기로 확정된 닉네임입니다.');
-          setErrors((prev) => ({ ...prev, nickname: '' }));
-        } else {
-          setIsNicknameAvailable(false);
-          setIsNicknameConfirmed(false);
-          setNicknameMessage('닉네임을 다시 입력해주세요.');
-        }
+        setIsNicknameConfirmed(true);
+        setConfirmedNicknameValue(formData.nickname);
+        setNicknameMessage('사용 가능한 닉네임입니다.');
+        clearError('nickname');
       } else {
-        setIsNicknameAvailable(false);
         setIsNicknameConfirmed(false);
+        setConfirmedNicknameValue('');
         setNicknameMessage(data?.message || '이미 사용 중인 닉네임입니다.');
       }
     } catch (error) {
       console.error('닉네임 중복 확인 실패:', error);
-      setIsNicknameAvailable(false);
       setIsNicknameConfirmed(false);
+      setConfirmedNicknameValue('');
       setNicknameMessage('닉네임 중복 확인 중 오류가 발생했습니다.');
     } finally {
       setIsCheckingNickname(false);
@@ -362,6 +352,7 @@ const SignupPage = () => {
     return () => clearInterval(timer);
   }, [countdown, emailVerified, verificationMessage]);
 
+  // 전체 입력값 검증
   const validate = () => {
     const newErrors = {};
     const idRegex = /^[a-zA-Z0-9]{6,20}$/;
@@ -370,7 +361,7 @@ const SignupPage = () => {
 
     if (!idRegex.test(formData.member_id || '')) {
       newErrors.member_id = '아이디는 6~20자 영문, 숫자여야 합니다.';
-    } else if (!isIdConfirmed) {
+    } else if (!isIdConfirmed || confirmedIdValue !== formData.member_id) {
       newErrors.member_id = '아이디 중복 확인을 완료해주세요.';
     }
 
@@ -382,8 +373,14 @@ const SignupPage = () => {
       newErrors.confirmPassword = '비밀번호가 일치하지 않습니다.';
     }
 
-    if (!phoneRegex.test(formData.phone || '')) {
-      newErrors.phone = '전화번호 형식이 올바르지 않습니다. 예: 010-0000-0000';
+    if (!formData.name.trim()) {
+      newErrors.name = '이름을 입력해주세요.';
+    }
+
+    if (!formData.nickname.trim()) {
+      newErrors.nickname = '닉네임을 입력해주세요.';
+    } else if (!isNicknameConfirmed || confirmedNicknameValue !== formData.nickname) {
+      newErrors.nickname = '닉네임 중복 확인을 완료해주세요.';
     }
 
     if (!emailRegex.test(formData.email || '')) {
@@ -392,22 +389,16 @@ const SignupPage = () => {
       newErrors.email = '이메일 인증을 완료해주세요.';
     }
 
-    if (!formData.name) {
-      newErrors.name = '이름을 입력해주세요.';
-    }
-
-    if (!formData.nickname) {
-      newErrors.nickname = '닉네임을 입력해주세요.';
-    } else if (!isNicknameConfirmed) {
-      newErrors.nickname = '닉네임 중복 확인을 완료해주세요.';
-    }
-
-    if (!formData.birthdate) {
-      newErrors.birthdate = '생년월일을 선택해주세요.';
+    if (!phoneRegex.test(formData.phone || '')) {
+      newErrors.phone = '전화번호 형식이 올바르지 않습니다. 예: 010-0000-0000';
     }
 
     if (!formData.gender) {
       newErrors.gender = '성별을 선택해주세요.';
+    }
+
+    if (!formData.birthdate) {
+      newErrors.birthdate = '생년월일을 선택해주세요.';
     }
 
     if (!formData.reside_area_code) {
@@ -418,17 +409,57 @@ const SignupPage = () => {
       newErrors.addr_sigungu = '시/군/구를 선택해주세요.';
     }
 
+    if (!formData.agreeTerms || !formData.agreePrivacy || !formData.agreeLocation) {
+      newErrors.terms = '필수 약관에 모두 동의해주세요.';
+    }
+
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
-  // 입력값 변경 시 관련 검증 상태 초기화
+  // 첫 번째 오류 위치로 자동 이동
+  const focusFirstError = (errorObject) => {
+    const errorOrder = [
+      'member_id',
+      'password',
+      'confirmPassword',
+      'name',
+      'nickname',
+      'email',
+      'phone',
+      'gender',
+      'birthdate',
+      'addr_sido',
+      'addr_sigungu',
+      'terms',
+    ];
+
+    const firstErrorKey = errorOrder.find((key) => errorObject[key]);
+
+    if (!firstErrorKey) return;
+
+    requestAnimationFrame(() => {
+      const target = fieldRefs[firstErrorKey]?.current;
+
+      if (!target) return;
+
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+
+      if (typeof target.focus === 'function') {
+        target.focus();
+      }
+    });
+  };
+
+  // 입력값 변경 시 관련 인증/확인 상태 초기화
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     let val = type === 'checkbox' ? checked : value;
 
     if (name === 'phone') {
-
       val = val.replace(/[^0-9]/g, '');
 
       if (val.length <= 3) {
@@ -446,24 +477,32 @@ const SignupPage = () => {
     const newData = {
       ...formData,
       [name]: val,
-      ...(name === 'addr_sido' ? { addr_sigungu: '' } : {})
     };
 
     setFormData(newData);
     setSignupData({ [name]: val });
-
-    setErrors((prev) => ({ ...prev, [name]: '' }));
+    clearError(name);
 
     if (name === 'member_id') {
-      setIsIdAvailable(false);
-      setIsIdConfirmed(false);
-      setIdMessage('');
+      if (val !== confirmedIdValue) {
+        setIsIdConfirmed(false);
+        setIdMessage(
+          confirmedIdValue
+            ? '아이디가 변경되었습니다. 다시 중복 확인해주세요.'
+            : ''
+        );
+      }
     }
 
     if (name === 'nickname') {
-      setIsNicknameAvailable(false);
-      setIsNicknameConfirmed(false);
-      setNicknameMessage('');
+      if (val !== confirmedNicknameValue) {
+        setIsNicknameConfirmed(false);
+        setNicknameMessage(
+          confirmedNicknameValue
+            ? '닉네임이 변경되었습니다. 다시 중복 확인해주세요.'
+            : ''
+        );
+      }
     }
 
     if (name === 'email') {
@@ -471,6 +510,13 @@ const SignupPage = () => {
       setVerificationMessage('');
       setEmailCode('');
       setCountdown(0);
+    }
+
+    if (name === 'agreeTerms' || name === 'agreePrivacy' || name === 'agreeLocation') {
+      setErrors((prev) => ({
+        ...prev,
+        terms: ''
+      }));
     }
   };
 
@@ -485,11 +531,19 @@ const SignupPage = () => {
       addr_sigungu: ''
     };
 
-    const newData = { ...formData, ...update };
+    setFormData((prev) => ({
+      ...prev,
+      ...update
+    }));
 
-    setFormData(newData);
     setSignupData(update);
     setSigunguList([]);
+
+    setErrors((prev) => ({
+      ...prev,
+      addr_sido: '',
+      addr_sigungu: ''
+    }));
 
     if (!regionCode) return;
 
@@ -516,15 +570,25 @@ const SignupPage = () => {
       addr_sigungu: selectedSigungu?.sigungu_name || ''
     };
 
-    setFormData((prev) => ({ ...prev, ...update }));
+    setFormData((prev) => ({
+      ...prev,
+      ...update
+    }));
+
     setSignupData(update);
+    clearError('addr_sigungu');
   };
 
   const handleGenderChange = (gender) => {
     const update = { gender };
 
-    setFormData((prev) => ({ ...prev, ...update }));
+    setFormData((prev) => ({
+      ...prev,
+      ...update
+    }));
+
     setSignupData(update);
+    clearError('gender');
   };
 
   const handleAllAgreeChange = (e) => {
@@ -536,32 +600,42 @@ const SignupPage = () => {
       agreeLocation: v
     };
 
-    setFormData((prev) => ({ ...prev, ...update }));
+    setFormData((prev) => ({
+      ...prev,
+      ...update
+    }));
+
     setSignupData(update);
+
+    setErrors((prev) => ({
+      ...prev,
+      terms: ''
+    }));
+  };
+
+  const handleShowTerms = (id) => {
+    const typeMap = {
+      agreeTerms: 'TERMS',
+      agreePrivacy: 'PRIVACY',
+      agreeLocation: 'LOCATION'
+    };
+
+    const term = termsList.find(
+      item =>
+        item.terms_type === typeMap[id] ||
+        item.termsType === typeMap[id]
+    );
+
+    setSelectedTerms(term || null);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!validate()) return;
+    const validationErrors = validate();
 
-    if (!emailVerified) {
-      alert('이메일 인증을 완료해주세요.');
-      return;
-    }
-
-    if (!isIdConfirmed) {
-      alert('아이디 중복 확인을 완료해주세요.');
-      return;
-    }
-
-    if (!isNicknameConfirmed) {
-      alert('닉네임 중복 확인을 완료해주세요.');
-      return;
-    }
-
-    if (!formData.agreeTerms || !formData.agreePrivacy || !formData.agreeLocation) {
-      alert('필수 약관에 동의해주세요.');
+    if (Object.keys(validationErrors).length > 0) {
+      focusFirstError(validationErrors);
       return;
     }
 
@@ -598,6 +672,12 @@ const SignupPage = () => {
     outline-none transition-all focus:border-festival-purple focus:ring-4 focus:ring-[#f5f0ff]
   `;
 
+  const isIdConfirmedNow =
+    isIdConfirmed && confirmedIdValue === formData.member_id;
+
+  const isNicknameConfirmedNow =
+    isNicknameConfirmed && confirmedNicknameValue === formData.nickname;
+
   const allChecked = !!(
     formData.agreeTerms &&
     formData.agreePrivacy &&
@@ -610,7 +690,8 @@ const SignupPage = () => {
       subtitle="축제로와 함께 설레는 여행을 시작하세요"
       maxWidth="max-w-2xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-8">
+      {/* noValidate: 브라우저 기본 required 말풍선 대신 직접 만든 에러 UI 사용 */}
+      <form onSubmit={handleSubmit} noValidate className="space-y-8">
         <section>
           <SectionTitle>계정 정보</SectionTitle>
 
@@ -627,40 +708,36 @@ const SignupPage = () => {
                   </InputIcon>
 
                   <input
+                    ref={memberIdRef}
                     type="text"
                     name="member_id"
                     value={formData.member_id || ''}
                     onChange={handleChange}
                     placeholder="아이디 입력"
-                    className={`${inputClass} pl-11 ${isIdConfirmed ? 'border-green-500 bg-green-50' : ''
-                      }`}
-                    required
-                    disabled={isCheckingId || isIdConfirmed}
+                    className={`${inputClass} pl-11 ${
+                      isIdConfirmedNow ? 'border-green-500 bg-green-50' : ''
+                    }`}
+                    disabled={isCheckingId}
                   />
                 </div>
 
                 <button
                   type="button"
                   onClick={handleCheckIdDuplicate}
-                  disabled={
-                    isCheckingId ||
-                    isIdConfirmed ||
-                    !formData.member_id ||
-                    errors.member_id
-                  }
-                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${isCheckingId ||
-                    isIdConfirmed ||
-                    !formData.member_id ||
-                    errors.member_id
-                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
-                    }`}
+                  disabled={isCheckingId || !formData.member_id}
+                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${
+                    isCheckingId || !formData.member_id
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
+                  }`}
                 >
                   {isCheckingId
                     ? '확인 중...'
-                    : isIdConfirmed
-                      ? '확정완료'
-                      : '중복확인'}
+                    : isIdConfirmedNow
+                      ? '확인완료'
+                      : confirmedIdValue
+                        ? '다시확인'
+                        : '중복확인'}
                 </button>
               </div>
 
@@ -668,8 +745,9 @@ const SignupPage = () => {
 
               {idMessage && (
                 <p
-                  className={`text-sm mt-2 ml-2 ${isIdConfirmed ? 'text-green-600' : 'text-red-500'
-                    }`}
+                  className={`text-sm mt-2 ml-2 ${
+                    isIdConfirmedNow ? 'text-green-600' : 'text-red-500'
+                  }`}
                 >
                   {idMessage}
                 </p>
@@ -687,13 +765,13 @@ const SignupPage = () => {
                 </InputIcon>
 
                 <input
+                  ref={passwordRef}
                   type="password"
                   name="password"
                   value={formData.password || ''}
                   onChange={handleChange}
                   placeholder="8자 이상 영문/숫자 혼합"
                   className={`${inputClass} pl-11`}
-                  required
                 />
               </div>
 
@@ -711,16 +789,17 @@ const SignupPage = () => {
                 </InputIcon>
 
                 <input
+                  ref={confirmPasswordRef}
                   type="password"
                   name="confirmPassword"
                   value={formData.confirmPassword || ''}
                   onChange={handleChange}
                   placeholder="비밀번호 다시 입력"
-                  className={`${inputClass} pl-11 ${!passwordMatch && formData.confirmPassword
-                    ? 'border-red-400 focus:ring-red-50'
-                    : ''
-                    }`}
-                  required
+                  className={`${inputClass} pl-11 ${
+                    !passwordMatch && formData.confirmPassword
+                      ? 'border-red-400 focus:ring-red-50'
+                      : ''
+                  }`}
                 />
               </div>
 
@@ -746,13 +825,13 @@ const SignupPage = () => {
               </label>
 
               <input
+                ref={nameRef}
                 type="text"
                 name="name"
                 value={formData.name || ''}
                 onChange={handleChange}
                 placeholder="실명 입력"
                 className={`${inputClass} px-5`}
-                required
               />
 
               <ErrorText message={errors.name} />
@@ -765,39 +844,35 @@ const SignupPage = () => {
 
               <div className="flex gap-2">
                 <input
+                  ref={nicknameRef}
                   type="text"
                   name="nickname"
                   value={formData.nickname || ''}
                   onChange={handleChange}
                   placeholder="닉네임"
-                  className={`${inputClass} px-5 flex-1 ${isNicknameConfirmed ? 'border-green-500 bg-green-50' : ''
-                    }`}
-                  required
-                  disabled={isCheckingNickname || isNicknameConfirmed}
+                  className={`${inputClass} px-5 flex-1 ${
+                    isNicknameConfirmedNow ? 'border-green-500 bg-green-50' : ''
+                  }`}
+                  disabled={isCheckingNickname}
                 />
 
                 <button
                   type="button"
                   onClick={handleCheckNicknameDuplicate}
-                  disabled={
-                    isCheckingNickname ||
-                    isNicknameConfirmed ||
-                    !formData.nickname ||
-                    errors.nickname
-                  }
-                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${isCheckingNickname ||
-                    isNicknameConfirmed ||
-                    !formData.nickname ||
-                    errors.nickname
-                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
-                    }`}
+                  disabled={isCheckingNickname || !formData.nickname}
+                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${
+                    isCheckingNickname || !formData.nickname
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
+                  }`}
                 >
                   {isCheckingNickname
                     ? '확인 중...'
-                    : isNicknameConfirmed
-                      ? '확정완료'
-                      : '중복확인'}
+                    : isNicknameConfirmedNow
+                      ? '확인완료'
+                      : confirmedNicknameValue
+                        ? '다시확인'
+                        : '중복확인'}
                 </button>
               </div>
 
@@ -805,8 +880,9 @@ const SignupPage = () => {
 
               {nicknameMessage && (
                 <p
-                  className={`text-sm mt-2 ml-2 ${isNicknameConfirmed ? 'text-green-600' : 'text-red-500'
-                    }`}
+                  className={`text-sm mt-2 ml-2 ${
+                    isNicknameConfirmedNow ? 'text-green-600' : 'text-red-500'
+                  }`}
                 >
                   {nicknameMessage}
                 </p>
@@ -825,15 +901,16 @@ const SignupPage = () => {
                   </InputIcon>
 
                   <input
+                    ref={emailRef}
                     type="email"
                     name="email"
                     value={formData.email || ''}
                     onChange={handleChange}
                     placeholder="example@email.com"
-                    className={`${inputClass} pl-11 ${emailVerified ? 'border-green-500 bg-green-50' : ''
-                      }`}
-                    required
-                    disabled={emailVerified || isSendingCode}
+                    className={`${inputClass} pl-11 ${
+                      emailVerified ? 'border-green-500 bg-green-50' : ''
+                    }`}
+                    disabled={isSendingCode}
                   />
                 </div>
 
@@ -841,12 +918,17 @@ const SignupPage = () => {
                   type="button"
                   onClick={handleSendVerificationCode}
                   disabled={isSendingCode || emailVerified || !isValidEmail}
-                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${isSendingCode || emailVerified || !isValidEmail
-                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
-                    }`}
+                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${
+                    isSendingCode || emailVerified || !isValidEmail
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
+                  }`}
                 >
-                  {isSendingCode ? '전송 중...' : '인증번호 발송'}
+                  {isSendingCode
+                    ? '전송 중...'
+                    : emailVerified
+                      ? '인증완료'
+                      : '인증번호 발송'}
                 </button>
               </div>
 
@@ -854,8 +936,9 @@ const SignupPage = () => {
 
               {verificationMessage && (emailVerified || countdown === 0) && (
                 <p
-                  className={`text-sm mt-2 ml-2 ${emailVerified ? 'text-green-600' : 'text-red-500'
-                    }`}
+                  className={`text-sm mt-2 ml-2 ${
+                    emailVerified ? 'text-green-600' : 'text-red-500'
+                  }`}
                 >
                   {verificationMessage}
                 </p>
@@ -863,9 +946,7 @@ const SignupPage = () => {
 
               {countdown > 0 && (
                 <p className="text-sm text-gray-600 mt-2 ml-2">
-                  남은 시간:{' '}
-                  {Math.floor(countdown / 60).toString().padStart(2, '0')}:
-                  {(countdown % 60).toString().padStart(2, '0')}
+                  남은 시간: {formatCountdown()}
                 </p>
               )}
             </div>
@@ -889,7 +970,6 @@ const SignupPage = () => {
                       onChange={(e) => setEmailCode(e.target.value)}
                       placeholder="인증번호 6자리 입력"
                       className={`${inputClass} pl-11`}
-                      required
                       disabled={isVerifyingCode}
                     />
                   </div>
@@ -898,10 +978,11 @@ const SignupPage = () => {
                     type="button"
                     onClick={handleVerifyCode}
                     disabled={isVerifyingCode || !emailCode}
-                    className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${isVerifyingCode || !emailCode
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
-                      }`}
+                    className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${
+                      isVerifyingCode || !emailCode
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
+                    }`}
                   >
                     {isVerifyingCode ? '확인 중...' : '인증확인'}
                   </button>
@@ -909,8 +990,9 @@ const SignupPage = () => {
 
                 {verificationMessage && (
                   <p
-                    className={`text-sm mt-2 ml-2 ${emailVerified ? 'text-green-600' : 'text-red-500'
-                      }`}
+                    className={`text-sm mt-2 ml-2 ${
+                      emailVerified ? 'text-green-600' : 'text-red-500'
+                    }`}
                   >
                     {verificationMessage}
                   </p>
@@ -929,6 +1011,7 @@ const SignupPage = () => {
                 </InputIcon>
 
                 <input
+                  ref={phoneRef}
                   type="tel"
                   name="phone"
                   value={formData.phone || ''}
@@ -936,7 +1019,6 @@ const SignupPage = () => {
                   placeholder="010-0000-0000"
                   maxLength={13}
                   className={`${inputClass} pl-11`}
-                  required
                 />
               </div>
 
@@ -944,19 +1026,24 @@ const SignupPage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
+              <div ref={genderRef}>
                 <label className="block text-[14px] font-[700] text-[#444] mb-2 ml-1">
                   성별
                 </label>
 
-                <div className="h-[56px] bg-[#f8f9ff] border border-[#e7e2f7] p-1.5 rounded-2xl flex">
+                <div
+                  className={`h-[56px] bg-[#f8f9ff] border p-1.5 rounded-2xl flex ${
+                    errors.gender ? 'border-red-300' : 'border-[#e7e2f7]'
+                  }`}
+                >
                   <button
                     type="button"
                     onClick={() => handleGenderChange('M')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'M'
-                      ? 'bg-white text-festival-purple shadow-md'
-                      : 'text-gray-400'
-                      }`}
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
+                      formData.gender === 'M'
+                        ? 'bg-white text-festival-purple shadow-md'
+                        : 'text-gray-400'
+                    }`}
                   >
                     남성
                   </button>
@@ -964,10 +1051,11 @@ const SignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('F')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'F'
-                      ? 'bg-white text-festival-purple shadow-md'
-                      : 'text-gray-400'
-                      }`}
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
+                      formData.gender === 'F'
+                        ? 'bg-white text-festival-purple shadow-md'
+                        : 'text-gray-400'
+                    }`}
                   >
                     여성
                   </button>
@@ -987,12 +1075,12 @@ const SignupPage = () => {
                   </InputIcon>
 
                   <input
+                    ref={birthdateRef}
                     type="date"
                     name="birthdate"
                     value={formData.birthdate || ''}
                     onChange={handleChange}
                     className={`${inputClass} pl-11 pr-4`}
-                    required
                   />
                 </div>
 
@@ -1008,11 +1096,11 @@ const SignupPage = () => {
                 </label>
 
                 <select
+                  ref={sidoRef}
                   name="reside_area_code"
                   value={formData.reside_area_code || ''}
                   onChange={handleSidoChange}
                   className={`${inputClass} px-5 bg-white appearance-none`}
-                  required
                 >
                   <option value="">시/도 선택</option>
                   {sidoList.map((sido) => (
@@ -1032,14 +1120,15 @@ const SignupPage = () => {
                 </label>
 
                 <select
+                  ref={sigunguRef}
                   name="reside_sigungu_code"
                   value={formData.reside_sigungu_code || ''}
                   onChange={handleSigunguChange}
-                  className={`${inputClass} px-5 bg-white appearance-none ${!formData.reside_area_code
-                    ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                    : ''
-                    }`}
-                  required
+                  className={`${inputClass} px-5 bg-white appearance-none ${
+                    !formData.reside_area_code
+                      ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                      : ''
+                  }`}
                   disabled={!formData.reside_area_code || isSigunguLoading}
                 >
                   <option value="">
@@ -1062,7 +1151,14 @@ const SignupPage = () => {
           </div>
         </section>
 
-        <section className="bg-gray-50 rounded-[32px] p-7 border border-[#eee]">
+        <section
+          ref={termsRef}
+          className={`rounded-[32px] p-7 border transition-all ${
+            errors.terms
+              ? 'bg-red-50 border-red-300'
+              : 'bg-gray-50 border-[#eee]'
+          }`}
+        >
           <label
             className="flex items-center gap-3 cursor-pointer mb-6"
             htmlFor="agreeAll"
@@ -1076,15 +1172,17 @@ const SignupPage = () => {
             />
 
             <div
-              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${allChecked
-                ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-200'
-                : 'bg-white border-gray-300'
-                }`}
+              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                allChecked
+                  ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-200'
+                  : 'bg-white border-gray-300'
+              }`}
             >
               <Check
                 size={16}
-                className={`text-white transition-opacity duration-200 ${allChecked ? 'opacity-100' : 'opacity-0'
-                  }`}
+                className={`text-white transition-opacity duration-200 ${
+                  allChecked ? 'opacity-100' : 'opacity-0'
+                }`}
               />
             </div>
 
@@ -1120,15 +1218,17 @@ const SignupPage = () => {
                     />
 
                     <div
-                      className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${isChecked
-                        ? 'bg-festival-purple border-festival-purple'
-                        : 'bg-white border-gray-300 group-hover:border-festival-purple'
-                        }`}
+                      className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
+                        isChecked
+                          ? 'bg-festival-purple border-festival-purple'
+                          : 'bg-white border-gray-300 group-hover:border-festival-purple'
+                      }`}
                     >
                       <Check
                         size={14}
-                        className={`text-white transition-opacity duration-200 ${isChecked ? 'opacity-100' : 'opacity-0'
-                          }`}
+                        className={`text-white transition-opacity duration-200 ${
+                          isChecked ? 'opacity-100' : 'opacity-0'
+                        }`}
                       />
                     </div>
 
@@ -1148,6 +1248,8 @@ const SignupPage = () => {
               );
             })}
           </div>
+
+          <ErrorText message={errors.terms} />
         </section>
 
         <TermsModal
@@ -1175,8 +1277,6 @@ const SignupPage = () => {
         </div>
       </form>
     </AuthLayout>
-
-
   );
 };
 
