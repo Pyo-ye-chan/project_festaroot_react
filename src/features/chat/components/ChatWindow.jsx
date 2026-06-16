@@ -1,5 +1,5 @@
-import React from 'react';
-import { ExternalLink, Users, X, Paperclip, Send, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { ExternalLink, Users, X, Paperclip, Send, User, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
@@ -16,10 +16,14 @@ const ChatWindow = ({
   message,
   setMessage,
   handleSendMessage,
-  participants
+  participants,
+  onStartPrivateChat // 1:1 채팅 시작
 }) => {
 
   const navigate = useNavigate();
+
+  // 프로필 클릭 시 드롭다운을 표시하기 위한 메시지 ID 상태 관리
+  const [activeProfileMenuId, setActiveProfileMenuId] = useState(null);
 
   // 데이터 key 바인딩 가공
   const currentRoomId = selectedChat?.id || selectedChat?.room_id;
@@ -117,25 +121,63 @@ const ChatWindow = ({
           return (
             <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-start gap-3`}>
               {!msg.isMe && (
-                <div className={`w-11 h-11 rounded-2xl bg-gray-100 overflow-hidden flex-shrink-0 mt-1 shadow-sm flex items-center justify-center ${isLeftUser ? 'bg-gray-200/50 opacity-60' : ''}`}>
-                  {isLeftUser ? (
-                    <User className="w-5 h-5 text-gray-400" />
-                  ) : (
-                    <img
-                      src={userProfileImg || DEFAULT_IMAGES.PROFILE}
-                      alt={displayNickname}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = DEFAULT_IMAGES.PROFILE;
-                      }}
-                    />
+                <div className="relative">
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isLeftUser) setActiveProfileMenuId(activeProfileMenuId === msg.id ? null : msg.id);
+                    }}
+                    className={`w-11 h-11 rounded-2xl bg-gray-100 overflow-hidden flex-shrink-0 mt-1 shadow-sm flex items-center justify-center transition-all ${isLeftUser ? 'bg-gray-200/50 opacity-60' : 'cursor-pointer hover:scale-105 active:scale-95 group'}`}
+                  >
+                    {isLeftUser ? (
+                      <User className="w-5 h-5 text-gray-400" />
+                    ) : (
+                      <img
+                        src={userProfileImg || DEFAULT_IMAGES.PROFILE}
+                        alt={displayNickname}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = DEFAULT_IMAGES.PROFILE;
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {/* 채팅방 내부 프로필 사진 클릭 시 뜨는 1:1 채팅 미니 팝업 UI */}
+                  {activeProfileMenuId === msg.id && !isLeftUser && (
+                    <div className="absolute left-0 top-14 w-44 bg-white border border-gray-150/80 rounded-2xl shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="px-3 py-1 border-b border-gray-50 mb-1">
+                        <p className="text-[10px] font-black text-gray-400">유저 메뉴</p>
+                        <p className="text-xs font-black text-gray-800 truncate">{displayNickname}</p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const memberId = targetUser?.member_id || targetUser?.MEMBER_ID || targetUser?.id || msg.senderId;
+                          onStartPrivateChat(memberId, displayNickname);
+                          setActiveProfileMenuId(null);
+                        }}
+                        className="w-full px-3 py-2 text-left text-xs font-bold text-purple-700 hover:bg-purple-50 flex items-center gap-2 transition-colors"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 text-purple-600" />
+                        1:1 채팅 보내기
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
+
               <div className={`flex flex-col gap-1.5 max-w-[75%] ${msg.isMe ? 'items-end' : 'items-start'}`}>
                 {!msg.isMe && (
-                  <span className={`text-sm font-black ml-1 ${isLeftUser ? 'text-gray-400' : 'text-gray-700'}`}>
+                  /* 닉네임 클릭 시에도 프로필 미니 메뉴 작동 */
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isLeftUser) setActiveProfileMenuId(activeProfileMenuId === msg.id ? null : msg.id);
+                    }}
+                    className={`text-sm font-black ml-1 select-none ${isLeftUser ? 'text-gray-400' : 'text-gray-700 cursor-pointer hover:text-purple-600 transition-colors'}`}
+                  >
                     {isSenderHost && <span className="text-amber-500 text-xs" title="방장">👑 </span>}
                     {displayNickname}
                   </span>

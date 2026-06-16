@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Ban, MapPin, X, Calendar, LogOut, Crown, ExternalLink, MessageCircle, User } from 'lucide-react'; // ✨ User 아이콘 추가
+import { Ban, MapPin, X, Calendar, LogOut, Crown, ExternalLink, MessageCircle, User } from 'lucide-react';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 import { useNavigate } from 'react-router-dom';
 
@@ -107,10 +107,10 @@ const ChatDetails = ({
                     {activeMenuMemberId === memberId && (
                       <div className="px-2 pb-2 animate-in fade-in slide-in-from-top-1 duration-200">
                         {isMe ? (
-                          /* 본인 프로필일 때: 프로필 수정 버튼 노출 (/mapage로 이동) */
+                          /* 본인 프로필일 때: 프로필 수정 버튼 노출 (/mypage로 이동) */
                           <button
                             onClick={() => {
-                              navigate('/mapage');
+                              navigate('/mypage');
                               setActiveMenuMemberId(null);
                             }}
                             className="w-full py-1.5 px-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-2xs"

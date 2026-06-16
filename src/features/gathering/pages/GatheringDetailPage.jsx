@@ -22,6 +22,9 @@ const GatheringDetailPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isDelegating, setIsDelegating] = useState(false);
 
+  // 특정 멤버의 프로필 팝업 메뉴를 열기 위한 고유 상태
+  const [activeMenuMemberId, setActiveMenuMemberId] = useState(null);
+
   // 이미지 업로드 관련 상태
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -74,6 +77,13 @@ const GatheringDetailPage = () => {
     }
   }, [id]);
 
+  // 외부 클릭 시 프로필 팝업 메뉴 닫기 효과
+  useEffect(() => {
+    const handleOutsideClick = () => setActiveMenuMemberId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--warm-white)] flex justify-center items-center">
@@ -93,6 +103,23 @@ const GatheringDetailPage = () => {
   const isOwner = loggedInUserId === gathering.owner_id;
   const isJoined = isOwner || participants.some(p => p.member_id === loggedInUserId);
   const isFull = gathering.current_count >= gathering.max_capacity;
+
+  // 1:1 대화방 생성 및 이동 핸들러
+  const handleStartDirectChat = async (targetMemberId, targetNickname) => {
+    if (!loggedInUserId) {
+      alert("로그인이 필요한 서비스입니다.");
+      navigate('/login');
+      return;
+    }
+    try {
+      // TODO: 필요시 백엔드 1:1 채팅방 개설 API 연동 공간
+      alert(`${targetNickname}님과의 1:1 대화방으로 이동합니다.`);
+      navigate(`/community/chat/direct/${targetMemberId}`);
+    } catch (error) {
+      console.error("1:1 대화 개설 실패:", error);
+      alert("대화방 생성에 실패했습니다.");
+    }
+  };
 
   // 이미지 변경 핸들러
   const handleImageChange = (e) => {
@@ -119,7 +146,6 @@ const GatheringDetailPage = () => {
       const response = await gatheringApi.joinGathering(id, loggedInUserId);
       alert("모임에 성공적으로 참여되었습니다!");
 
-      // 데이터를 다시 불러와서 state를 완전히 새로고침
       await fetchDetailAndParticipants();
 
       if (response && response.roomId) {
@@ -130,7 +156,6 @@ const GatheringDetailPage = () => {
       }
     } catch (error) {
       console.error("모임 참여 중 오류 발생:", error);
-      // 서버에서 튕겨낸 블랙리스트(403) 문구가 여기에 동적으로 출력
       const errorMsg = error.response?.data?.message || "모임 참여에 실패했습니다. 다시 시도해 주세요.";
       alert(errorMsg);
     }
@@ -186,7 +211,7 @@ const GatheringDetailPage = () => {
     await handleDelegateAndLeave(oldestMember.member_id);
   };
 
-  // 강퇴 핸들러 (서버에서 User 테이블 Delete 및 Ban 테이블 Insert 수행)
+  // 강퇴 핸들러
   const handleKickMember = async (memberId, nickname) => {
     if (!window.confirm(`${nickname}님을 정말로 퇴장시키겠습니까?`)) return;
     try {
@@ -495,8 +520,18 @@ const GatheringDetailPage = () => {
                   <div className="mb-8">
                     <h3 className="text-xl font-bold text-gray-800 mb-4">참여자 ({gathering.current_count || 0}명)</h3>
                     <div className="flex flex-wrap gap-3">
+                      
+                      {/* 방장 카드 */}
                       {gathering.owner_id && (
-                        <div className="flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm">
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (loggedInUserId !== gathering.owner_id) {
+                              setActiveMenuMemberId(activeMenuMemberId === gathering.owner_id ? null : gathering.owner_id);
+                            }
+                          }}
+                          className="relative flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm cursor-pointer hover:bg-purple-100 transition-colors"
+                        >
                           <img
                             src={gathering.profile_image_url || DEFAULT_IMAGES.PROFILE}
                             alt={gathering.nickname}
@@ -506,11 +541,34 @@ const GatheringDetailPage = () => {
                             <span className="text-[10px] text-[var(--festival-purple)] font-bold bg-purple-100 px-1.5 rounded w-max mb-0.5">방장 👑</span>
                             <span className="text-sm font-black text-gray-800 leading-tight">{gathering.nickname || '방장'}</span>
                           </div>
+
+                          {/* 방장 프로필 클릭 시 1:1 대화 팝업 */}
+                          {activeMenuMemberId === gathering.owner_id && (
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl py-1.5 z-50 min-w-[120px] animate-in fade-in zoom-in-95 duration-100">
+                              <button
+                                onClick={() => handleStartDirectChat(gathering.owner_id, gathering.nickname || '방장')}
+                                className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-purple-50 hover:text-[var(--festival-purple)] flex items-center gap-1.5 transition-colors"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                                1:1 대화하기
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
 
+                      {/* 일반 참여자 멤버 카드 */}
                       {participants.map(participant => (
-                        <div key={participant.member_id} className="relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group">
+                        <div 
+                          key={participant.member_id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (loggedInUserId !== participant.member_id) {
+                              setActiveMenuMemberId(activeMenuMemberId === participant.member_id ? null : participant.member_id);
+                            }
+                          }}
+                          className="relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group cursor-pointer"
+                        >
                           <img
                             src={participant.profile_image_url || DEFAULT_IMAGES.PROFILE}
                             alt={participant.nickname}
@@ -520,6 +578,7 @@ const GatheringDetailPage = () => {
                             <span className="text-[10px] text-gray-400 font-medium mb-0.5">멤버</span>
                             <span className="text-sm font-bold text-gray-700 leading-tight">{participant.nickname}</span>
                           </div>
+                          
                           {isOwner && (
                             <button
                               onClick={(e) => {
@@ -530,6 +589,19 @@ const GatheringDetailPage = () => {
                             >
                               <X className="w-3 h-3" />
                             </button>
+                          )}
+
+                          {/* 멤버 프로필 클릭 시 1:1 대화 팝업 */}
+                          {activeMenuMemberId === participant.member_id && (
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl py-1.5 z-50 min-w-[120px] animate-in fade-in zoom-in-95 duration-100">
+                              <button
+                                onClick={() => handleStartDirectChat(participant.member_id, participant.nickname)}
+                                className="w-full text-left px-4 py-2 text-xs font-bold text-gray-700 hover:bg-purple-50 hover:text-[var(--festival-purple)] flex items-center gap-1.5 transition-colors"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                                1:1 대화하기
+                              </button>
+                            </div>
                           )}
                         </div>
                       ))}
