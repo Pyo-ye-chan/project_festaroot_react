@@ -1,6 +1,7 @@
 import React from 'react';
-import { Ban, MapPin, X, Calendar, LogOut, Crown } from 'lucide-react';
+import { Ban, MapPin, X, Calendar, LogOut, Crown, ExternalLink } from 'lucide-react';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
+import { useNavigate } from 'react-router-dom';
 
 const ChatDetails = ({
   showParticipants,
@@ -16,17 +17,16 @@ const ChatDetails = ({
 }) => {
   const isOpen = showParticipants || showDetails;
 
+  const navigate = useNavigate();
+
   // Oracle 대소문자 이슈 방어를 위한 데이터 정규화 추출
   const chatType = selectedChat?.type?.toUpperCase() || selectedChat?.room_type?.toUpperCase();
-
-  // 시작일 / 모임일 추출
   const startDate = selectedChat?.free_date;
-
-  // 종료일 추출
   const endDate = selectedChat?.event_end_date;
-
-  // 위치 정보 추출
   const locationText = selectedChat?.free_location;
+
+  // 백엔드에서 넘어오는 축제 고유 ID (content_id) 추출 -> chat_room에서 저장하는 축제 고유 ID 이름이 festival_id임.
+  const contentId = selectedChat?.festival_id || selectedChat?.content_id || selectedChat?.CONTENT_ID;
 
   return (
     <>
@@ -130,6 +130,20 @@ const ChatDetails = ({
                       {locationText || "등록된 위치 정보가 없습니다."}
                     </p>
                   </div>
+
+                  {/* 타입이 축제(FESTIVAL)이고 contentId가 존재할 때만 '축제 찾기 페이지' 이동 버튼 노출 */}
+                  {chatType === 'FESTIVAL' && contentId && (
+                    <div className="pt-1">
+                      <button
+                        onClick={() => navigate(`/festival/${contentId}`)}
+                        className="w-full py-1.5 px-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1 shadow-2xs"
+                      >
+                        축제 정보 더보기
+                        <ExternalLink className="w-3 h-3 text-amber-600" />
+                      </button>
+                    </div>
+                  )}
+
                 </>
               )}
 
