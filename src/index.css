@@ -20,8 +20,6 @@
   --color-dark-gray: var(--dark-gray);
 }
 
-
-
 body {
   background-color: var(--warm-white);
   color: #1F2937;
@@ -30,7 +28,6 @@ body {
 * {
   font-family: 'Pretendard', sans-serif;
 }
-
 
 
 /* tiptap */
@@ -57,7 +54,6 @@ body {
   max-width: 100%;
   border-radius: 1.5rem;
 }
-
 
 /* AI PLANNER Scroller-bar */
 .scrollbar-hide {
