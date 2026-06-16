@@ -3,7 +3,7 @@ import { maxios } from '../../../api/axiosApi';
 import useAuthStore from '../../../store/useAuthStore';
 import { getMemberProfile } from '../../../api/memberApi';
 import { saveActivityLog } from '../../../api/activityApi';
-import { createAIPlanner } from '../../../api/aiApi';
+import { previewAIPlanner, saveAIPlanner } from '../../../api/aiApi';
 
 const AIPlannerPage = () => {
   const { user, isLoggedIn } = useAuthStore();
@@ -43,6 +43,11 @@ const AIPlannerPage = () => {
   const [plannerId, setPlannerId] = useState(null);
   const [plannerWeather, setPlannerWeather] = useState(null);
   const [routeNotice, setRouteNotice] = useState('');
+
+  // 추가
+  const [previewPlannerData, setPreviewPlannerData] = useState(null);
+  const [isSavingPlanner, setIsSavingPlanner] = useState(false);
+  const [isPlannerSaved, setIsPlannerSaved] = useState(false);
 
   // 관심사 섹션 펼침/접힘 상태
   const [isRegionsOpen, setIsRegionsOpen] = useState(true);
@@ -91,6 +96,65 @@ const AIPlannerPage = () => {
       festival?.CONTENTID ||
       festival?.contentid
     );
+  };
+
+  // 축제 날짜 필드명 안전하게 꺼내기
+  const getFestivalStartDate = (festival) => {
+    return (
+      festival?.EVENT_START_DATE ||
+      festival?.event_start_date ||
+      festival?.eventStartDate ||
+      festival?.START_DATE ||
+      festival?.startDate
+    );
+  };
+
+  const getFestivalEndDate = (festival) => {
+    return (
+      festival?.EVENT_END_DATE ||
+      festival?.event_end_date ||
+      festival?.eventEndDate ||
+      festival?.END_DATE ||
+      festival?.endDate
+    );
+  };
+
+  // yyyyMMdd 또는 yyyy-MM-dd를 input[type="date"] 형식인 yyyy-MM-dd로 변환
+  const formatDateForInput = (dateValue) => {
+    if (!dateValue) return '';
+
+    const text = String(dateValue).trim();
+
+    if (/^\d{8}$/.test(text)) {
+      return `${text.substring(0, 4)}-${text.substring(4, 6)}-${text.substring(6, 8)}`;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+      return text;
+    }
+
+    return '';
+  };
+
+  // 화면 표시용 날짜
+  const formatDateForDisplay = (dateValue) => {
+    const inputDate = formatDateForInput(dateValue);
+
+    if (!inputDate) return '기간 미정';
+
+    return inputDate.replaceAll('-', '.');
+  };
+
+  const getFestivalDateRange = (festival) => {
+    const start = formatDateForInput(getFestivalStartDate(festival));
+    const end = formatDateForInput(getFestivalEndDate(festival));
+
+    return {
+      start,
+      end,
+      startLabel: formatDateForDisplay(getFestivalStartDate(festival)),
+      endLabel: formatDateForDisplay(getFestivalEndDate(festival))
+    };
   };
 
   // 추천 장소 타입별 아이콘
@@ -289,6 +353,8 @@ const AIPlannerPage = () => {
     setPlannerId(null);
     setPlannerWeather(null);
     setRouteNotice('');
+    setPreviewPlannerData(null);
+    setIsPlannerSaved(false);
 
     try {
       const resp = await maxios.get('/ai/recommendations', {
@@ -329,9 +395,17 @@ const AIPlannerPage = () => {
     setPlannerWeather(null);
     setRouteNotice('');
 
+    // 추가
+    setItineraryList([]);
+    setPlannerId(null);
+    setPlannerWeather(null);
+    setRouteNotice('');
+    setPreviewPlannerData(null);
+    setIsPlannerSaved(false);
+
     // 설정 기본값 초기화
     setPlannerForm({
-      visitDate: '',
+      visitDate: festival.EVENT_START_DATE || '',
       peopleCount: 2,
       companionType: 'FRIEND',
       courseStyle: 'RELAXED',
@@ -362,15 +436,33 @@ const AIPlannerPage = () => {
       return;
     }
 
+    const { start, end } = getFestivalDateRange(selectedFestival);
+
+    if (start && plannerForm.visitDate < start) {
+      alert(`방문 날짜는 축제 시작일(${start}) 이후여야 합니다.`);
+      return;
+    }
+
+    if (end && plannerForm.visitDate > end) {
+      alert(`방문 날짜는 축제 종료일(${end}) 이전이어야 합니다.`);
+      return;
+    }
+
     setIsGenerating(true);
     setShowItinerary(false);
     setItineraryList([]);
     setPlannerId(null);
     setPlannerWeather(null);
     setRouteNotice('');
+    setItineraryList([]);
+    setPlannerId(null);
+    setPlannerWeather(null);
+    setRouteNotice('');
+    setPreviewPlannerData(null);
+    setIsPlannerSaved(false);
 
     try {
-      const response = await createAIPlanner({
+      const response = await previewAIPlanner({
         content_id: Number(contentId),
         visit_date: plannerForm.visitDate,
         people_count: Number(plannerForm.peopleCount),
@@ -398,12 +490,28 @@ const AIPlannerPage = () => {
           mapY: step.mapY || step.map_y || step.latitude || step.lat
         }));
 
-        setPlannerId(data.plannerId || data.planner_id);
-        setPlannerWeather(data.weather_summary || data.weatherSummary || null);
-        setRouteNotice(data.route_notice || data.routeNotice || '');
+        const previewData = {
+          content_id: Number(contentId),
+          visit_date: plannerForm.visitDate,
+          people_count: Number(plannerForm.peopleCount),
+          companion_type: plannerForm.companionType,
+          course_style: plannerForm.courseStyle,
+          user_input: plannerForm.extraRequest,
+          rag_query: userInput,
+          recommendation_reason: selectedFestival.recommendation_reason,
+          weather_summary: data.weather_summary || data.weatherSummary || null,
+          route_notice: data.route_notice || data.routeNotice || '',
+          steps: normalizedSteps
+        };
+
+        setPreviewPlannerData(previewData);
+        setPlannerId(null);
+        setPlannerWeather(previewData.weather_summary);
+        setRouteNotice(previewData.route_notice);
         setItineraryList(normalizedSteps);
         setShowPlannerModal(false);
         setShowItinerary(true);
+        setIsPlannerSaved(false);
       } else {
         alert(data.message || '축제 하루 코스 생성에 실패했습니다.');
       }
@@ -415,9 +523,64 @@ const AIPlannerPage = () => {
     }
   };
 
+  // 사용자가 마음에 든 경우에만 마이페이지에 저장
+  const handleSavePlanner = async () => {
+    if (!previewPlannerData) {
+      alert('저장할 코스 정보가 없습니다.');
+      return;
+    }
+
+    if (isPlannerSaved) {
+      alert('이미 저장된 코스입니다.');
+      return;
+    }
+
+    const confirmSave = window.confirm(
+      '이 코스를 마이페이지에 저장할까요? 저장 후 마이페이지에서 다시 확인할 수 있습니다.'
+    );
+
+    if (!confirmSave) {
+      return;
+    }
+
+    setIsSavingPlanner(true);
+
+    try {
+      const response = await saveAIPlanner(previewPlannerData);
+      const data = response?.data ?? response;
+
+      if (data.success) {
+        setPlannerId(data.plannerId || data.planner_id);
+        setIsPlannerSaved(true);
+        alert('마이페이지에 코스가 저장되었습니다.');
+      } else {
+        alert(data.message || '코스 저장에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('AI 플래너 저장 실패:', error);
+      alert(error.response?.data?.message || '코스 저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsSavingPlanner(false);
+    }
+  };
+
   // 축제 하루 코스 설정 폼 변경
   const handlePlannerFormChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === 'visitDate' && selectedFestival) {
+      const { start, end } = getFestivalDateRange(selectedFestival);
+
+      if (start && value < start) {
+        alert(`축제 시작일(${start}) 이후 날짜만 선택할 수 있습니다.`);
+        return;
+      }
+
+      if (end && value > end) {
+        alert(`축제 종료일(${end}) 이전 날짜만 선택할 수 있습니다.`);
+        return;
+      }
+    }
 
     setPlannerForm((prev) => ({
       ...prev,
@@ -643,15 +806,14 @@ const AIPlannerPage = () => {
                           {history.title}
                         </span>
                         <span
-                          className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
-                            history.type === '조회'
-                              ? 'bg-blue-100 text-blue-600'
-                              : history.type === '검색'
-                                ? 'bg-amber-100 text-amber-600'
-                                : history.type === '지도'
-                                  ? 'bg-emerald-100 text-emerald-600'
-                                  : 'bg-gray-100 text-gray-600'
-                          }`}
+                          className={`text-[9px] font-black px-1.5 py-0.5 rounded ${history.type === '조회'
+                            ? 'bg-blue-100 text-blue-600'
+                            : history.type === '검색'
+                              ? 'bg-amber-100 text-amber-600'
+                              : history.type === '지도'
+                                ? 'bg-emerald-100 text-emerald-600'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}
                         >
                           {history.type}
                         </span>
@@ -729,11 +891,10 @@ const AIPlannerPage = () => {
                     <div
                       key={item.CONTENT_ID}
                       onClick={() => handleOpenFestivalDetail(item)}
-                      className={`group cursor-pointer p-6 rounded-[32px] border-2 transition-all duration-300 ${
-                        selectedFestival?.CONTENT_ID === item.CONTENT_ID
-                          ? 'border-purple-600 bg-purple-50/30'
-                          : 'border-transparent bg-slate-50 hover:border-purple-200 hover:bg-white hover:shadow-lg'
-                      }`}
+                      className={`group cursor-pointer p-6 rounded-[32px] border-2 transition-all duration-300 ${selectedFestival?.CONTENT_ID === item.CONTENT_ID
+                        ? 'border-purple-600 bg-purple-50/30'
+                        : 'border-transparent bg-slate-50 hover:border-purple-200 hover:bg-white hover:shadow-lg'
+                        }`}
                     >
                       <div className="flex flex-col md:flex-row gap-6">
                         <div className="relative w-full md:w-48 h-48 shrink-0 rounded-2xl overflow-hidden bg-gray-100">
@@ -771,11 +932,10 @@ const AIPlannerPage = () => {
                                   e.stopPropagation();
                                   handleFeedback(item.CONTENT_ID, 'LIKE');
                                 }}
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                                  feedbackMap[item.CONTENT_ID] === 'LIKE'
-                                    ? 'bg-blue-500 text-white shadow-lg'
-                                    : 'bg-white text-gray-400 hover:text-blue-500 border border-gray-100'
-                                }`}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${feedbackMap[item.CONTENT_ID] === 'LIKE'
+                                  ? 'bg-blue-500 text-white shadow-lg'
+                                  : 'bg-white text-gray-400 hover:text-blue-500 border border-gray-100'
+                                  }`}
                               >
                                 👍
                               </button>
@@ -788,11 +948,10 @@ const AIPlannerPage = () => {
                                       showDislikeReason === item.CONTENT_ID ? null : item.CONTENT_ID
                                     );
                                   }}
-                                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                                    feedbackMap[item.CONTENT_ID] === 'DISLIKE'
-                                      ? 'bg-red-500 text-white shadow-lg'
-                                      : 'bg-white text-gray-400 hover:text-red-500 border border-gray-100'
-                                  }`}
+                                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${feedbackMap[item.CONTENT_ID] === 'DISLIKE'
+                                    ? 'bg-red-500 text-white shadow-lg'
+                                    : 'bg-white text-gray-400 hover:text-red-500 border border-gray-100'
+                                    }`}
                                 >
                                   👎
                                 </button>
@@ -962,21 +1121,49 @@ const AIPlannerPage = () => {
                 </div>
               )}
 
-              {plannerId && (
-                <div className="mb-6 p-5 rounded-3xl bg-emerald-50 border border-emerald-100">
-                  <p className="text-lg font-black text-emerald-700">
-                    ✅ 내 축제 코스가 완성됐어요!
-                  </p>
-                  <p className="text-sm text-emerald-700 font-bold mt-1">
-                    마이페이지에서 다시 확인하고, 방문 후 기록으로 남길 수 있어요.
-                  </p>
+              {showItinerary && itineraryList.length > 0 && (
+                <div
+                  className={`mb-6 p-5 rounded-3xl border ${isPlannerSaved
+                      ? 'bg-emerald-50 border-emerald-100'
+                      : 'bg-white border-purple-100 shadow-sm'
+                    }`}
+                >
+                  {isPlannerSaved ? (
+                    <>
+                      <p className="text-lg font-black text-emerald-700">
+                        ✅ 마이페이지에 저장됐어요!
+                      </p>
+                      <p className="text-sm text-emerald-700 font-bold mt-1">
+                        저장한 코스는 마이페이지에서 다시 확인할 수 있어요.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-lg font-black text-gray-800">
+                        마음에 드는 코스인가요?
+                      </p>
+                      <p className="text-sm text-gray-500 font-bold mt-1">
+                        아직 마이페이지에 저장되지 않았어요. 코스를 확인한 뒤 마음에 들면 저장해주세요.
+                      </p>
 
-                  <button
-                    onClick={() => setShowPlannerModal(true)}
-                    className="mt-4 px-4 py-2 rounded-xl bg-white text-emerald-700 text-sm font-black border border-emerald-200 hover:bg-emerald-100 transition-colors"
-                  >
-                    조건 바꿔 다시 만들기
-                  </button>
+                      <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                        <button
+                          onClick={handleSavePlanner}
+                          disabled={isSavingPlanner}
+                          className="w-full sm:w-auto px-5 py-3 rounded-xl bg-purple-600 text-white text-sm font-black hover:bg-purple-700 transition-colors disabled:opacity-50"
+                        >
+                          {isSavingPlanner ? '저장 중...' : '마이페이지에 저장하기'}
+                        </button>
+
+                        <button
+                          onClick={() => setShowPlannerModal(true)}
+                          className="w-full sm:w-auto px-5 py-3 rounded-xl bg-gray-100 text-gray-700 text-sm font-black hover:bg-gray-200 transition-colors"
+                        >
+                          조건 바꿔 다시 만들기
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -1205,9 +1392,9 @@ const AIPlannerPage = () => {
                     축제 기간
                   </p>
                   <p className="text-sm font-bold text-purple-800">
-                    {selectedDetailFestival.EVENT_START_DATE || '시작일 미정'}
+                    {(selectedDetailFestival.EVENT_START_DATE || '시작일 미정').replace(/(\d{4})(\d{2})(\d{2})/, '$1.$2.$3')}
                     {' ~ '}
-                    {selectedDetailFestival.EVENT_END_DATE || '종료일 미정'}
+                    {(selectedDetailFestival.EVENT_END_DATE || '종료일 미정').replace(/(\d{4})(\d{2})(\d{2})/, '$1.$2.$3')}
                   </p>
                 </div>
               )}
@@ -1295,14 +1482,43 @@ const AIPlannerPage = () => {
                 <label htmlFor="visitDate" className="block text-sm font-bold text-gray-700 mb-1">
                   언제 축제를 즐길까요?
                 </label>
-                <input
-                  type="date"
-                  id="visitDate"
-                  name="visitDate"
-                  value={plannerForm.visitDate}
-                  onChange={handlePlannerFormChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
+
+                {(() => {
+                  const { start, end, startLabel, endLabel } = getFestivalDateRange(selectedFestival);
+
+                  return (
+                    <>
+                      <div className="mb-2 p-3 rounded-2xl bg-purple-50 border border-purple-100">
+                        <p className="text-[11px] font-black text-purple-600 mb-1">
+                          선택 가능한 축제 기간
+                        </p>
+                        <p className="text-sm font-bold text-purple-800">
+                          {startLabel} ~ {endLabel}
+                        </p>
+                        <p className="text-[11px] text-purple-500 font-bold mt-1">
+                          축제 기간 안에서만 하루 코스를 만들 수 있어요.
+                        </p>
+                      </div>
+
+                      <input
+                        type="date"
+                        id="visitDate"
+                        name="visitDate"
+                        value={plannerForm.visitDate}
+                        min={start || undefined}
+                        max={end || undefined}
+                        onChange={handlePlannerFormChange}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+
+                      {plannerForm.visitDate && (
+                        <p className="mt-2 text-xs font-bold text-gray-500">
+                          선택한 방문일: <span className="text-purple-600">{plannerForm.visitDate}</span>
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               <div>
