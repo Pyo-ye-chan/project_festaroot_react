@@ -127,13 +127,14 @@ const ChatWindow = ({
             targetUser?.is_owner === 'Y' || targetUser?.IS_OWNER === 'Y' ||
             (selectedChat?.owner_id && String(msg.senderId) === String(selectedChat.owner_id));
 
-          if (msg.type === 'ENTER' || msg.type === 'LEAVE' || msg.type === 'KICK') {
+          if (msg.type === 'ENTER' || msg.type === 'LEAVE' || msg.type === 'KICK' || msg.type === 'DM') {
             return (
               <div key={msg.id} className="flex justify-center my-4 w-full select-none">
                 <span className="bg-gray-100/80 text-gray-400 text-xs font-semibold px-4 py-1.5 rounded-full shadow-sm border border-gray-50">
                   {msg.type === 'ENTER' && `${msg.sender}님이 입장하셨습니다.`}
                   {msg.type === 'LEAVE' && `${msg.sender}님이 퇴장하셨습니다.`}
                   {msg.type === 'KICK' && (msg.text || `${msg.sender}님이 퇴장당하셨습니다.`)}
+                  {msg.type === 'DM' && `채팅이 시작되었습니다.`}
                 </span>
               </div>
             );
