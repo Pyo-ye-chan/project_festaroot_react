@@ -116,13 +116,14 @@ const FloatingChat = ({ roomId, index }) => {
         <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-[#F8F9FF]">
           {messages.map(msg => {
 
-            if (msg.type === 'ENTER' || msg.type === 'LEAVE' || msg.type === 'KICK') {
+            if (msg.type === 'ENTER' || msg.type === 'LEAVE' || msg.type === 'KICK' || msg.type === 'DM') {
               return (
                 <div key={msg.id} className="flex justify-center my-2 w-full select-none">
                   <span className="bg-gray-100/80 text-gray-400 text-[10px] font-semibold px-3 py-1.5 rounded-full shadow-xs border border-gray-50">
                     {msg.type === 'ENTER' && `${msg.sender}님이 입장하셨습니다.`}
                     {msg.type === 'LEAVE' && `${msg.sender}님이 퇴장하셨습니다.`}
                     {msg.type === 'KICK' && (msg.text || `${msg.sender}님이 내보내졌습니다.`)}
+                    {msg.type === 'DM' && `채팅이 시작되었습니다.`}
                   </span>
                 </div>
               );
