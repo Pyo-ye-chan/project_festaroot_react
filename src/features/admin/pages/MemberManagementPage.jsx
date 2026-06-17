@@ -62,6 +62,7 @@ const formatNumber = (value) => Number(value || 0).toLocaleString();
 
 const MemberManagementPage = () => {
   const [members, setMembers] = useState([]);
+  const [totalCount, setTotalCount] = useState(0); // 전체 인원수
   const [keyword, setKeyword] = useState('');
   const [role, setRole] = useState('all');
   const [status, setStatus] = useState('all');
@@ -105,8 +106,7 @@ const MemberManagementPage = () => {
       setMembers(response.memberList || []);
       setTotalPages(response.totalPages || 1);
 
-      // (선택 사항) 백엔드에서 전체 통계 데이터를 내려준다면 여기서 세팅 가능합니다.
-      // setTotalCount(response.totalElements); 
+      setTotalCount(response.totalElements || 0);
 
     } catch (error) {
       console.error("회원 목록을 불러오는 중 에러 발생 : ", error);
@@ -131,12 +131,12 @@ const MemberManagementPage = () => {
 
   const stats = useMemo(() => {
     return {
-      total: displayedMembers.length,
-      newToday: displayedMembers.filter((m) => m.joinedAt === '2026.06.17').length,
+      total: totalCount, // 전체 회원수(관리자 제외)
+      newToday: displayedMembers.filter((m) => m.joinedAt === '2026.06.17').length, // 당일 가입은 현재 페이지 기준 혹은 백엔드 통계 추천
       suspended: displayedMembers.filter((m) => m.status === 'SUSPENDED').length,
       blacklisted: displayedMembers.filter((m) => m.status === 'BLACKLISTED').length,
     };
-  }, [displayedMembers]);
+  }, [totalCount, displayedMembers]);
 
   const handleReset = () => {
     setKeyword('');
@@ -371,8 +371,8 @@ const MemberManagementPage = () => {
                 key={i + 1}
                 onClick={() => setCurrentPage(i + 1)}
                 className={`h-10 w-10 rounded-xl text-sm font-black transition-all ${currentPage === i + 1
-                    ? 'bg-[#6d3df2] text-white shadow-lg shadow-purple-100'
-                    : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
+                  ? 'bg-[#6d3df2] text-white shadow-lg shadow-purple-100'
+                  : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
                   }`}
               >
                 {i + 1}
