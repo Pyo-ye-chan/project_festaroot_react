@@ -92,6 +92,7 @@ const FloatingChat = ({ roomId, index }) => {
       key={roomId}
       nodeRef={nodeRef}
       handle=".drag-handle"
+      cancel=".no-drag" /* 이 영역 안의 클래스를 가진 요소는 드래그 연산에서 아예 제외*/
       bounds="body"
     >
       <div
@@ -110,25 +111,31 @@ const FloatingChat = ({ roomId, index }) => {
             <span className="font-black text-xs truncate">{displayRoomTitle}</span>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div
+            className="flex items-center gap-1.5 no-drag"
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
             <button
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); minimizeFloatingChat(roomId); }}
-              className="p-1 hover:bg-white/10 rounded"
+              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+              title="최소화"
             >
-              <Minimize2 className="w-3.5 h-3.5" />
+              <Minimize2 className="w-4 h-4" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); closeFloatingChat(roomId); }}
-              className="p-1 hover:bg-rose-500 rounded"
+              className="p-1.5 hover:bg-rose-500 rounded-lg transition-colors"
+              title="닫기"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </header>
 
+        {/* 대화 내용 스크롤 영역 */}
         <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-[#F8F9FF]">
           {messages.map(msg => {
-
             if (msg.type === 'ENTER' || msg.type === 'LEAVE' || msg.type === 'KICK' || msg.type === 'DM') {
               return (
                 <div key={msg.id} className="flex justify-center my-2 w-full select-none">
@@ -212,8 +219,6 @@ const FloatingChat = ({ roomId, index }) => {
         <div className="p-3 border-t bg-white rounded-b-3xl">
           <form onSubmit={handleSendMessage} className="flex items-center gap-2">
             <label className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl cursor-pointer transition-all flex-shrink-0">
-
-              {/* 🌟 플로팅 챗 GCS 업로드 및 메시지 전송 로직 오브젝트 버그 수정 */}
               <input
                 type="file"
                 accept="image/*, .pdf, .doc, .docx, .xls, .xlsx, .txt"
@@ -225,10 +230,7 @@ const FloatingChat = ({ roomId, index }) => {
                   try {
                     const isImage = file.type.startsWith('image/');
                     if (isImage) {
-                      // 1. GCS 백엔드 업로드 수행 후 결과 객체 수신
                       const res = await chatApi.uploadChatImage(file);
-
-                      // 2. 백엔드 Map 구조에 맞춰 imageUrl 문자열 추출 후 웹소켓 전송 🌟
                       if (res && res.imageUrl) {
                         sendMessage(roomId, res.imageUrl, 'IMAGE');
                       } else {
