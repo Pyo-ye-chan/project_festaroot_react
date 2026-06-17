@@ -11,6 +11,7 @@ import {
   Layers,
   Flag,
   Edit3,
+  X,
 } from 'lucide-react';
 
 const STATUS_LABELS = {
@@ -95,6 +96,13 @@ const GatheringManagementPage = () => {
   const [status, setStatus] = useState('all');
   const [sortBy, setSortBy] = useState('latest');
 
+  // 메모 모달 상태
+  const [memoModal, setMemoModal] = useState({
+    isOpen: false,
+    gatId: null,
+    tempMemo: '',
+  });
+
   const filteredGatherings = useMemo(() => {
     let result = gatherings.filter((gat) => {
       const lowerKeyword = keyword.trim().toLowerCase();
@@ -159,23 +167,24 @@ const GatheringManagementPage = () => {
   };
 
   const handleEditMemo = (gatId, currentMemo) => {
-    const newMemo = window.prompt('관리자 조치 메모를 수정합니다:', currentMemo === '-' ? '' : currentMemo);
-    if (newMemo !== null) {
-      setGatherings((prev) =>
-        prev.map((g) => (g.id === gatId ? { ...g, adminMemo: newMemo || '-' } : g))
-      );
-    }
+    setMemoModal({
+      isOpen: true,
+      gatId,
+      tempMemo: currentMemo === '-' ? '' : currentMemo,
+    });
+  };
+
+  const handleSaveMemo = () => {
+    setGatherings((prev) =>
+      prev.map((g) => (g.id === memoModal.gatId ? { ...g, adminMemo: memoModal.tempMemo || '-' } : g))
+    );
+    setMemoModal({ ...memoModal, isOpen: false });
   };
 
   return (
     <div className="space-y-6">
       {/* 상단 제목 */}
       <section>
-        <p className="flex items-center gap-1.5 text-sm font-black text-[#6d3df2]">
-          <span>FestaRoute Admin</span>
-          <span>&gt;</span>
-          <span>Gathering Management</span>
-        </p>
         <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">모임 관리</h1>
         <p className="mt-2 text-sm font-medium text-gray-500">
           사용자 모임 모니터링, 부적절한 모임 숨김 및 데이터 영구 삭제를 관리합니다.
@@ -383,6 +392,77 @@ const GatheringManagementPage = () => {
           </div>
         </article>
       </section>
+
+      {/* 메모 수정 모달 */}
+      <MemoEditModal 
+        isOpen={memoModal.isOpen}
+        onClose={() => setMemoModal({ ...memoModal, isOpen: false })}
+        onSave={handleSaveMemo}
+        value={memoModal.tempMemo}
+        setValue={(val) => setMemoModal({ ...memoModal, tempMemo: val })}
+      />
+    </div>
+  );
+};
+
+// --- 서브 컴포넌트 ---
+
+const MemoEditModal = ({ isOpen, onClose, onSave, value, setValue }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-all">
+      <div className="w-full max-w-md bg-white rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="p-7 border-b border-gray-50 flex items-center justify-between bg-white">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center bg-purple-50 rounded-2xl text-[#6d3df2]">
+              <Edit3 size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-gray-900 leading-tight">관리자 메모 수정</h3>
+              <p className="text-[11px] font-bold text-gray-400 mt-0.5">ADMINISTRATOR NOTE</p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-2.5 hover:bg-gray-100 rounded-2xl text-gray-400 transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        
+        <div className="p-7">
+          <label className="block text-[11px] font-black text-gray-400 uppercase mb-3 ml-1 tracking-wider">메모 내용</label>
+          <textarea
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="관리자 조치 사항 또는 특이사항을 입력하세요..."
+            className="w-full h-40 p-5 rounded-[24px] border border-gray-100 bg-gray-50 text-sm font-bold text-gray-700 outline-none transition focus:border-[#6d3df2]/40 focus:bg-white resize-none placeholder:text-gray-300"
+          />
+          <div className="mt-4 flex items-start gap-2 px-1">
+            <div className="mt-1 h-1 w-1 rounded-full bg-[#6d3df2]" />
+            <p className="text-[11px] text-gray-400 font-bold leading-relaxed">
+              입력하신 내용은 해당 모임의 <span className="text-[#6d3df2]">집중 모니터링 영역</span>에 즉시 반영되어 관리자 간 공유됩니다.
+            </p>
+          </div>
+        </div>
+
+        <div className="p-7 pt-0 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 h-14 rounded-2xl border border-gray-100 bg-white text-sm font-black text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-all"
+          >
+            취소
+          </button>
+          <button
+            onClick={onSave}
+            className="flex-1 h-14 rounded-2xl bg-[#6d3df2] text-sm font-black text-white shadow-[0_8px_20px_rgba(109,61,242,0.15)] hover:bg-[#5b32cc] hover:shadow-[0_8px_25px_rgba(109,61,242,0.25)] transition-all"
+          >
+            변경사항 저장
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
