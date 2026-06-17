@@ -69,6 +69,10 @@ const MemberManagementPage = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  // 페이지네이션 상태 (백엔드 연결 대비)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(5); // 임시 더미 값
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetMember, setTargetMember] = useState(null);
   const [suspensionDays, setSuspensionDays] = useState('7');
@@ -87,6 +91,7 @@ const MemberManagementPage = () => {
         sortBy,
         startDate: startDate || null,
         endDate: endDate || null,
+        page: currentPage, // 페이지 파라미터 추가
       };
 
       const cleanParam = Object.fromEntries(
@@ -95,7 +100,7 @@ const MemberManagementPage = () => {
 
       const data = await adminApi.getMembers(cleanParam);
       setMembers(data);
-      console.log("받아온 데이터:", data);
+      // console.log("받아온 데이터:", data);
     } catch (error) {
       console.error("회원 목록을 불러오는 중 에러 발생 : ", error);
     } finally {
@@ -105,7 +110,7 @@ const MemberManagementPage = () => {
 
   useEffect(() => {
     fetchMembers();
-  }, [keyword, role, status, sortBy, startDate, endDate]);
+  }, [keyword, role, status, sortBy, startDate, endDate, currentPage]);
 
   // 목록 및 통계에서 관리자(ADMIN)를 제외한 진짜 '일반 회원' 데이터만 필터링
   const displayedMembers = useMemo(() => {
@@ -133,6 +138,7 @@ const MemberManagementPage = () => {
     setSortBy('latest');
     setStartDate('');
     setEndDate('');
+    setCurrentPage(1);
   };
 
   const openSuspensionModal = (member) => {
@@ -204,37 +210,41 @@ const MemberManagementPage = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-4">
-          <div>
-            <label className="mb-2 block text-xs font-black text-gray-400 uppercase">검색어 (닉네임, 이메일, ID)</label>
-            <div className="relative">
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
-              <input
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder="검색어를 입력하세요..."
-                className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 pl-11 pr-4 text-sm font-bold text-gray-700 outline-none transition focus:border-[#6d3df2]/40 focus:bg-white"
-              />
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {/* 왼쪽: 검색어 및 기간 (길게 배치) */}
+          <div className="md:col-span-9 space-y-5">
+            <div>
+              <label className="mb-2 block text-xs font-black text-gray-400 uppercase">검색어 (닉네임, 이메일, ID)</label>
+              <div className="relative">
+                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                <input
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="검색어를 입력하세요..."
+                  className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 pl-11 pr-4 text-sm font-bold text-gray-700 outline-none transition focus:border-[#6d3df2]/40 focus:bg-white"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-black text-gray-400 uppercase">가입 기간 설정</label>
+              <div className="flex items-center gap-2">
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 text-xs font-bold text-gray-700 outline-none focus:bg-white focus:border-[#6d3df2]/40" />
+                <span className="text-gray-300 font-bold">~</span>
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 text-xs font-bold text-gray-700 outline-none focus:bg-white focus:border-[#6d3df2]/40" />
+              </div>
             </div>
           </div>
-          <div>
-            <label className="mb-2 block text-xs font-black text-gray-400 uppercase">가입 기간 설정</label>
-            <div className="flex items-center gap-2">
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 text-xs font-bold text-gray-700 outline-none focus:bg-white focus:border-[#6d3df2]/40" />
-              <span className="text-gray-300 font-bold">~</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 text-xs font-bold text-gray-700 outline-none focus:bg-white focus:border-[#6d3df2]/40" />
-            </div>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-          <FilterSelect label="활동 상태" value={status} onChange={setStatus} options={Object.entries(STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))} />
-          <FilterSelect label="정렬 기준" value={sortBy} onChange={setSortBy} options={[
-            { value: 'latest', label: '최근 가입순' },
-            { value: 'oldest', label: '오래된 가입순' },
-            { value: 'lastLogin', label: '최근 접속순' },
-            { value: 'reports', label: '신고 많은순' },
-          ]} />
+          {/* 오른쪽: 상태 및 정렬 (위아래 배치) */}
+          <div className="md:col-span-3 space-y-5">
+            <FilterSelect label="활동 상태" value={status} onChange={setStatus} options={Object.entries(STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))} />
+            <FilterSelect label="정렬 기준" value={sortBy} onChange={setSortBy} options={[
+              { value: 'latest', label: '최근 가입순' },
+              { value: 'oldest', label: '오래된 가입순' },
+              { value: 'lastLogin', label: '최근 접속순' },
+              { value: 'reports', label: '신고 많은순' },
+            ]} />
+          </div>
         </div>
       </section>
 
@@ -252,7 +262,7 @@ const MemberManagementPage = () => {
           <table className="w-full min-w-[1150px] table-fixed text-left">
             <colgroup>
               <col className="w-[50px]" />
-              <col className="w-[180px]" />
+              <col className="w-[200px]" />
               <col className="w-[100px]" />
               <col className="w-[200px]" />
               <col className="w-[90px]" />
@@ -300,8 +310,8 @@ const MemberManagementPage = () => {
                   <tr key={`${member.id}-${index}`} className="text-sm hover:bg-gray-50/50 transition">
                     <td className="px-5 py-4"><input type="checkbox" className="rounded" /></td>
                     <td className="px-4 py-4">
-                      <p className="font-black text-gray-800">{member.nickname}</p>
-                      <p className="text-[11px] font-bold text-gray-400">{member.id}</p>
+                      <p className="font-black text-gray-800 truncate">{member.nickname}</p>
+                      <p className="text-[11px] font-bold text-gray-400 truncate max-w-[160px]" title={member.id}>{member.id}</p>
                     </td>
                     <td className="px-4 py-4 text-center">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black ${providerClass[member.provider]}`}>
@@ -337,6 +347,39 @@ const MemberManagementPage = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* 페이지네이션 (백엔드 연결 대비용 UI) */}
+        <div className="py-8 border-t border-gray-50">
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="p-2 rounded-xl border border-gray-100 text-gray-400 hover:bg-gray-50 disabled:opacity-30 transition-all"
+            >
+              <ChevronDown size={18} className="rotate-90" />
+            </button>
+            {[...Array(totalPages)].map((_, i) => (
+              <button
+                key={i + 1}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`h-10 w-10 rounded-xl text-sm font-black transition-all ${
+                  currentPage === i + 1
+                    ? 'bg-[#6d3df2] text-white shadow-lg shadow-purple-100'
+                    : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-xl border border-gray-100 text-gray-400 hover:bg-gray-50 disabled:opacity-30 transition-all"
+            >
+              <ChevronDown size={18} className="-rotate-90" />
+            </button>
+          </div>
         </div>
       </section>
 
