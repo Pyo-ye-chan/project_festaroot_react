@@ -22,6 +22,9 @@ const GatheringDetailPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isDelegating, setIsDelegating] = useState(false);
 
+  // 특정 멤버의 프로필 팝업 메뉴를 열기 위한 고유 상태
+  const [activeMenuMemberId, setActiveMenuMemberId] = useState(null);
+
   // 이미지 업로드 관련 상태
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -34,6 +37,13 @@ const GatheringDetailPage = () => {
     room_description: '',
     room_image: ''
   });
+
+  // 외부 클릭 시 프로필 팝업 메뉴 닫기 효과
+  useEffect(() => {
+    const handleOutsideClick = () => setActiveMenuMemberId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   // 서버에서 최신 데이터를 다시 불러오는 공통 함수
   const fetchDetailAndParticipants = async () => {
@@ -119,7 +129,6 @@ const GatheringDetailPage = () => {
       const response = await gatheringApi.joinGathering(id, loggedInUserId);
       alert("모임에 성공적으로 참여되었습니다!");
 
-      // 데이터를 다시 불러와서 state를 완전히 새로고침
       await fetchDetailAndParticipants();
 
       if (response && response.roomId) {
@@ -130,7 +139,6 @@ const GatheringDetailPage = () => {
       }
     } catch (error) {
       console.error("모임 참여 중 오류 발생:", error);
-      // 서버에서 튕겨낸 블랙리스트(403) 문구가 여기에 동적으로 출력
       const errorMsg = error.response?.data?.message || "모임 참여에 실패했습니다. 다시 시도해 주세요.";
       alert(errorMsg);
     }
@@ -186,7 +194,7 @@ const GatheringDetailPage = () => {
     await handleDelegateAndLeave(oldestMember.member_id);
   };
 
-  // 강퇴 핸들러 (서버에서 User 테이블 Delete 및 Ban 테이블 Insert 수행)
+  // 강퇴 핸들러
   const handleKickMember = async (memberId, nickname) => {
     if (!window.confirm(`${nickname}님을 정말로 퇴장시키겠습니까?`)) return;
     try {
@@ -198,12 +206,39 @@ const GatheringDetailPage = () => {
     }
   };
 
+  // 단체 채팅방 입장 핸들러
   const handleChatClick = () => {
     if (Number(id) <= 0) {
       alert("모임 참여를 완료한 뒤 채팅방 입장이 가능합니다.");
       return;
     }
     navigate(`/community/chat/${id}`);
+  };
+
+  // 1:1 채팅 보내기 핸들러
+  const handleDirectMessageClick = (targetMemberId, nickname) => {
+    if (!loggedInUserId) {
+      alert("로그인이 필요한 서비스입니다.");
+      navigate('/login');
+      return;
+    }
+    if (targetMemberId === loggedInUserId) {
+      alert("자기 자신에게는 1:1 채팅을 보낼 수 없습니다.");
+      return;
+    }
+    if (window.confirm(`${nickname}님과 1:1 채팅을 시작하시겠습니까?`)) {
+      navigate(`/community/chat/dm/${targetMemberId}`);
+    }
+  };
+
+  // 내 프로필 수정 페이지 이동 핸들러
+  const handleEditProfileClick = () => {
+    if (!loggedInUserId) {
+      alert("로그인이 필요한 서비스입니다.");
+      navigate('/login');
+      return;
+    }
+    navigate('/mypage');
   };
 
   const handleInputChange = (e) => {
@@ -495,44 +530,110 @@ const GatheringDetailPage = () => {
                   <div className="mb-8">
                     <h3 className="text-xl font-bold text-gray-800 mb-4">참여자 ({gathering.current_count || 0}명)</h3>
                     <div className="flex flex-wrap gap-3">
+
+                      {/* 방장 프로필 카드 */}
                       {gathering.owner_id && (
-                        <div className="flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm">
+                        <div
+                          className="relative flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm cursor-pointer select-none"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMenuMemberId(activeMenuMemberId === gathering.owner_id ? null : gathering.owner_id);
+                          }}
+                        >
                           <img
                             src={gathering.profile_image_url || DEFAULT_IMAGES.PROFILE}
                             alt={gathering.nickname}
-                            className="w-9 h-9 rounded-full object-cover border-2 border-[var(--festival-purple)]"
+                            className="w-9 h-9 rounded-full object-cover border-2 border-primary"
                           />
                           <div className="flex flex-col">
                             <span className="text-[10px] text-[var(--festival-purple)] font-bold bg-purple-100 px-1.5 rounded w-max mb-0.5">방장 👑</span>
                             <span className="text-sm font-black text-gray-800 leading-tight">{gathering.nickname || '방장'}</span>
                           </div>
+
+                          {/* 방장 클릭 팝업 메뉴 */}
+                          {activeMenuMemberId === gathering.owner_id && (
+                            <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 text-sm text-gray-700">
+                              {gathering.owner_id === loggedInUserId ? (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleEditProfileClick(); }}
+                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 font-medium flex items-center gap-2"
+                                >
+                                  <Settings className="w-4 h-4 text-gray-500" />
+                                  내 프로필 수정
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleDirectMessageClick(gathering.owner_id, gathering.nickname); }}
+                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 font-medium flex items-center gap-2 text-[var(--festival-purple)]"
+                                >
+                                  <MessageCircle className="w-4 h-4" />
+                                  1:1 채팅 보내기
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {participants.map(participant => (
-                        <div key={participant.member_id} className="relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group">
-                          <img
-                            src={participant.profile_image_url || DEFAULT_IMAGES.PROFILE}
-                            alt={participant.nickname}
-                            className="w-9 h-9 rounded-full object-cover border border-gray-200"
-                          />
-                          <div className="flex flex-col">
-                            <span className="text-[10px] text-gray-400 font-medium mb-0.5">멤버</span>
-                            <span className="text-sm font-bold text-gray-700 leading-tight">{participant.nickname}</span>
+                      {/* 일반 멤버 프로필 카드 루프 */}
+                      {participants.map(participant => {
+                        const isMe = participant.member_id === loggedInUserId;
+                        return (
+                          <div
+                            key={participant.member_id}
+                            className="relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group cursor-pointer select-none"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuMemberId(activeMenuMemberId === participant.member_id ? null : participant.member_id);
+                            }}
+                          >
+                            <img
+                              src={participant.profile_image_url || DEFAULT_IMAGES.PROFILE}
+                              alt={participant.nickname}
+                              className="w-9 h-9 rounded-full object-cover border border-gray-200"
+                            />
+                            <div className="flex flex-col">
+                              <span className="text-[10px] text-gray-400 font-medium mb-0.5">멤버</span>
+                              <span className="text-sm font-bold text-gray-700 leading-tight">{participant.nickname}</span>
+                            </div>
+
+                            {isOwner && !isMe && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleKickMember(participant.member_id, participant.nickname);
+                                }}
+                                className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 scale-75"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+
+                            {/* 멤버 클릭 팝업 메뉴 */}
+                            {activeMenuMemberId === participant.member_id && (
+                              <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 text-sm text-gray-700">
+                                {isMe ? (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleEditProfileClick(); }}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 font-medium flex items-center gap-2"
+                                  >
+                                    <Settings className="w-4 h-4 text-gray-500" />
+                                    내 프로필 수정
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDirectMessageClick(participant.member_id, participant.nickname); }}
+                                    className="w-full text-left px-4 py-2 hover:bg-gray-100 font-medium flex items-center gap-2 text-[var(--festival-purple)]"
+                                  >
+                                    <MessageCircle className="w-4 h-4" />
+                                    1:1 채팅 보내기
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          {isOwner && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleKickMember(participant.member_id, participant.nickname);
-                              }}
-                              className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 scale-75"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
