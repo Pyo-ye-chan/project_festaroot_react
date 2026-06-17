@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Search,
   RotateCcw,
@@ -230,7 +230,7 @@ const MemberManagementPage = () => {
       {/* 회원 목록 테이블 */}
       <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
-          <h2 className="text-lg font-black text-gray-900">회원 목록 <span className="ml-1 text-[#6d3df2]">{filteredMembers.length}</span></h2>
+          <h2 className="text-lg font-black text-gray-900">회원 목록 <span className="ml-1 text-[#6d3df2]">{members.length}</span></h2>
           <div className="flex gap-2">
             <button className="h-10 px-4 rounded-xl border border-orange-100 bg-orange-50 text-xs font-black text-orange-600 hover:bg-orange-100 transition">정지 선택</button>
             <button className="h-10 px-4 rounded-xl border border-red-100 bg-red-50 text-xs font-black text-red-500 hover:bg-red-100 transition">블랙리스트 추가</button>
@@ -268,7 +268,7 @@ const MemberManagementPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredMembers.map((member) => (
+              {members.map((member) => (
                 <tr key={member.id} className="text-sm hover:bg-gray-50/50 transition">
                   <td className="px-5 py-4"><input type="checkbox" className="rounded" /></td>
                   <td className="px-4 py-4">
