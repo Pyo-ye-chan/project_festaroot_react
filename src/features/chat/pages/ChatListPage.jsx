@@ -8,6 +8,7 @@ import gatheringApi from '../../../api/gatheringApi';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Ban, Crown, LogOut, X } from 'lucide-react';
 import useLoadingStore from '../../../store/useLoadingStore';
+import chatApi from '../../../api/chatApi';
 
 const ChatListPage = () => {
   const [participants, setParticipants] = useState([]);
@@ -96,7 +97,7 @@ const ChatListPage = () => {
       subscribeToRoom(activeChatId);
 
       // 채팅 읽음 처리 요청 보내기
-      gatheringApi.updateReadStatus(activeChatId, userId);
+      chatApi.updateReadStatus(activeChatId, userId);
 
       // 모임 상세 원격 내용 패치
       const fetchRoomDetail = async () => {
@@ -285,7 +286,7 @@ const ChatListPage = () => {
       const targetMemberId = target?.member_id || target?.MEMBER_ID || target?.id || null;
 
       // 1. 백엔드 API 호출
-      await gatheringApi.leavePrivateRoom(activeChatId, userId, false, targetMemberId);
+      await chatApi.leaveDirectRoom(activeChatId, userId, false, targetMemberId);
 
       // 상대방이 아직 방에 남아있을 때만 웹소켓으로 퇴장 알림 전송
       if (targetMemberId && sendMessage) {
@@ -321,7 +322,7 @@ const ChatListPage = () => {
       }
 
       // 차단 여부(isBlock)를 true로 설정하여 순서대로 넘기기
-      await gatheringApi.leavePrivateRoom(activeChatId, userId, true, targetMemberId);
+      await chatApi.leaveDirectRoom(activeChatId, userId, true, targetMemberId);
 
       alert("상대방을 차단하고 채팅방에서 퇴장하였습니다.");
       setShowDirectLeaveModal(false);
@@ -379,7 +380,7 @@ const ChatListPage = () => {
     try {
       if (!userId) return;
 
-      const responseData = await gatheringApi.getUserChatRooms(userId);
+      const responseData = await chatApi.getUserChatRooms(userId);
       const rawRooms = Array.isArray(responseData) ? responseData : (responseData.list || []);
 
       // console.log("responseData =", responseData); 
@@ -424,7 +425,7 @@ const ChatListPage = () => {
       console.log(userId, targetMemberId)
 
       // 백엔드로 현재 유저 ID와 상대방 ID 전송
-      const response = await gatheringApi.createOrGetDirectRoom(userId, targetMemberId);
+      const response = await chatApi.createOrGetDirectRoom(userId, targetMemberId);
       const targetRoomId = response?.room_id || response;
 
       console.log(response)
@@ -513,8 +514,12 @@ const ChatListPage = () => {
                 currentUserId={userId}
               />
 
-              <div className={`hidden md:flex flex-grow min-w-0 bg-[#F8F9FF] relative overflow-hidden transition-all duration-500 ease-in-out ${activeChatId ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+              <div className={`min-w-0 bg-[#F8F9FF] relative overflow-hidden transition-all duration-500 ease-in-out ${activeChatId
+                  ? 'flex w-full md:flex-grow translate-x-0 opacity-100'
+                  : 'hidden md:flex translate-x-full opacity-0'
+                }`}
                 style={{ flexGrow: activeChatId ? 1 : 0.00001, minWidth: activeChatId ? '0' : '0', width: activeChatId ? 'auto' : '0' }}>
+
                 {selectedChat && (
                   <div className="w-full h-full flex">
                     <ChatWindow

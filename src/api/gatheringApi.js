@@ -115,40 +115,6 @@ const gatheringApi = {
         });
         return response.data;
     },
-
-    // 채팅 읽음 상태 갱신 연동 수정 완료
-    // BASE_PATH(/api/gathering) 대신 ChatRestController 주소인 /api/chat으로 직접 지정하고, params로 activeChatId를 전송
-    updateReadStatus: async (activeChatId, userId) => {
-        const response = await maxios.get(`/api/chat/${userId}`, {
-            params: { activeChatId: activeChatId }
-        });
-        return response.data;
-    },
-
-    // 1:1 채팅 생성
-    createOrGetDirectRoom: async (currentUserId, targetMemberId) => {
-        const response = await maxios.post('/api/chat/direct', {
-            currentUserId,
-            targetMemberId
-        });
-        return response.data;
-    },
-
-    // 1:1 채팅방 나가기 / 차단하고 나가기 연동 API
-    leavePrivateRoom: async (room_id, member_id, isBlock = false, targetMemberId = null) => {
-        const response = await maxios.post(`/api/chat/rooms/${room_id}/leave`, {
-            memberId: member_id,
-            isBlock,
-            targetMemberId
-        });
-        return response.data;
-    },
-
-    // 채팅방 목록 조회
-    getUserChatRooms: async (userId) => {
-        const response = await maxios.get(`/api/chat/rooms/user/${userId}`);
-        return response.data;
-    },
     
 };
 
