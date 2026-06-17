@@ -5,7 +5,6 @@ import {
   FileText,
   ShieldAlert,
   MessageSquare,
-  ShieldCheck,
   CalendarDays,
   RefreshCw,
   Eye,
@@ -13,13 +12,11 @@ import {
   MapPin,
   Clock,
   AlertTriangle,
-  CheckCircle2,
   Megaphone,
   ArrowRight,
   TrendingUp,
   BarChart3,
   PieChart,
-  Search,
 } from 'lucide-react';
 
 const AdminDashboardPage = () => {
@@ -66,11 +63,11 @@ const AdminDashboardPage = () => {
       tone: 'yellow',
     },
     {
-      title: '방문 인증',
-      value: '9,842건',
-      subText: '승인 대기 7건',
-      change: '+6.6%',
-      icon: ShieldCheck,
+      title: '공지사항',
+      value: '12건',
+      subText: '노출 중 5건',
+      change: '+1건',
+      icon: Megaphone,
       tone: 'green',
     },
   ];
@@ -228,11 +225,11 @@ const AdminDashboardPage = () => {
       status: '검토',
     },
     {
-      icon: ShieldCheck,
-      title: '방문 인증 요청이 접수되었습니다.',
-      description: '방문 인증 승인 대기 7건',
+      icon: Megaphone,
+      title: '공지사항 노출 상태를 확인하세요.',
+      description: '상단 고정 공지 1건 · 일반 공지 4건',
       time: '1시간 전',
-      status: '대기',
+      status: '확인',
     },
   ];
 
