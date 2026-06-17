@@ -21,6 +21,7 @@ export const notifyAchievements = (achievements) => {
       AI_PLAN: 'AI 플래너 이용',
       AI_SAVE:'AI 플래너 저장',
       RANDOM_PICK: '랜덤 축제 뽑기',
+      GROUP:'모임 가입',
     };
 
     // ach_desc에서 "POST" 같은 패턴을 찾아 한글로 변환
