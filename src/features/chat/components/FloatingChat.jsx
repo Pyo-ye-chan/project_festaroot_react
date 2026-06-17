@@ -28,9 +28,6 @@ const FloatingChat = ({ roomId, index }) => {
   const user = JSON.parse(localStorage.getItem('user'));
   const userId = user?.member_id || user?.id || user?.userId;
 
-  // 프로필 이미지가 없는 사용자를 위한 기본 아바타 이미지 지정
-  const DEFAULT_USER_AVATAR = 'https://picsum.photos/seed/default-avatar/100/100';
-
   useEffect(() => {
     if (roomId) {
       if (chatRooms.length > 0 && !chatRooms.some(c => c.id === roomId)) {
@@ -57,6 +54,25 @@ const FloatingChat = ({ roomId, index }) => {
 
   const activeChat = chatRooms.find(c => c.id === roomId);
   const messages = messagesByRoom[roomId] || [];
+
+  // 1:1 채팅방 상대방 퇴장 여부 실시간 가공 로직
+  const chatType = activeChat?.type?.toUpperCase() || activeChat?.room_type?.toUpperCase();
+  const isPrivateChat = chatType === 'DIRECT';
+
+  const opponent = isPrivateChat
+    ? participants.find(p => {
+        const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
+        return String(pId) !== String(userId);
+      })
+    : null;
+
+  // API가 완료되어 참여자 배열이 있고(본인은 들어있음), 상대방이 없으면 퇴장 판정
+  const isOpponentLeft = isPrivateChat && participants.length > 0 && !opponent;
+
+  // 타이틀 분기 가공
+  const displayRoomTitle = isOpponentLeft
+    ? '퇴장한 사용자'
+    : activeChat?.title || `채팅방 ${roomId}`;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -94,7 +110,8 @@ const FloatingChat = ({ roomId, index }) => {
         <header className="drag-handle bg-purple-600 text-white cursor-move active:cursor-grabbing flex items-center flex-shrink-0 h-14 px-4 border-b border-gray-100 rounded-t-3xl justify-between">
           <div className="flex items-center gap-2 min-w-0">
             <MessageCircle className="w-5 h-5 text-white flex-shrink-0" />
-            <span className="font-black text-xs truncate">{activeChat?.title || `채팅방 ${roomId}`}</span>
+            {/* 가공된 디스플레이 룸 타이틀 적용 */}
+            <span className="font-black text-xs truncate">{displayRoomTitle}</span>
           </div>
 
           <div className="flex items-center gap-1">
