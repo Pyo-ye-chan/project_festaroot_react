@@ -17,8 +17,8 @@ const ChatWindow = ({
   setMessage,
   handleSendMessage,
   participants,
-  onStartPrivateChat, // 1:1 채팅 시작
-  currentUserId // ✨ [추정] 로그인한 본인 아이디 받아오기 추가
+  onStartDirectChat, // ✨ ChatDetails와 명칭을 통일하여 1:1 채팅 함수 연동
+  currentUserId // 로그인한 본인 아이디 받아오기 추가
 }) => {
 
   const navigate = useNavigate();
@@ -33,7 +33,7 @@ const ChatWindow = ({
   const chatType = selectedChat?.type?.toUpperCase() || selectedChat?.room_type?.toUpperCase();
   const isPrivateChat = chatType === 'DIRECT'; // 현재 방이 1:1 채팅방인지 여부 확인
 
-  // ✨ [추가] 1:1 채팅방일 때 참여자 목록(participants)에서 내가 아닌 상대방 추출
+  // 1:1 채팅방일 때 참여자 목록(participants)에서 내가 아닌 상대방 추출
   const opponent = isPrivateChat
     ? participants.find(p => {
       const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
@@ -41,10 +41,15 @@ const ChatWindow = ({
     })
     : null;
 
-  // ✨ [추가] 상대방 존재 여부에 따른 타이틀 및 이미지 가공
-  const displayRoomTitle = opponent
-    ? (opponent.nickname || opponent.NICKNAME || opponent.username || selectedChat?.title || selectedChat?.room_title)
-    : (selectedChat?.title || selectedChat?.room_title || '채팅방');
+  // 1. 1:1 채팅방이면서 상대방(opponent)을 찾을 수 없는 경우 퇴장 플래그 생성
+  const isOpponentLeft = isPrivateChat && !opponent;
+
+  // 2. 퇴장 플래그가 true면 타이틀을 '퇴장한 사용자'로 강제 고정
+  const displayRoomTitle = isOpponentLeft
+    ? '퇴장한 사용자'
+    : opponent
+      ? (opponent.nickname || opponent.NICKNAME || opponent.username || selectedChat?.title || selectedChat?.room_title)
+      : (selectedChat?.title || selectedChat?.room_title || '채팅방');
 
   const displayRoomImage = opponent
     ? (opponent.profile_image_url || opponent.PROFILE_IMAGE_URL)
@@ -63,17 +68,23 @@ const ChatWindow = ({
           className={`flex items-center gap-4 min-w-0 ${!isPrivateChat ? 'cursor-pointer group' : ''}`}
           onClick={() => !isPrivateChat && toggleSidebar('details')}
         >
-          <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden">
-            {/* 가공된 디스플레이 이미지 경로 및 폴백 이미지 적용 */}
-            <img
-              src={displayRoomImage || (isPrivateChat ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(chatType))}
-              alt={displayRoomTitle}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = isPrivateChat ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(chatType);
-              }}
-            />
+          {/* 아이콘 중앙 정렬을 위해 flex items-center justify-center 추가 */}
+          <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+            {isOpponentLeft ? (
+              // 상대방이 나간 1:1 채팅방이면 Lucide User 아이콘 렌더링
+              <User className="w-6 h-6 text-gray-400" />
+            ) : (
+              // 정상 채팅방 혹은 기존 룸 이미지 로직 그대로 유지
+              <img
+                src={displayRoomImage || (isPrivateChat ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(chatType))}
+                alt={displayRoomTitle}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = isPrivateChat ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(chatType);
+                }}
+              />
+            )}
           </div>
           {/* 가공된 상대방 닉네임 타이틀 실시간 바인딩 */}
           <h2
@@ -183,7 +194,7 @@ const ChatWindow = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           const memberId = targetUser?.member_id || targetUser?.MEMBER_ID || targetUser?.id || msg.senderId;
-                          onStartPrivateChat(memberId, displayNickname);
+                          onStartDirectChat(memberId, displayNickname); // ✨ 통일된 1:1 대화 시작 함수 호출
                           setActiveProfileMenuId(null);
                         }}
                         className="w-full px-3 py-2 text-left text-xs font-bold text-purple-700 hover:bg-purple-50 flex items-center gap-2 transition-colors"

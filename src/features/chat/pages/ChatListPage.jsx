@@ -532,6 +532,7 @@ const ChatListPage = () => {
                       handleSendMessage={handleSendMessage}
                       participants={participants}
                       currentUserId={userId}
+                      onStartDirectChat={handleStartDirectChat}
                     />
 
                     <ChatDetails
