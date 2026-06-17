@@ -19,6 +19,7 @@ export const notifyAchievements = (achievements) => {
       FESTIVAL_LIKE: '축제 찜하기',
       FESTIVAL_REVIEW: '축제 후기 작성',
       AI_PLAN: 'AI 플래너 이용',
+      AI_SAVE:'AI 플래너 저장',
       RANDOM_PICK: '랜덤 축제 뽑기',
     };
 
