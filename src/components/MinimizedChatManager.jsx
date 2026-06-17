@@ -55,6 +55,15 @@ function MinimizedChatManager() {
             {minimizedChatIds.map((id) => {
               const room = chatRooms.find((r) => r.id === id);
 
+              // 1:1 채팅방이면서 혼자 남은 경우(상대방이 퇴장한 경우) 판별
+              const isDirect = room?.type?.toUpperCase() === 'DIRECT';
+              const isOpponentLeft = isDirect && (room?.current_count <= 1);
+              
+              // 조건에 따른 최종 노출 타이틀 결정
+              const displayTitle = isOpponentLeft 
+                ? '퇴장한 사용자' 
+                : (room?.title || `채팅방 ${id}`);
+
               return (
                 <button
                   key={id}
@@ -70,7 +79,7 @@ function MinimizedChatManager() {
                       />
                     </div>
                     <span className="truncate flex-grow">
-                      {room?.title || `채팅방 ${id}`}
+                      {displayTitle}
                     </span>
                   </div>
 
