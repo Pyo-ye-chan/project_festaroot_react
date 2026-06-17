@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Draggable from 'react-draggable';
-import { Send, X, MessageCircle, Minimize2, User, Paperclip } from 'lucide-react'; // ✨ Paperclip 추가
+import { Send, X, MessageCircle, Minimize2, User, Paperclip } from 'lucide-react';
 import useChatStore from '../../../store/useChatStore';
 import gatheringApi from '../../../api/gatheringApi';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
+import chatApi from '../../../api/chatApi';
 
 const FloatingChat = ({ roomId, index }) => {
   const {
@@ -59,9 +60,9 @@ const FloatingChat = ({ roomId, index }) => {
 
   const opponent = isPrivateChat
     ? participants.find(p => {
-        const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
-        return String(pId) !== String(userId);
-      })
+      const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
+      return String(pId) !== String(userId);
+    })
     : null;
 
   const isOpponentLeft = isPrivateChat && participants.length > 0 && !opponent;
@@ -179,16 +180,14 @@ const FloatingChat = ({ roomId, index }) => {
                     </span>
                   )}
                   <div className={`flex items-end gap-1.5 ${msg.isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                    {/* 플로팅 창 이미지/파일 랜더링 고도화 */}
-                    <div className={`rounded-2xl text-xs font-medium overflow-hidden ${
-                      msg.type === 'IMAGE' || msg.type === 'image'
-                        ? 'p-0 shadow-none'
-                        : msg.isMe ? 'bg-purple-600 text-white rounded-tr-none px-3 py-1.5' : 'bg-white text-gray-800 rounded-tl-none border px-3 py-1.5'
-                    }`}>
+                    <div className={`rounded-2xl text-xs font-medium overflow-hidden ${msg.type === 'IMAGE' || msg.type === 'image'
+                      ? 'p-0 shadow-none'
+                      : msg.isMe ? 'bg-purple-600 text-white rounded-tr-none px-3 py-1.5' : 'bg-white text-gray-800 rounded-tl-none border px-3 py-1.5'
+                      }`}>
                       {msg.type === 'IMAGE' || msg.type === 'image' ? (
-                        <img 
-                          src={msg.text} 
-                          alt="첨부 이미지" 
+                        <img
+                          src={msg.text}
+                          alt="첨부 이미지"
                           className="max-w-[180px] max-h-40 rounded-xl object-cover border border-gray-100 cursor-pointer"
                           onClick={() => window.open(msg.text, '_blank')}
                         />
@@ -212,18 +211,36 @@ const FloatingChat = ({ roomId, index }) => {
         {/* 하단 입력 폼 영역 */}
         <div className="p-3 border-t bg-white rounded-b-3xl">
           <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-            {/* 플로팅 챗 이미지 첨부 UI 추가 */}
             <label className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl cursor-pointer transition-all flex-shrink-0">
+
+              {/* 🌟 플로팅 챗 GCS 업로드 및 메시지 전송 로직 오브젝트 버그 수정 */}
               <input
                 type="file"
                 accept="image/*, .pdf, .doc, .docx, .xls, .xlsx, .txt"
                 className="hidden"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files[0];
-                  if (file) {
+                  if (!file) return;
+
+                  try {
                     const isImage = file.type.startsWith('image/');
-                    const fileUrl = isImage ? URL.createObjectURL(file) : file.name;
-                    sendMessage(roomId, fileUrl, isImage ? 'IMAGE' : 'file');
+                    if (isImage) {
+                      // 1. GCS 백엔드 업로드 수행 후 결과 객체 수신
+                      const res = await chatApi.uploadChatImage(file);
+
+                      // 2. 백엔드 Map 구조에 맞춰 imageUrl 문자열 추출 후 웹소켓 전송 🌟
+                      if (res && res.imageUrl) {
+                        sendMessage(roomId, res.imageUrl, 'IMAGE');
+                      } else {
+                        console.error("플로팅 챗 이미지 URL 추출 실패", res);
+                      }
+                    } else {
+                      sendMessage(roomId, file.name, 'file');
+                    }
+                  } catch (error) {
+                    console.error("플로팅 챗 파일 전송 실패:", error);
+                  } finally {
+                    e.target.value = '';
                   }
                 }}
               />
