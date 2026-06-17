@@ -132,32 +132,7 @@ const MainAdminLayout = () => {
           </div>
         </nav>
 
-        {/* 하단 가이드 카드 */}
-        <div className="m-5 rounded-3xl border border-purple-100 bg-gradient-to-br from-purple-50 to-white p-5">
-          <div className="mb-4 flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white text-2xl shadow-sm">
-              🎉
-            </div>
-          </div>
 
-          <p className="text-center text-sm font-black text-[#6d3df2]">
-            축제로 관리자 가이드
-          </p>
-
-          <p className="mt-2 text-center text-xs leading-relaxed text-gray-500">
-            서비스 운영에 필요한
-            <br />
-            가이드를 확인하세요.
-          </p>
-
-          <button
-            type="button"
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black text-gray-700 transition hover:border-[#6d3df2]/30 hover:text-[#6d3df2]"
-          >
-            가이드 보기
-            <span className="text-gray-400">↗</span>
-          </button>
-        </div>
       </aside>
 
       {/* 모바일 헤더 */}
@@ -199,24 +174,6 @@ const MainAdminLayout = () => {
             관리자 홈
             <span className="mx-2 text-gray-300">›</span>
             <span className="text-gray-800">{currentMenuName}</span>
-          </div>
-
-          {/* 검색창 */}
-          <div className="relative w-[430px]">
-            <Search
-              size={19}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-
-            <input
-              type="text"
-              placeholder="검색어를 입력하세요 (축제, 회원, 게시글)"
-              className="h-12 w-full rounded-2xl border border-gray-200 bg-white pl-12 pr-16 text-sm font-medium outline-none transition focus:border-[#6d3df2] focus:ring-4 focus:ring-purple-100"
-            />
-
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 rounded-lg bg-gray-100 px-2 py-1 text-xs font-black text-gray-400">
-              ⌘K
-            </span>
           </div>
 
           {/* 알림 + 관리자 프로필 */}
