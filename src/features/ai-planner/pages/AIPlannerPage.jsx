@@ -286,15 +286,15 @@ const AIPlannerPage = () => {
     return step.mapX || step.map_x || step.longitude || step.lng;
   };
 
-  // 카카오맵 장소 검색 fallback
+  // 카카오맵 주소 검색 URL 생성
   const getKakaoSearchUrl = (step) => {
     const keyword = encodeURIComponent(
-      step.placeName || step.title || step.address || ''
+      step.address || step.placeName || step.title || ''
     );
 
     if (!keyword) return null;
 
-    return `https://map.kakao.com/link/search/${keyword}`;
+    return `https://map.kakao.com/?q=${keyword}`;
   };
 
   // 다음 장소 길찾기 링크 생성
@@ -620,6 +620,36 @@ const AIPlannerPage = () => {
     } catch (error) {
       console.error('피드백 저장 실패:', error);
     }
+  };
+
+  // 장소 검색하기
+  const handlePlaceSearchClick = async (e, step, searchUrl) => {
+    e.stopPropagation();
+
+    if (!searchUrl) {
+      alert('장소 검색 URL을 만들 수 없습니다.');
+      return;
+    }
+
+    console.log('넘길 URL:', searchUrl);
+
+    // 예시 1: 백엔드로 URL 저장/전달
+    try {
+      await maxios.post('/ai/planner/place-search-log', {
+        title: step.title,
+        placeName: step.placeName,
+        address: step.address,
+        searchUrl: searchUrl,
+        kakaoPlaceUrl: step.kakaoPlaceUrl || null,
+        mapX: getStepLng(step),
+        mapY: getStepLat(step)
+      });
+    } catch (error) {
+      console.error('장소 검색 URL 전달 실패:', error);
+    }
+
+    // 예시 2: 카카오맵도 같이 열기
+    window.open(searchUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -1126,8 +1156,8 @@ const AIPlannerPage = () => {
               {showItinerary && itineraryList.length > 0 && (
                 <div
                   className={`mb-6 p-5 rounded-3xl border ${isPlannerSaved
-                      ? 'bg-emerald-50 border-emerald-100'
-                      : 'bg-white border-purple-100 shadow-sm'
+                    ? 'bg-emerald-50 border-emerald-100'
+                    : 'bg-white border-purple-100 shadow-sm'
                     }`}
                 >
                   {isPlannerSaved ? (
