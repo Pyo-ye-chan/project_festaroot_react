@@ -514,8 +514,12 @@ const ChatListPage = () => {
                 currentUserId={userId}
               />
 
-              <div className={`hidden md:flex flex-grow min-w-0 bg-[#F8F9FF] relative overflow-hidden transition-all duration-500 ease-in-out ${activeChatId ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+              <div className={`min-w-0 bg-[#F8F9FF] relative overflow-hidden transition-all duration-500 ease-in-out ${activeChatId
+                  ? 'flex w-full md:flex-grow translate-x-0 opacity-100'
+                  : 'hidden md:flex translate-x-full opacity-0'
+                }`}
                 style={{ flexGrow: activeChatId ? 1 : 0.00001, minWidth: activeChatId ? '0' : '0', width: activeChatId ? 'auto' : '0' }}>
+
                 {selectedChat && (
                   <div className="w-full h-full flex">
                     <ChatWindow

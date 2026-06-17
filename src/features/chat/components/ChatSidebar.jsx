@@ -24,7 +24,10 @@ const ChatSidebar = ({
   };
 
   return (
-    <aside className={`flex flex-col bg-white z-20 overflow-y-auto transition-all duration-500 ${customScrollbarClass} ${selectedChatId ? 'w-full md:w-64 lg:w-72 border-r border-gray-100' : 'flex-grow w-full'}`}>
+    <aside className={`flex flex-col bg-white z-20 overflow-y-auto transition-all duration-500 ${customScrollbarClass} ${selectedChatId
+        ? 'hidden md:flex md:w-64 lg:w-72 border-r border-gray-100'
+        : 'w-full'
+      }`}>
       <div className="p-6 border-b border-gray-100">
         <h1 className="text-2xl font-black text-gray-900 mb-6 flex items-center gap-2">
           <MessageCircle className="w-6 h-6 text-purple-600" />
