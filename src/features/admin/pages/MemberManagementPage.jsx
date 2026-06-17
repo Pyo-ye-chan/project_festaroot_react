@@ -55,7 +55,7 @@ const providerClass = {
   LOCAL: 'bg-slate-100 text-slate-500',
   KAKAO: 'bg-yellow-100 text-yellow-700',
   NAVER: 'bg-emerald-100 text-emerald-700',
-  GOOGLE: 'bg-red-50 text-red-500', 
+  GOOGLE: 'bg-red-50 text-red-500',
 };
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
@@ -80,7 +80,7 @@ const MemberManagementPage = () => {
   // Zustand 스토어에서 구조분해할당으로 가져옴
   const { isLoading, startLoading, stopLoading } = useLoadingStore();
 
-  // 회원 값 가져 오기.
+  // 회원 값 가져 오기
   const fetchMembers = async () => {
     try {
       startLoading();
@@ -91,16 +91,23 @@ const MemberManagementPage = () => {
         sortBy,
         startDate: startDate || null,
         endDate: endDate || null,
-        page: currentPage, // 페이지 파라미터 추가
+        page: currentPage, // 1부터 시작하는 페이지 번호
+        size: 10,          // 한 페이지에 보여줄 개수 고정
       };
 
       const cleanParam = Object.fromEntries(
         Object.entries(rawParam).filter(([_, value]) => value !== null && value !== undefined)
       );
 
-      const data = await adminApi.getMembers(cleanParam);
-      setMembers(data);
-      // console.log("받아온 데이터:", data);
+      // 백엔드 응답 구조 변경 대응
+      const response = await adminApi.getMembers(cleanParam);
+
+      setMembers(response.memberList || []);
+      setTotalPages(response.totalPages || 1);
+
+      // (선택 사항) 백엔드에서 전체 통계 데이터를 내려준다면 여기서 세팅 가능합니다.
+      // setTotalCount(response.totalElements); 
+
     } catch (error) {
       console.error("회원 목록을 불러오는 중 에러 발생 : ", error);
     } finally {
@@ -363,11 +370,10 @@ const MemberManagementPage = () => {
               <button
                 key={i + 1}
                 onClick={() => setCurrentPage(i + 1)}
-                className={`h-10 w-10 rounded-xl text-sm font-black transition-all ${
-                  currentPage === i + 1
+                className={`h-10 w-10 rounded-xl text-sm font-black transition-all ${currentPage === i + 1
                     ? 'bg-[#6d3df2] text-white shadow-lg shadow-purple-100'
                     : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
-                }`}
+                  }`}
               >
                 {i + 1}
               </button>
