@@ -47,6 +47,7 @@ const getStoredToken = () => {
 
 const useAuthStore = create((set) => ({
   isLoggedIn: getStoredToken() !== null,
+  accessToken: getStoredToken(),
   user: getStoredUser(),
 
   /**

@@ -109,71 +109,76 @@ const LoginPage = () => {
     setError('');
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!formData.id.trim()) {
-      setError('아이디를 입력해주세요.');
+  if (!formData.id.trim()) {
+    setError('아이디를 입력해주세요.');
+    return;
+  }
+
+  if (!formData.password.trim()) {
+    setError('비밀번호를 입력해주세요.');
+    return;
+  }
+
+  try {
+    setIsSubmitting(true);
+    setError('');
+
+    const response = await login({
+      member_id: formData.id,
+      password: formData.password,
+    });
+
+    const data = response.data;
+
+    if (!data.success) {
+      setError(data.message || '아이디 또는 비밀번호가 올바르지 않습니다.');
       return;
     }
 
-    if (!formData.password.trim()) {
-      setError('비밀번호를 입력해주세요.');
-      return;
+    const token = data.token;
+
+    // role을 반드시 user 객체 안에 넣어야 AdminGuard에서 확인 가능
+    const loginUser = {
+      member_id: formData.id,
+      id: formData.id,
+      role: data.role,
+      nickname: data.nickname,
+      name: data.name,
+    };
+
+    // Zustand 로그인 처리
+    // 이 함수가 localStorage/sessionStorage 저장까지 담당함
+    setAuthLogin(token, loginUser, formData.rememberMe);
+
+    // 축제 찜 목록 복원
+    const userLikedIds = data.likedFestivalIds;
+    if (userLikedIds) {
+      setInitialLikes(userLikedIds);
     }
 
-    try {
+    alert(data.message || '로그인되었습니다.');
 
-      setIsSubmitting(true);
-
-      const response = await login({
-        member_id: formData.id,
-        password: formData.password
-      });
-
-      const data = response.data;
-
-      if (data.success) {
-
-        const token = data.token;
-
-        const userLikedIds = data.likedFestivalIds; // 축제 찜 목록
-        if (userLikedIds) {
-          setInitialLikes(userLikedIds);
-        }
-
-        setAuthLogin(
-          token,
-          { id: formData.id },
-          formData.rememberMe
-        );
-
-        alert(data.message);
-
-        navigate('/');
-
-      } else {
-
-        setError(data.message);
-
-      }
-
-    } catch (err) {
-
-      console.error('Login error:', err);
-
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('로그인 중 오류가 발생했습니다.');
-      }
-
-    } finally {
-
-      setIsSubmitting(false);
-
+    // role에 따라 이동
+    if (data.role === 'ADMIN') {
+      navigate('/admin', { replace: true });
+    } else {
+      navigate('/', { replace: true });
     }
-  };
+  } catch (err) {
+    console.error('Login error:', err);
+
+    if (err.response?.data?.message) {
+      setError(err.response.data.message);
+    } else {
+      setError('로그인 중 오류가 발생했습니다.');
+    }
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleKakaoLogin = () => {
 

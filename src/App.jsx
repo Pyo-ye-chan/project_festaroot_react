@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Footer from './components/Footer'
 import './App.css'
 import SidebarFilter from './features/festival-map/components/SidebarFilter'
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation, Navigate, Outlet } from 'react-router-dom'
 import FestivalMapPage from './features/festival-map/pages/FestivalMapPage'
 import KakaoMapContainer from './components/map/KakaoMapContainer'
 import LoginPage from './features/auth/pages/LoginPage'
@@ -37,7 +37,7 @@ import ScrollToTop from './components/ScrollToTop'
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { MessageCircle } from 'lucide-react';
-import MinimizedChatManager from './components/MinimizedChatManager'
+import MinimizedChatManager from './components/MinimizedChatManager';
 
 // Admin Page Imports
 import MainAdminLayout from './features/admin/MainAdminLayout';
@@ -50,14 +50,89 @@ import GatheringManagementPage from './features/admin/pages/GatheringManagementP
 import NoticeManagementPage from './features/admin/pages/NoticeManagementPage';
 import InquiryManagementPage from './features/admin/pages/InquiryManagementPage';
 
+import useAuthStore from './store/useAuthStore';
+
+// 관리자 계정 로그인
+const AdminGuard = () => {
+  const user = useAuthStore((state) => state.user);
+  const accessToken = useAuthStore((state) => state.accessToken);
+
+  const storedToken =
+    accessToken ||
+    localStorage.getItem('accessToken') ||
+    sessionStorage.getItem('accessToken');
+
+  let storedUser = user;
+
+  if (!storedUser) {
+    try {
+      const rawUser =
+        localStorage.getItem('user') ||
+        sessionStorage.getItem('user');
+
+      storedUser = rawUser ? JSON.parse(rawUser) : null;
+    } catch (error) {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      sessionStorage.removeItem('accessToken');
+      sessionStorage.removeItem('user');
+
+      return <Navigate to="/login" replace />;
+    }
+  }
+
+  if (!storedToken || !storedUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (storedUser.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />;
+};
 
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const authUser = useAuthStore((state) => state.user);
+  const authAccessToken = useAuthStore((state) => state.accessToken);
+
   const { floatingChatIds, minimizedChatIds, chatRooms, restoreFloatingChat, openFloatingChat, clearChatStore } = useChatStore();
   const isLoading = useLoadingStore(state => state.isLoading);
   const { setInitialLikes } = useFestivalLikeStore();
+
+  // 관리자는 관리자 페이지로 이동
+  useEffect(() => {
+    const token =
+      authAccessToken ||
+      localStorage.getItem('accessToken') ||
+      sessionStorage.getItem('accessToken');
+
+    let user = authUser;
+
+    if (!user) {
+      try {
+        const rawUser =
+          localStorage.getItem('user') ||
+          sessionStorage.getItem('user');
+
+        user = rawUser ? JSON.parse(rawUser) : null;
+      } catch (error) {
+        user = null;
+      }
+    }
+
+    if (!token || !user) return;
+
+    const isAdmin = user.role === 'ADMIN';
+    const isAdminPage = location.pathname.startsWith('/admin');
+
+    if (isAdmin && !isAdminPage) {
+      navigate('/admin', { replace: true });
+    }
+  }, [authUser, authAccessToken, location.pathname, navigate]);
 
   // 전역 로그아웃 감시 훅 기용
   // 사용자가 로그아웃 버튼을 눌러 localStorage가 비워지거나 페이지가 바뀔 때 전역 스토어를 즉시 청소합니다.
@@ -96,6 +171,8 @@ function App() {
     restoreLikes();
   }, [setInitialLikes])
 
+
+
   return (
     <>
       <ScrollToTop />
@@ -117,18 +194,20 @@ function App() {
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/ai-planner" element={<AIPlannerPage />} />
         </Route>
-        
+
         {/* Admin Routes */}
-        <Route path="/admin" element={<MainAdminLayout />}>
-          <Route index element={<AdminDashboardPage />} /> {/* Default admin page */}
-          <Route path="dashboard" element={<AdminDashboardPage />} />
-          <Route path="members" element={<MemberManagementPage />} />
-          <Route path="festivals" element={<FestivalDataManagementPage />} />
-          <Route path="posts" element={<PostManagementPage />} />
-          <Route path="comments" element={<CommentManagementPage />} />
-          <Route path="gatherings" element={<GatheringManagementPage />} />
-          <Route path="notices" element={<NoticeManagementPage />} />
-          <Route path="inquiries" element={<InquiryManagementPage />} />
+        <Route element={<AdminGuard />}>
+          <Route path="/admin" element={<MainAdminLayout />}>
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="members" element={<MemberManagementPage />} />
+            <Route path="festivals" element={<FestivalDataManagementPage />} />
+            <Route path="posts" element={<PostManagementPage />} />
+            <Route path="comments" element={<CommentManagementPage />} />
+            <Route path="gatherings" element={<GatheringManagementPage />} />
+            <Route path="notices" element={<NoticeManagementPage />} />
+            <Route path="inquiries" element={<InquiryManagementPage />} />
+          </Route>
         </Route>
 
         <Route path="/login" element={<LoginPage />} />
