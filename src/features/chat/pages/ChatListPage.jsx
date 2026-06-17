@@ -382,8 +382,8 @@ const ChatListPage = () => {
       const responseData = await gatheringApi.getUserChatRooms(userId);
       const rawRooms = Array.isArray(responseData) ? responseData : (responseData.list || []);
 
-      console.log("responseData =", responseData);
-      console.log("isArray =", Array.isArray(responseData));
+      // console.log("responseData =", responseData); 
+      // console.log("isArray =", Array.isArray(responseData)); // 배열 여부
 
       const formattedRooms = rawRooms.map(room => {
 
@@ -404,7 +404,7 @@ const ChatListPage = () => {
         }
       });
 
-      console.log("formattedRooms", formattedRooms);
+      // console.log("formattedRooms", formattedRooms); // 받은 값
 
       setChatRooms(formattedRooms);
     } catch (error) {

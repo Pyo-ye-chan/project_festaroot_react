@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Search, ChevronDown, ChevronUp, Users, ArrowRight } from 'lucide-react';
+import { MessageCircle, Search, ChevronDown, ChevronUp, Users, ArrowRight, User } from 'lucide-react'; // 1. User 아이콘 추가
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const ChatSidebar = ({
@@ -52,7 +52,7 @@ const ChatSidebar = ({
             // 검색 필터링 시에도 1:1 채팅방의 상대방 닉네임 기준으로 검색되도록 개선
             let displayTitle = c.room_title || c.ROOM_TITLE || c.title || c.TITLE || '';
             
-            if (roomType === 'PRIVATE' || roomType === 'DIRECT') {
+            if (roomType === 'DIRECT') {
               const opponent = c.participants?.find(p => {
                 const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
                 return String(pId) !== String(currentUserId);
@@ -130,7 +130,7 @@ const ChatSidebar = ({
                       const currentRoomId = chat.id || chat.room_id || chat.ROOM_ID;
                       const roomType = (chat.type || chat.room_type || chat.ROOM_TYPE)?.toUpperCase();
 
-                      let currentRoomTitle = chat.room_title || chat.ROOM_TITLE || chat.title || chat.TITLE || '채팅방';
+                      let currentRoomTitle = chat.room_title || chat.ROOM_TITLE || chat.title || chat.TITLE || '퇴장한 사용자';
                       let currentRoomImage = chat.room_image || chat.ROOM_IMAGE;
 
                       const unreadCount = chat.unread_count ?? chat.UNREAD_COUNT ?? 0;
@@ -138,7 +138,7 @@ const ChatSidebar = ({
                       const maxCapacity = chat.max_capacity ?? chat.MAX_CAPACITY;
                       const lastMessage = chat.lastMessage || chat.last_message || chat.LAST_MESSAGE;
 
-                      if (roomType === 'PRIVATE' || roomType === 'DIRECT') {
+                      if (roomType === 'DIRECT') {
                         // 1) 만약 내부 participants 배열이 존재하는 경우 탐색
                         const opponent = chat.participants?.find(p => {
                           const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
@@ -155,6 +155,9 @@ const ChatSidebar = ({
                         }
                       }
 
+                      // 2. 오직 1:1 채팅이면서 최종 방 타이틀이 '퇴장한 사용자'일 때만 true가 되는 안전한 플래그 생성
+                      const isOpponentLeft = roomType === 'DIRECT' && currentRoomTitle === '퇴장한 사용자';
+
                       return (
                         <button
                           key={currentRoomId}
@@ -169,16 +172,23 @@ const ChatSidebar = ({
                             }`}
                         >
                           <div className="relative flex-shrink-0">
-                            <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden">
-                              <img
-                                src={currentRoomImage || (roomType === 'DIRECT' ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(roomType))}
-                                alt={currentRoomTitle}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = (roomType === 'PRIVATE' || roomType === 'DIRECT') ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(roomType);
-                                }}
-                              />
+                            {/* 3. 아이콘 중앙 정렬을 위해 부모 div에 flex items-center justify-center 추가 */}
+                            <div className="w-12 h-12 rounded-2xl bg-gray-100 overflow-hidden flex items-center justify-center">
+                              {isOpponentLeft ? (
+                                // 퇴장한 사용자일 때만 Lucide <User /> 아이콘 적용
+                                <User className="w-5 h-5 text-gray-400" />
+                              ) : (
+                                // 퇴장하지 않은 정상 유저는 하늘님이 짜두신 기존 img 로직 그대로 수행
+                                <img
+                                  src={currentRoomImage || (roomType === 'DIRECT' ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(roomType))}
+                                  alt={currentRoomTitle}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = (roomType === 'PRIVATE' || roomType === 'DIRECT') ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(roomType);
+                                  }}
+                                />
+                              )}
                             </div>
 
                             {unreadCount > 0 && (
