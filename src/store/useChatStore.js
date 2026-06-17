@@ -14,8 +14,8 @@ const getLocalUser = () => {
 const useChatStore = create((set, get) => ({
   activeChatId: null,
   floatingChatIds: [],
-  minimizedChatIds: [], // 💡 전역 접힘 상태 추가
-  focusedFloatingId: null, // 💡 전역 포커스 레이어 상태 추가
+  minimizedChatIds: [],
+  focusedFloatingId: null,
   chatRooms: [],
 
   setActiveChatId: (activeChatId) => set({ activeChatId }),
@@ -197,8 +197,8 @@ const useChatStore = create((set, get) => ({
 
   clearChatStore: () => set({
     floatingChatIds: [],
-    minimizedChatIds: [], // 청소 추가
-    focusedFloatingId: null, // 청소 추가
+    minimizedChatIds: [],
+    focusedFloatingId: null,
     activeChatId: null,
     messagesByRoom: {}
   })

@@ -123,7 +123,33 @@ const gatheringApi = {
             params: { activeChatId: activeChatId }
         });
         return response.data;
-    }
+    },
+
+    // 1:1 채팅 생성
+    createOrGetDirectRoom: async (currentUserId, targetMemberId) => {
+        const response = await maxios.post('/api/chat/direct', {
+            currentUserId,
+            targetMemberId
+        });
+        return response.data;
+    },
+
+    // 1:1 채팅방 나가기 / 차단하고 나가기 연동 API
+    leavePrivateRoom: async (room_id, member_id, isBlock = false, targetMemberId = null) => {
+        const response = await maxios.post(`/api/chat/rooms/${room_id}/leave`, {
+            memberId: member_id,
+            isBlock,
+            targetMemberId
+        });
+        return response.data;
+    },
+
+    // 채팅방 목록 조회
+    getUserChatRooms: async (userId) => {
+        const response = await maxios.get(`/api/chat/rooms/user/${userId}`);
+        return response.data;
+    },
+    
 };
 
 export default gatheringApi;
