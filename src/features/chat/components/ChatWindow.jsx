@@ -17,7 +17,7 @@ const ChatWindow = ({
   setMessage,
   handleSendMessage,
   participants,
-  onStartPrivateChat, // 1:1 채팅 시작
+  onStartDirectChat, // ✨ ChatDetails와 명칭을 통일하여 1:1 채팅 함수 연동
   currentUserId // 로그인한 본인 아이디 받아오기 추가
 }) => {
 
@@ -68,7 +68,7 @@ const ChatWindow = ({
           className={`flex items-center gap-4 min-w-0 ${!isPrivateChat ? 'cursor-pointer group' : ''}`}
           onClick={() => !isPrivateChat && toggleSidebar('details')}
         >
-          {/* 3. 아이콘 중앙 정렬을 위해 flex items-center justify-center 추가 */}
+          {/* 아이콘 중앙 정렬을 위해 flex items-center justify-center 추가 */}
           <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
             {isOpponentLeft ? (
               // 상대방이 나간 1:1 채팅방이면 Lucide User 아이콘 렌더링
@@ -194,7 +194,7 @@ const ChatWindow = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           const memberId = targetUser?.member_id || targetUser?.MEMBER_ID || targetUser?.id || msg.senderId;
-                          onStartPrivateChat(memberId, displayNickname);
+                          onStartDirectChat(memberId, displayNickname); // ✨ 통일된 1:1 대화 시작 함수 호출
                           setActiveProfileMenuId(null);
                         }}
                         className="w-full px-3 py-2 text-left text-xs font-bold text-purple-700 hover:bg-purple-50 flex items-center gap-2 transition-colors"
