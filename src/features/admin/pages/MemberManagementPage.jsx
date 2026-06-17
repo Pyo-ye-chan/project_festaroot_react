@@ -18,6 +18,7 @@ import {
   Clock,
   AlertTriangle,
 } from 'lucide-react';
+import adminApi from '../../../api/adminApiHN';
 
 const ROLE_LABELS = {
   all: '전체 권한',
@@ -37,91 +38,14 @@ const PROVIDER_LABELS = {
   LOCAL: '일반',
   KAKAO: '카카오',
   NAVER: '네이버',
+  GOOGLE: '구글'
 };
 
-const dummyMembers = [
-  {
-    id: 'MEM-001',
-    nickname: '축제요정',
-    email: 'chulsoo@example.com',
-    role: 'USER',
-    status: 'ACTIVE',
-    provider: 'KAKAO',
-    joinedAt: '2026.06.10',
-    lastLogin: '2026.06.17 09:15',
-    reports: 0,
-    reportReason: '',
-    lastReportDate: '-',
-    processingResult: '정상 활동 중',
-    suspensionEndDate: '-',
-  },
-  {
-    id: 'MEM-004',
-    nickname: '프로불편러',
-    email: 'jiwoo@example.com',
-    role: 'USER',
-    status: 'SUSPENDED',
-    provider: 'LOCAL',
-    joinedAt: '2026.05.20',
-    lastLogin: '2026.06.10 11:20',
-    reports: 5,
-    reportReason: '반복적인 욕설 및 비방',
-    lastReportDate: '2026.06.09',
-    processingResult: '7일 정지 (진행중)',
-    suspensionEndDate: '2026.06.24', 
-  },
-  {
-    id: 'MEM-005',
-    nickname: '광고천재',
-    email: 'daeun@example.com',
-    role: 'USER',
-    status: 'BLACKLISTED',
-    provider: 'NAVER',
-    joinedAt: '2026.04.15',
-    lastLogin: '2026.05.01 10:05',
-    reports: 12,
-    reportReason: '상업적 홍보 도배',
-    lastReportDate: '2026.04.30',
-    processingResult: '영구 정지 (완료)',
-    suspensionEndDate: '영구',
-  },
-  {
-    id: 'MEM-006',
-    nickname: '여행가족',
-    email: 'gunwoo@example.com',
-    role: 'USER',
-    status: 'ACTIVE',
-    provider: 'KAKAO',
-    joinedAt: '2026.06.15',
-    lastLogin: '2026.06.16 20:10',
-    reports: 0,
-    reportReason: '',
-    lastReportDate: '-',
-    processingResult: '정상 활동 중',
-    suspensionEndDate: '-',
-  },
-  {
-    id: 'MEM-007',
-    nickname: '잠자는숲',
-    email: 'seoyeon@example.com',
-    role: 'USER',
-    status: 'INACTIVE',
-    provider: 'LOCAL',
-    joinedAt: '2025.12.10',
-    lastLogin: '2026.02.15 14:30',
-    reports: 0,
-    reportReason: '',
-    lastReportDate: '-',
-    processingResult: '정상 활동 중',
-    suspensionEndDate: '-',
-  },
-];
-
 const statusClass = {
-  ACTIVE: 'bg-emerald-50 text-emerald-600',
-  SUSPENDED: 'bg-orange-50 text-orange-600',
-  BLACKLISTED: 'bg-red-50 text-red-500',
-  INACTIVE: 'bg-gray-100 text-gray-500',
+  ACTIVE: 'bg-emerald-50 text-emerald-600', // 활동
+  SUSPENDED: 'bg-orange-50 text-orange-600', // 정지
+  BLACKLISTED: 'bg-red-50 text-red-500', // 블랙리스트(영구정지)
+  INACTIVE: 'bg-gray-100 text-gray-500', // 휴면(사용?)
 };
 
 const roleClass = {
@@ -133,16 +57,17 @@ const providerClass = {
   LOCAL: 'bg-slate-100 text-slate-500',
   KAKAO: 'bg-yellow-100 text-yellow-700',
   NAVER: 'bg-emerald-100 text-emerald-700',
+  GOOGLE: 'bg-emerald-100 text-emerald-700',
 };
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 
 const MemberManagementPage = () => {
-  const [members, setMembers] = useState(dummyMembers);
+  const [members, setMembers] = useState([]);
   const [keyword, setKeyword] = useState('');
   const [role, setRole] = useState('all');
   const [status, setStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('latest'); 
+  const [sortBy, setSortBy] = useState('latest');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -151,40 +76,30 @@ const MemberManagementPage = () => {
   const [targetMember, setTargetMember] = useState(null);
   const [suspensionDays, setSuspensionDays] = useState('7');
 
-  const filteredMembers = useMemo(() => {
-    let result = members.filter((member) => {
-      const lowerKeyword = keyword.trim().toLowerCase();
-      const keywordMatch =
-        !lowerKeyword ||
-        member.nickname.toLowerCase().includes(lowerKeyword) ||
-        member.email.toLowerCase().includes(lowerKeyword) ||
-        member.id.toLowerCase().includes(lowerKeyword);
+  // 회원 값 가져 오기.
+  const fetchMembers = async () => {
+    try {
+      const param = {
+        keyword,
+        role,
+        status,
+        sortBy,
+        startDate,
+        endDate
+      };
 
-      const roleMatch = role === 'all' || member.role === role;
-      const statusMatch = status === 'all' || member.status === status;
-      
-      const joinDate = new Date(member.joinedAt);
-      const start = startDate ? new Date(startDate) : null;
-      const end = endDate ? new Date(endDate) : null;
-      const dateMatch = (!start || joinDate >= start) && (!end || joinDate <= end);
-
-      return keywordMatch && roleMatch && statusMatch && dateMatch;
-    });
-
-    if (sortBy === 'reports') {
-      result.sort((a, b) => b.reports - a.reports);
-    } else if (sortBy === 'lastLogin') {
-      result.sort((a, b) => new Date(b.lastLogin) - new Date(a.lastLogin));
-    } else if (sortBy === 'oldest') {
-      result.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
-    } else {
-      result.sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt));
+      const data = await adminApi.getMembers(param);
+    } catch (error) {
+      console.error("회원 목록을 불러오는 중 에러 발생 : ", error)
     }
+  }
 
-    return result;
-  }, [members, keyword, role, status, sortBy, startDate, endDate]);
+  // 필터 및 검색 조건이 변경될 때마다 자동 재요청 (디바운싱 처리를 추후 고려해도 좋음)
+  useEffect(() => {
+    fetchMembers();
+  }, [keyword, role, status, sortBy, startDate, endDate]);
 
-  const stats = useMemo(() => {
+  const stats = useMemo(() => { // 기존 client-side useMemo 필터 로직은 제거하고, 통계 계산용으로만 활용
     return {
       total: members.length,
       newToday: members.filter((m) => m.joinedAt === '2026.06.17').length,
@@ -193,6 +108,8 @@ const MemberManagementPage = () => {
     };
   }, [members]);
 
+
+  // 검색 조건 초기화
   const handleReset = () => {
     setKeyword('');
     setRole('all');
@@ -202,46 +119,51 @@ const MemberManagementPage = () => {
     setEndDate('');
   };
 
+  // 정지 일수 지정 모달
   const openSuspensionModal = (member) => {
     setTargetMember(member);
     setIsModalOpen(true);
   };
 
-  const confirmSuspension = () => {
+  // 정지 버튼 클릭시
+  const confirmSuspension = async () => {
     if (!targetMember) return;
-    
-    const today = new Date();
-    today.setDate(today.getDate() + parseInt(suspensionDays));
-    const endDateStr = today.toISOString().split('T')[0].replace(/-/g, '.');
-
-    setMembers(prev => prev.map(m => 
-      m.id === targetMember.id 
-        ? { ...m, status: 'SUSPENDED', suspensionEndDate: endDateStr, processingResult: `${suspensionDays}일 정지 (진행중)` } 
-        : m
-    ));
-    
-    setIsModalOpen(false);
-    setTargetMember(null);
-  };
-
-  const handleBlacklist = (member) => {
-    if (window.confirm(`${member.nickname} 회원을 블랙리스트로 등록하시겠습니까?\n등록 시 영구적으로 서비스 이용이 제한됩니다.`)) {
-      setMembers(prev => prev.map(m => 
-        m.id === member.id 
-          ? { ...m, status: 'BLACKLISTED', suspensionEndDate: '영구', processingResult: '영구 정지 (완료)' } 
-          : m
-      ));
+    try {
+      await adminApi.suspendMember(targetMember.id, parseInt(suspensionDays));
+      alert(`${targetMember.nickname} 회원의 정지 처리가 완료되었습니다.`);
+      setIsModalOpen(false);
+      setTargetMember(null);
+      fetchMembers(); // 목록 갱신
+    } catch (error) {
+      alert("정지 처리 중 오류가 발생했습니다.");
     }
   };
 
-  const handleStatusRestore = (memberId) => {
+  // 블랙리스트 등록
+  const handleBlacklist = async (member) => {
+    if (window.confirm(`${member.nickname} 회원을 블랙리스트로 등록하시겠습니까?\n등록 시 영구적으로 서비스 이용이 제한됩니다.`)) {
+      try {
+        await adminApi.blacklistMember(member.id);
+        alert("블랙리스트로 등록되었습니다.");
+        fetchMembers();
+      } catch (error) {
+        alert("블랙리스트 등록 중 오류가 발생했습니다.");
+      }
+    }
+  };
+
+  // 제재 해제
+  const handleStatusRestore = async (memberId) => {
     const target = members.find(m => m.id === memberId);
+    if (!target) return;
     if (window.confirm(`${target.nickname} 회원의 제재를 해제하고 정상 상태로 변경하시겠습니까?`)) {
-      setMembers(prev => prev.map(m => 
-        m.id === memberId 
-          ? { ...m, status: 'ACTIVE', suspensionEndDate: '-', processingResult: '정상 활동 중' } 
-          : m
-      ));
+      try {
+        await adminApi.restoreMember(memberId);
+        alert("제재가 해제되었습니다.");
+        fetchMembers();
+      } catch (error) {
+        alert("제재 해제 중 오류가 발생했습니다.");
+      }
     }
   };
 
