@@ -49,7 +49,7 @@ const PROVIDER_LABELS = {
 const dummyMembers = [
   {
     id: 'MEM-001',
-    name: '김철수',
+    nickname: '축제요정',
     email: 'chulsoo@example.com',
     role: 'USER',
     status: 'ACTIVE',
@@ -60,7 +60,7 @@ const dummyMembers = [
   },
   {
     id: 'MEM-002',
-    name: '이영희',
+    nickname: '여름바다',
     email: 'younghee@example.com',
     role: 'USER',
     status: 'ACTIVE',
@@ -71,7 +71,7 @@ const dummyMembers = [
   },
   {
     id: 'MEM-003',
-    name: '박민준',
+    nickname: '관리마스터',
     email: 'minjun@example.com',
     role: 'ADMIN',
     status: 'ACTIVE',
@@ -82,7 +82,7 @@ const dummyMembers = [
   },
   {
     id: 'MEM-004',
-    name: '최지우',
+    nickname: '프로불편러',
     email: 'jiwoo@example.com',
     role: 'USER',
     status: 'SUSPENDED',
@@ -93,7 +93,7 @@ const dummyMembers = [
   },
   {
     id: 'MEM-005',
-    name: '정다은',
+    nickname: '광고천재',
     email: 'daeun@example.com',
     role: 'USER',
     status: 'BLACKLISTED',
@@ -104,7 +104,7 @@ const dummyMembers = [
   },
   {
     id: 'MEM-006',
-    name: '강건우',
+    nickname: '여행가족',
     email: 'gunwoo@example.com',
     role: 'USER',
     status: 'ACTIVE',
@@ -115,7 +115,7 @@ const dummyMembers = [
   },
   {
     id: 'MEM-007',
-    name: '윤서연',
+    nickname: '잠자는숲',
     email: 'seoyeon@example.com',
     role: 'USER',
     status: 'INACTIVE',
@@ -153,13 +153,14 @@ const MemberManagementPage = () => {
   const [role, setRole] = useState('all');
   const [status, setStatus] = useState('all');
   const [provider, setProvider] = useState('all');
+  const [sortBy, setSortBy] = useState('latest'); // 'latest', 'oldest', 'reports'
 
   const filteredMembers = useMemo(() => {
-    return members.filter((member) => {
+    let result = members.filter((member) => {
       const lowerKeyword = keyword.trim().toLowerCase();
       const keywordMatch =
         !lowerKeyword ||
-        member.name.toLowerCase().includes(lowerKeyword) ||
+        member.nickname.toLowerCase().includes(lowerKeyword) ||
         member.email.toLowerCase().includes(lowerKeyword) ||
         member.id.toLowerCase().includes(lowerKeyword);
 
@@ -169,7 +170,18 @@ const MemberManagementPage = () => {
 
       return keywordMatch && roleMatch && statusMatch && providerMatch;
     });
-  }, [members, keyword, role, status, provider]);
+
+    // 정렬 로직
+    if (sortBy === 'reports') {
+      result.sort((a, b) => b.reports - a.reports);
+    } else if (sortBy === 'oldest') {
+      result.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
+    } else {
+      result.sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt));
+    }
+
+    return result;
+  }, [members, keyword, role, status, provider, sortBy]);
 
   const stats = useMemo(() => {
     return {
@@ -185,6 +197,7 @@ const MemberManagementPage = () => {
     setRole('all');
     setStatus('all');
     setProvider('all');
+    setSortBy('latest');
   };
 
   const handleStatusChange = (memberId, newStatus) => {
@@ -196,7 +209,7 @@ const MemberManagementPage = () => {
       newStatus === 'BLACKLISTED' ? '블랙리스트 등록' : 
       '정상 상태로 변경';
 
-    if (window.confirm(`${target.name} 회원을 ${actionText} 하시겠습니까?`)) {
+    if (window.confirm(`${target.nickname} 회원을 ${actionText} 하시겠습니까?`)) {
       setMembers((prev) =>
         prev.map((m) => (m.id === memberId ? { ...m, status: newStatus } : m))
       );
@@ -209,12 +222,6 @@ const MemberManagementPage = () => {
       <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div>
-            <p className="flex items-center gap-1.5 text-sm font-black text-[#6d3df2]">
-              <span>FestaRoute Admin</span>
-              <span>&gt;</span>
-              <span>Member Management</span>
-            </p>
-
             <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
               회원 관리
             </h1>
@@ -285,7 +292,7 @@ const MemberManagementPage = () => {
           <div>
             <h2 className="text-lg font-black text-gray-900">회원 검색</h2>
             <p className="mt-1 text-xs font-bold text-gray-400">
-              이름, 이메일, 회원 ID와 가입 조건으로 목록을 필터링합니다.
+              닉네임, 이메일, 회원 ID와 가입 조건으로 목록을 필터링합니다.
             </p>
           </div>
 
@@ -299,7 +306,7 @@ const MemberManagementPage = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1fr]">
           <div>
             <label className="mb-2 block text-xs font-black text-gray-500">
               검색어
@@ -312,7 +319,7 @@ const MemberManagementPage = () => {
               <input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder="이름, 이메일, 회원 ID 검색"
+                placeholder="닉네임, 이메일, 회원 ID 검색"
                 className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm font-semibold text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-[#6d3df2]/40 focus:bg-white focus:ring-4 focus:ring-purple-50"
               />
             </div>
@@ -346,6 +353,17 @@ const MemberManagementPage = () => {
               value,
               label,
             }))}
+          />
+
+          <FilterSelect
+            label="정렬 기준"
+            value={sortBy}
+            onChange={setSortBy}
+            options={[
+              { value: 'latest', label: '최근 가입순' },
+              { value: 'oldest', label: '오래된 가입순' },
+              { value: 'reports', label: '신고 많은순' },
+            ]}
           />
         </div>
       </section>
@@ -398,7 +416,7 @@ const MemberManagementPage = () => {
                 <th className="px-4 py-4">
                   <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
                 </th>
-                <th className="px-4 py-4">이름 / ID</th>
+                <th className="px-4 py-4">닉네임 / ID</th>
                 <th className="px-4 py-4">이메일</th>
                 <th className="px-4 py-4 text-center">권한</th>
                 <th className="px-4 py-4 text-center">상태</th>
@@ -422,7 +440,7 @@ const MemberManagementPage = () => {
                     </td>
 
                     <td className="px-4 py-4 align-middle">
-                      <p className="font-black text-gray-800">{member.name}</p>
+                      <p className="font-black text-gray-800">{member.nickname}</p>
                       <p className="mt-1 text-xs font-semibold text-gray-400">{member.id}</p>
                     </td>
 
@@ -580,7 +598,7 @@ const MemberManagementPage = () => {
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-black text-gray-800">
-                    {member.name} ({member.email})
+                    {member.nickname} ({member.email})
                   </p>
                   <p className="mt-1 text-xs font-bold text-gray-400">
                     누적 신고 {member.reports}건 · 현재 상태: {STATUS_LABELS[member.status]}
@@ -588,7 +606,7 @@ const MemberManagementPage = () => {
                 </div>
 
                 <button type="button" className="shrink-0 text-sm font-black text-[#6d3df2]">
-                  관리
+                  상세보기
                 </button>
               </div>
             ))}
