@@ -41,15 +41,14 @@ import MinimizedChatManager from './components/MinimizedChatManager'
 
 // Admin Page Imports
 import MainAdminLayout from './features/admin/MainAdminLayout';
-import AdminDashboardPage from './features/admin/AdminDashboardPage';
-import MemberManagementPage from './features/admin/MemberManagementPage';
-import FestivalDataManagementPage from './features/admin/FestivalDataManagementPage';
-import PostManagementPage from './features/admin/PostManagementPage';
-import CommentManagementPage from './features/admin/CommentManagementPage';
-import ChatManagementPage from './features/admin/ChatManagementPage';
-import GatheringManagementPage from './features/admin/GatheringManagementPage';
-import NoticeManagementPage from './features/admin/NoticeManagementPage';
-import InquiryManagementPage from './features/admin/InquiryManagementPage';
+import AdminDashboardPage from './features/admin/pages/AdminDashboardPage';
+import MemberManagementPage from './features/admin/pages/MemberManagementPage';
+import FestivalDataManagementPage from './features/admin/pages/FestivalDataManagementPage';
+import PostManagementPage from './features/admin/pages/PostManagementPage';
+import CommentManagementPage from './features/admin/pages/CommentManagementPage';
+import GatheringManagementPage from './features/admin/pages/GatheringManagementPage';
+import NoticeManagementPage from './features/admin/pages/NoticeManagementPage';
+import InquiryManagementPage from './features/admin/pages/InquiryManagementPage';
 
 
 function App() {
@@ -127,7 +126,6 @@ function App() {
           <Route path="festivals" element={<FestivalDataManagementPage />} />
           <Route path="posts" element={<PostManagementPage />} />
           <Route path="comments" element={<CommentManagementPage />} />
-          <Route path="chats" element={<ChatManagementPage />} />
           <Route path="gatherings" element={<GatheringManagementPage />} />
           <Route path="notices" element={<NoticeManagementPage />} />
           <Route path="inquiries" element={<InquiryManagementPage />} />
