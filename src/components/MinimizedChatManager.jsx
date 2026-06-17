@@ -1,19 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, X } from 'lucide-react';
+import { MessageCircle, X, User } from 'lucide-react';
 import useChatStore from '../store/useChatStore';
+import { DEFAULT_IMAGES } from '../constants/DefaultImages';
 
 function MinimizedChatManager() {
   const navigate = useNavigate();
-  const { minimizedChatIds, chatRooms, restoreFloatingChat, removeFloatingChatId } = useChatStore();
+  const { minimizedChatIds, chatRooms, restoreFloatingChat, removeFloatingChatId, currentUserId } = useChatStore();
 
-  // 만약 스토어에 완전히 닫는 액션 이름이 다르다면(예: closeChat 등) 해당 이름으로 매칭해주세요.
   const handleCloseRoom = (e, id) => {
-    e.stopPropagation(); // 버튼 클릭 시 부모의 restoreFloatingChat이 실행되지 않도록 이벤트 전파 차단
+    e.stopPropagation();
     if (removeFloatingChatId) {
       removeFloatingChatId(id);
     } else if (useChatStore.setState) {
-      // 스토어에 별도 삭제 액션이 없을 경우 임시 방편 제어 코드
       useChatStore.setState((state) => ({
         minimizedChatIds: state.minimizedChatIds.filter((chatId) => chatId !== id),
         floatingChatIds: state.floatingChatIds.filter((chatId) => chatId !== id),
@@ -40,7 +39,7 @@ function MinimizedChatManager() {
 
           {/* 팝업/드롭다운 내부 목록 영역 */}
           <div className="p-2 max-h-60 overflow-y-auto custom-scrollbar flex flex-col gap-1">
-            
+
             {/* 1. 최상단: 전체 채팅 페이지 이동 버튼 */}
             <button
               onClick={() => navigate('/community/chat')}
@@ -51,18 +50,39 @@ function MinimizedChatManager() {
 
             <hr className="border-gray-100 my-1" />
 
-            {/* 2. 기존 접힌 채팅방 목록 루프 */}
+            {/* 기존 접힌 채팅방 목록 루프 */}
             {minimizedChatIds.map((id) => {
               const room = chatRooms.find((r) => r.id === id);
 
-              // 1:1 채팅방이면서 혼자 남은 경우(상대방이 퇴장한 경우) 판별
-              const isDirect = room?.type?.toUpperCase() === 'DIRECT';
-              const isOpponentLeft = isDirect && (room?.current_count <= 1);
-              
-              // 조건에 따른 최종 노출 타이틀 결정
-              const displayTitle = isOpponentLeft 
-                ? '퇴장한 사용자' 
-                : (room?.title || `채팅방 ${id}`);
+              // 대/소문자 및 다양한 방 키(room_type 등) 방어 코드
+              const roomType = (room?.type || room?.room_type || room?.ROOM_TYPE)?.toUpperCase();
+              const isDirect = roomType === 'DIRECT';
+              const isOpponentLeft = isDirect && ((room?.current_count ?? room?.CURRENT_COUNT) <= 1);
+
+              // 기본 타이틀 및 이미지 설정
+              let displayTitle = isOpponentLeft
+                ? '퇴장한 사용자'
+                : (room?.room_title || room?.ROOM_TITLE || room?.title || room?.TITLE || `채팅방 ${id}`);
+
+              let resolvedRoomImage = room?.room_image || room?.ROOM_IMAGE;
+
+              // 1:1 채팅방(DIRECT)일 때 상대방 데이터 매핑 추출 (ChatSidebar 로직 동기화)
+              if (isDirect) {
+                // participants 배열 내부 탐색
+                const opponent = room?.participants?.find(p => {
+                  const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
+                  return String(pId) !== String(currentUserId);
+                });
+
+                if (opponent) {
+                  displayTitle = isOpponentLeft ? '퇴장한 사용자' : (opponent.nickname || opponent.NICKNAME || opponent.username || displayTitle);
+                  resolvedRoomImage = opponent.profile_image_url || opponent.PROFILE_IMAGE_URL || opponent.profile_image || opponent.PROFILE_IMAGE || resolvedRoomImage;
+                } else {
+                  // 3-2) MyBatis 단층 Join flat object인 경우
+                  displayTitle = isOpponentLeft ? '퇴장한 사용자' : (room?.opponent_nickname || room?.OPPONENT_NICKNAME || room?.target_nickname || room?.TARGET_NICKNAME || displayTitle);
+                  resolvedRoomImage = room?.opponent_profile || room?.OPPONENT_PROFILE || room?.target_profile_image || room?.TARGET_PROFILE_IMAGE || room?.opponent_profile_image || room?.OPPONENT_PROFILE_IMAGE || resolvedRoomImage;
+                }
+              }
 
               return (
                 <button
@@ -71,12 +91,19 @@ function MinimizedChatManager() {
                   className="w-full text-left px-3 py-2 text-xs font-bold text-gray-700 hover:bg-purple-50 hover:text-purple-600 rounded-xl transition-all flex items-center gap-2.5 group/item justify-between"
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-grow">
-                    <div className="w-6 h-6 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                      <img
-                        src={room?.room_image || 'https://picsum.photos/seed/gathering/100/100'}
-                        className="w-full h-full object-cover"
-                        alt=""
-                      />
+                    {/* 아이콘 중앙 정렬을 위해 flex items-center justify-center 추가 */}
+                    <div className="w-6 h-6 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                      {isOpponentLeft ? (
+                        // 퇴장한 사용자일 경우 <User /> 아이콘 노출
+                        <User className="w-3.5 h-3.5 text-gray-400" />
+                      ) : (
+                        // 정상적인 1:1 혹은 그룹방 커버 이미지 노출
+                        <img
+                          src={resolvedRoomImage || DEFAULT_IMAGES.PROFILE}
+                          className="w-full h-full object-cover"
+                          alt=""
+                        />
+                      )}
                     </div>
                     <span className="truncate flex-grow">
                       {displayTitle}
