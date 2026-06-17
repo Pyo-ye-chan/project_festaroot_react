@@ -63,12 +63,12 @@ const MyPageSidebar = ({ activeTab, setActiveTab }) => {
       </div>
       
       {/* Logout button - hidden on mobile sidebar, usually placed elsewhere or at end of scroll */}
-      <div className="hidden md:block p-6 border-t border-gray-50">
+      {/* <div className="hidden md:block p-6 border-t border-gray-50">
         <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all group">
           <span className="text-lg opacity-50 group-hover:opacity-100 transition-opacity">🚪</span>
           로그아웃
         </button>
-      </div>
+      </div> */}
     </aside>
   );
 };

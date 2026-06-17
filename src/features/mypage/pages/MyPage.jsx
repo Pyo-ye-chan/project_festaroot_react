@@ -62,7 +62,7 @@ const MyPage = () => {
       case 'inquiry':
         return <MyInquiryTab />;
       case 'account':
-        return <MyAccountSettingsTab userDetails={userDetails} />;
+        return <MyAccountSettingsTab userDetails={userDetails} onRefresh={fetchUserData} />;
       case 'notifications':
         return <MyNotificationsTab />;
       default:

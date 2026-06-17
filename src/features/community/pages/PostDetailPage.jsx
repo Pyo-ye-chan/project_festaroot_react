@@ -11,6 +11,9 @@ import {
   Edit3,
   Download,
   List,
+  Eye,
+  Paperclip,
+  MoreHorizontal,
 } from 'lucide-react';
 
 import ReportModal from '../components/ReportModal';
@@ -28,8 +31,10 @@ import {
   toggleCommentLike,
   reportComment,
 } from '../../../api/boardApi';
+import { getMemberProfile } from '../../../api/memberApi';
 
 import useAuthStore from '../../../store/useAuthStore';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
 const PostDetailPage = () => {
   const { id } = useParams();
@@ -66,39 +71,52 @@ const PostDetailPage = () => {
   // 댓글 좋아요 상태
   const [commentLikes, setCommentLikes] = useState({});
 
+  // 현재 로그인 사용자 프로필 이미지 상태
+  const [profileImageUrl, setProfileImageUrl] = useState(null);
+
   // 현재 로그인 사용자
-  const user = useAuthStore((state) => state.user);
+  const { user, isLoggedIn } = useAuthStore();
 
   const currentUserId =
     user?.member_id ||
     user?.id ||
     user?.userId;
 
+  // 현재 로그인 사용자 프로필 이미지 로드 (헤더와 동일한 방식)
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (isLoggedIn && currentUserId) {
+        try {
+          const resp = await getMemberProfile(currentUserId);
+          const imgUrl = resp.data?.member?.profile_image_url ||
+            resp.data?.profile_image_url ||
+            resp.data?.data?.profile_image_url;
+          setProfileImageUrl(imgUrl);
+        } catch (error) {
+          console.error('사용자 프로필 이미지 로드 실패:', error);
+        }
+      }
+    };
+    fetchUserProfile();
+  }, [isLoggedIn, currentUserId]);
+
   // 게시글 상세 조회
   useEffect(() => {
     const fetchPostDetail = async () => {
       try {
         const postDetail = await getPostDetail(id);
-
-        // 서버 응답에서 실제 게시글 데이터만 분리
         const postData = postDetail.data.dto;
 
-        // 게시글 정보 저장
         setPost(postData);
-
-        // 첨부파일 목록 저장
         setAttachments(postDetail.data.list || []);
-
-        // 좋아요 수 저장
         setLikeCount(postData.like_count || 0);
-
       } catch (error) {
         console.error('게시글 상세 조회 실패:', error);
       }
     };
 
     fetchPostDetail();
-  }, [id, currentUserId]);
+  }, [id]);
 
   // 게시글 좋아요 상태 조회
   useEffect(() => {
@@ -139,26 +157,25 @@ const PostDetailPage = () => {
   // 날짜 표시
   const formatDate = (dateValue) => {
     if (!dateValue) return '';
-    return String(dateValue).replace('T', ' ');
+    return String(dateValue).replace('T', ' ').slice(0, 16);
   };
 
   // 카테고리 스타일
   const getCategoryClasses = (postCategory) => {
     switch (postCategory) {
       case '후기':
-        return 'bg-[var(--festival-yellow)] text-gray-800';
+        return 'bg-amber-50 text-amber-700 border-amber-200';
       case '팁':
-        return 'bg-[var(--festival-purple-soft)] text-white';
-      case '정보':
-        return 'bg-gray-300 text-gray-800';
-      case '자유':
-        return 'bg-gray-500 text-white';
       case '꿀팁':
-        return 'bg-blue-400 text-white';
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      case '정보':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case '자유':
+        return 'bg-gray-50 text-gray-700 border-gray-200';
       case '공지사항':
-        return 'bg-red-500 text-white';
+        return 'bg-red-50 text-red-700 border-red-200';
       default:
-        return 'bg-gray-200 text-gray-700';
+        return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
 
@@ -187,11 +204,6 @@ const PostDetailPage = () => {
       console.error('좋아요 처리 실패:', error);
       alert('좋아요 처리에 실패했습니다.');
     }
-  };
-
-  // 공유 모달 열기
-  const handleShareClick = () => {
-    setShowShareModal(true);
   };
 
   // 링크 복사
@@ -390,80 +402,120 @@ const PostDetailPage = () => {
 
   if (!post) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-400 font-bold">
-        게시글을 불러오는 중입니다.
+      <div className="min-h-screen bg-[#f7f7f8] flex items-center justify-center font-['Pretendard']">
+        <p className="text-sm font-semibold text-gray-400">
+          게시글을 불러오는 중입니다.
+        </p>
       </div>
     );
   }
 
-  // 닉네임이 없을 때를 대비한 표시값
   const writerName =
     post.nickname ||
     post.member_nickname ||
     post.member_id ||
     '알 수 없는 사용자';
 
+  const isPostOwner = currentUserId === post.member_id;
+
+  const categoryLabels = {
+    all: '전체',
+    free: '자유',
+    review: '후기',
+    tip: '꿀팁',
+    notice: '공지',
+  };
+
   return (
-    <div className="min-h-screen bg-[var(--warm-white)] font-['Pretendard'] pb-20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* 게시글 영역 */}
-        <article className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+    <div className="min-h-screen bg-[#f7f7f8] font-['Pretendard'] text-gray-900 pb-24">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-8">
+        {/* 상단 이동 영역 */}
+        <div className="mb-5 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => navigate('/community/board/all')}
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            게시판으로 돌아가기
+          </button>
+        </div>
+
+        {/* 게시글 카드 */}
+        <article className="bg-white rounded-3xl border border-gray-200/70 shadow-sm overflow-hidden">
           {/* 게시글 헤더 */}
-          <div className="p-8 md:p-12 border-b border-gray-50">
-            <div className="flex items-center gap-2 mb-4">
+          <header className="px-6 sm:px-10 pt-9 pb-7 border-b border-gray-100">
+            <div className="flex items-center gap-2 mb-5">
               <span
-                className={`px-3 py-1 rounded-lg text-[10px] font-black ${getCategoryClasses(
+                className={`inline-flex items-center h-7 px-3 rounded-full border text-xs font-extrabold ${getCategoryClasses(
                   post.category
                 )}`}
               >
-                {post.category}
+                {categoryLabels[post.category] || post.category || '커뮤니티'}
               </span>
 
-              <span className="text-xs font-bold text-gray-400">
+              <span className="text-xs font-semibold text-gray-400">
                 {formatDate(post.created_at)}
               </span>
             </div>
 
-            <h1 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight mb-8">
+            <h1 className="text-[28px] sm:text-4xl font-black text-gray-950 leading-tight tracking-[-0.03em] mb-7">
               {post.title}
             </h1>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden border-2 border-[var(--festival-purple-soft)]">
+                <div className="w-11 h-11 rounded-full bg-gray-100 overflow-hidden border border-gray-200">
                   <img
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${writerName}`}
+                    src={post.profile_image_url || DEFAULT_IMAGES.PROFILE}
                     alt={writerName}
                   />
                 </div>
 
                 <div>
-                  <p className="font-black text-gray-900">{writerName}</p>
-                  <p className="text-xs font-bold text-gray-400">
+                  <p className="text-sm font-extrabold text-gray-900">
+                    {writerName}
+                  </p>
+                  <p className="text-xs font-semibold text-gray-400">
                     작성자
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 text-gray-400 text-sm font-bold">
-                <span>조회 {post.view_count || 0}</span>
-                <span className="text-rose-500">좋아요 {likeCount}</span>
+              <div className="flex items-center gap-4 text-xs sm:text-sm font-bold text-gray-400">
+                <span className="inline-flex items-center gap-1">
+                  <Eye className="w-4 h-4" />
+                  {post.view_count || 0}
+                </span>
+
+                <span className="inline-flex items-center gap-1">
+                  <Heart className="w-4 h-4" />
+                  {likeCount}
+                </span>
+
+                <span className="inline-flex items-center gap-1">
+                  <MessageSquare className="w-4 h-4" />
+                  {totalCommentCount}
+                </span>
               </div>
             </div>
-          </div>
+          </header>
 
           {/* 게시글 본문 */}
-          <div className="p-8 md:p-12">
+          <div className="px-6 sm:px-10 py-10">
             <div
               className="
-                prose
-                prose-lg
-                max-w-none
-                prose-img:rounded-3xl
-                prose-img:max-w-3xl
-                prose-img:mx-auto
+                prose prose-lg max-w-none
+                prose-p:text-gray-700
+                prose-p:leading-8
+                prose-headings:text-gray-950
+                prose-headings:font-black
+                prose-strong:text-gray-950
+                prose-a:text-purple-600
+                prose-img:rounded-2xl
                 prose-img:border
                 prose-img:border-gray-100
+                prose-img:mx-auto
               "
               dangerouslySetInnerHTML={{
                 __html: post.content,
@@ -472,10 +524,16 @@ const PostDetailPage = () => {
 
             {/* 첨부파일 */}
             {attachments.length > 0 && (
-              <div className="mt-8 bg-gray-50 rounded-[2rem] p-6 border border-gray-100">
-                <h3 className="text-lg font-black text-gray-900 mb-4">
-                  첨부파일
-                </h3>
+              <div className="mt-10 rounded-2xl border border-gray-200 bg-gray-50 p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Paperclip className="w-5 h-5 text-gray-500" />
+                  <h3 className="text-sm font-black text-gray-800">
+                    첨부파일
+                  </h3>
+                  <span className="text-xs font-bold text-gray-400">
+                    {attachments.length}
+                  </span>
+                </div>
 
                 <div className="space-y-2">
                   {attachments.map((file) => (
@@ -485,13 +543,13 @@ const PostDetailPage = () => {
                       onClick={() => {
                         window.location.href = `http://localhost/storage/download/${file.attach_id}`;
                       }}
-                      className="w-full flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3 hover:bg-purple-50 transition-all"
+                      className="w-full flex items-center justify-between gap-4 rounded-xl bg-white border border-gray-200 px-4 py-3 hover:border-purple-200 hover:bg-purple-50/40 transition-colors"
                     >
-                      <span className="text-sm font-bold text-gray-700 truncate">
+                      <span className="text-sm font-semibold text-gray-700 truncate">
                         {file.file_name}
                       </span>
 
-                      <span className="flex items-center gap-1 text-xs font-black text-[var(--festival-purple)]">
+                      <span className="flex items-center gap-1 text-xs font-black text-purple-600 shrink-0">
                         <Download className="w-4 h-4" />
                         다운로드
                       </span>
@@ -501,69 +559,71 @@ const PostDetailPage = () => {
               </div>
             )}
 
-            {/* 게시글 액션 영역 */}
-            <div className="mt-12 pt-8 border-t border-gray-50 space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-
-                  {currentUserId !== post.member_id && (
+            {/* 게시글 액션 */}
+            <div className="mt-12 pt-7 border-t border-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  {!isPostOwner && (
                     <button
+                      type="button"
                       onClick={handleTogglePostLike}
-                      className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black transition-all active:scale-95 ${isLiked
-                        ? 'bg-rose-500 text-white shadow-lg shadow-rose-200'
-                        : 'bg-gray-50 text-gray-600 hover:bg-rose-50 hover:text-rose-500'
-                        }`}
+                      className={`
+                        inline-flex items-center gap-2 h-11 px-5 rounded-full text-sm font-black transition-all active:scale-95
+                        ${isLiked
+                          ? 'bg-rose-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-rose-50 hover:text-rose-500'
+                        }
+                      `}
                     >
-                      <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-                      {likeCount}
+                      <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+                      좋아요 {likeCount}
                     </button>
                   )}
 
                   <button
-                    onClick={handleShareClick}
-                    className="flex items-center gap-2 px-6 py-3 bg-gray-50 text-gray-600 hover:bg-gray-100 rounded-2xl font-black transition-all active:scale-95"
+                    type="button"
+                    onClick={() => setShowShareModal(true)}
+                    className="inline-flex items-center gap-2 h-11 px-5 rounded-full bg-gray-100 text-gray-700 text-sm font-black hover:bg-gray-200 transition-colors active:scale-95"
                   >
-                    <Share2 className="w-5 h-5" />
+                    <Share2 className="w-4 h-4" />
                     공유
                   </button>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* 작성자만 수정/삭제 가능 */}
-                  {currentUserId === post.member_id && (
-
+                  {isPostOwner ? (
                     <>
                       <button
+                        type="button"
                         onClick={() =>
                           navigate(`/community/update/${post.post_id}`, {
                             state: { post },
                           })
                         }
-                        className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-[var(--festival-purple)] font-bold text-sm transition-colors"
+                        className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-100 hover:text-purple-600 transition-colors"
                       >
                         <Edit3 className="w-4 h-4" />
                         수정
                       </button>
 
                       <button
+                        type="button"
                         onClick={handleDeletePost}
-                        className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-rose-500 font-bold text-sm transition-colors"
+                        className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold text-gray-500 hover:bg-rose-50 hover:text-rose-500 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                         삭제
                       </button>
                     </>
-                  )}
-
-                  {/* 본인 게시글이 아닐 때만 신고 가능 */}
-                  {currentUserId !== post.member_id && (
+                  ) : (
                     <button
+                      type="button"
                       onClick={() => {
                         setReportTargetType('post');
                         setReportTargetId(post.post_id);
                         setIsReportModalOpen(true);
                       }}
-                      className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-red-500 font-bold text-sm transition-colors"
+                      className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                     >
                       <AlertCircle className="w-4 h-4" />
                       신고
@@ -575,398 +635,441 @@ const PostDetailPage = () => {
           </div>
         </article>
 
-        {/* 댓글 영역 */}
-        <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-8 border-b border-gray-50 flex items-center gap-3">
-            <MessageSquare className="w-6 h-6 text-[var(--festival-purple)]" />
-
-            <h3 className="text-xl font-black text-gray-900">
-              댓글 {totalCommentCount}
-            </h3>
+        {/* 댓글 섹션 */}
+        <section className="mt-6 bg-white rounded-3xl border border-gray-200/70 shadow-sm overflow-hidden">
+          <div className="px-6 sm:px-10 py-6 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-purple-600" />
+              <h2 className="text-xl font-black text-gray-950">
+                댓글
+              </h2>
+              <span className="text-sm font-black text-purple-600">
+                {totalCommentCount}
+              </span>
+            </div>
           </div>
 
-          <div className="p-8">
+          <div className="px-6 sm:px-10 py-7">
             {/* 댓글 입력 */}
-            <div className="flex gap-4 mb-10">
-              <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
-                <img
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUserId || 'currentUser'}`}
-                  alt=""
-                />
-              </div>
+            <div className="mb-8">
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
+                  <img
+                    src={profileImageUrl || DEFAULT_IMAGES.PROFILE}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </div>
 
-              <div className="flex-grow relative">
-                <textarea
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="따뜻한 댓글을 남겨주세요."
-                  className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm min-h-[100px] focus:ring-2 focus:ring-[var(--festival-purple)]/20 outline-none resize-none"
-                />
+                <div className="flex-1">
+                  <textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="댓글을 남겨보세요."
+                    className="w-full min-h-[96px] rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm resize-none outline-none focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
+                  />
 
-                <button
-                  type="button"
-                  onClick={handleAddComment}
-                  disabled={!commentText.trim()}
-                  className="absolute bottom-4 right-4 bg-[var(--festival-purple)] text-white p-2.5 rounded-xl hover:bg-[var(--festival-purple-soft)] transition-all active:scale-95 disabled:opacity-50"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
+                  <div className="flex justify-end mt-3">
+                    <button
+                      type="button"
+                      onClick={handleAddComment}
+                      disabled={!commentText.trim()}
+                      className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-purple-600 text-white text-sm font-black hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                    >
+                      <Send className="w-4 h-4" />
+                      등록
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* 댓글 목록 */}
-            <div className="space-y-8">
-              {comments.map((comment) => {
-                const isMyComment = currentUserId === comment.member_id;
+            {comments.length === 0 ? (
+              <div className="py-12 text-center">
+                <p className="text-sm font-bold text-gray-400">
+                  아직 댓글이 없습니다. 첫 댓글을 남겨보세요.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {comments.map((comment) => {
+                  const isMyComment = currentUserId === comment.member_id;
 
-                return (
-                  <div key={comment.comment_id} className="space-y-5">
-                    {/* 부모 댓글 */}
-                    <div className="flex gap-4">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
-                        <img
-                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.nickname || comment.member_id}`}
-                          alt=""
-                        />
-                      </div>
-
-                      <div className="flex-grow">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-black text-sm text-gray-900">
-                              {comment.nickname || comment.member_id || '알 수 없는 사용자'}
-                            </span>
-
-                            <span className="text-[10px] font-bold text-gray-400">
-                              {formatDate(comment.created_at)}
-                            </span>
-                          </div>
-
-                          {/* 댓글 액션 */}
-                          <div className="flex items-center gap-3">
-                            {isMyComment ? (
-                              <>
-                                {/* 본인 댓글: 수정 */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleEditComment(comment)}
-                                  className="text-gray-300 hover:text-[var(--festival-purple)] transition-colors"
-                                  title="댓글 수정"
-                                >
-                                  <Edit3 className="w-4 h-4" />
-                                </button>
-
-                                {/* 본인 댓글: 삭제 */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteComment(comment.comment_id)}
-                                  className="text-gray-300 hover:text-rose-500 transition-colors"
-                                  title="댓글 삭제"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                {/* 다른 사람 댓글: 좋아요 */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleCommentLike(comment.comment_id)}
-                                  className={`flex items-center gap-1 text-xs font-bold transition-colors ${commentLikes[comment.comment_id]
-                                      ? 'text-rose-500'
-                                      : 'text-gray-400 hover:text-rose-500'
-                                    }`}
-                                  title="댓글 좋아요"
-                                >
-                                  <Heart
-                                    className={`w-4 h-4 ${commentLikes[comment.comment_id] ? 'fill-current' : ''
-                                      }`}
-                                  />
-                                  {comment.like_count || 0}
-                                </button>
-
-                                {/* 다른 사람 댓글: 신고 */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setReportTargetType('comment');
-                                    setReportTargetId(comment.comment_id);
-                                    setIsReportModalOpen(true);
-                                  }}
-                                  className="text-gray-300 hover:text-red-500 transition-colors"
-                                  title="댓글 신고"
-                                >
-                                  <AlertCircle className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
-                          </div>
+                  return (
+                    <div key={comment.comment_id} className="py-6">
+                      {/* 부모 댓글 */}
+                      <div className="flex gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
+                          <img
+                            src={comment.profile_image_url || DEFAULT_IMAGES.PROFILE}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
                         </div>
 
-                        {/* 댓글 수정 모드 */}
-                        {editingCommentId === comment.comment_id ? (
-                          <div className="flex flex-col gap-2">
-                            <textarea
-                              value={editedCommentText}
-                              onChange={(e) => setEditedCommentText(e.target.value)}
-                              className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-[var(--festival-purple)]/20 outline-none resize-none"
-                              rows="3"
-                            />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-black text-gray-900">
+                                  {comment.nickname || comment.member_id || '알 수 없는 사용자'}
+                                </span>
 
-                            <div className="flex gap-2 justify-end">
-                              <button
-                                type="button"
-                                onClick={handleCancelEdit}
-                                className="px-4 py-2 rounded-xl bg-gray-100 text-gray-500 text-sm font-bold"
-                              >
-                                취소
-                              </button>
+                                {comment.member_id === post.member_id && (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-purple-50 text-[10px] font-bold text-purple-600">
+                                    작성자
+                                  </span>
+                                )}
+                              </div>
 
-                              <button
-                                type="button"
-                                onClick={() => handleSaveEditedComment(comment.comment_id)}
-                                disabled={!editedCommentText.trim()}
-                                className="px-4 py-2 rounded-xl bg-[var(--festival-purple)] text-white text-sm font-bold disabled:opacity-50"
-                              >
-                                저장
-                              </button>
+                              <p className="mt-0.5 text-xs font-medium text-gray-400">
+                                {formatDate(comment.created_at)}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              {isMyComment ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditComment(comment)}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-purple-600 transition-colors"
+                                    title="수정"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteComment(comment.comment_id)}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"
+                                    title="삭제"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleCommentLike(comment.comment_id)}
+                                    className={`
+                                      inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-colors
+                                      ${commentLikes[comment.comment_id]
+                                        ? 'text-rose-500 bg-rose-50'
+                                        : 'text-gray-400 hover:bg-rose-50 hover:text-rose-500'
+                                      }
+                                    `}
+                                  >
+                                    <Heart
+                                      className={`w-3.5 h-3.5 ${commentLikes[comment.comment_id] ? 'fill-current' : ''
+                                        }`}
+                                    />
+                                    {comment.like_count || 0}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setReportTargetType('comment');
+                                      setReportTargetId(comment.comment_id);
+                                      setIsReportModalOpen(true);
+                                    }}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                                    title="신고"
+                                  >
+                                    <AlertCircle className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
-                        ) : (
-                          <p className="text-sm text-gray-600 mb-3 font-medium">
-                            {comment.content}
-                          </p>
-                        )}
 
-                        {/* 답글 버튼 */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setReplyTargetId(comment.comment_id);
-                            setReplyText('');
-                          }}
-                          className="text-[11px] font-black text-gray-400 hover:text-[var(--festival-purple)] transition-colors"
-                        >
-                          답글
-                        </button>
+                          {editingCommentId === comment.comment_id ? (
+                            <div className="mt-3">
+                              <textarea
+                                value={editedCommentText}
+                                onChange={(e) => setEditedCommentText(e.target.value)}
+                                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm resize-none outline-none focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
+                                rows="3"
+                              />
 
-                        {/* 대댓글 입력 */}
-                        {replyTargetId === comment.comment_id && (
-                          <div className="mt-4 flex gap-2">
-                            <input
-                              value={replyText}
-                              onChange={(e) => setReplyText(e.target.value)}
-                              placeholder="답글을 입력하세요."
-                              className="flex-grow bg-gray-50 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20"
-                            />
+                              <div className="flex justify-end gap-2 mt-2">
+                                <button
+                                  type="button"
+                                  onClick={handleCancelEdit}
+                                  className="h-9 px-3 rounded-lg bg-gray-100 text-gray-500 text-sm font-bold hover:bg-gray-200 transition-colors"
+                                >
+                                  취소
+                                </button>
 
-                            <button
-                              type="button"
-                              onClick={() => handleAddReply(comment.comment_id)}
-                              disabled={!replyText.trim()}
-                              className="px-4 py-2 rounded-xl bg-[var(--festival-purple)] text-white text-sm font-bold disabled:opacity-50"
-                            >
-                              등록
-                            </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEditedComment(comment.comment_id)}
+                                  disabled={!editedCommentText.trim()}
+                                  className="h-9 px-3 rounded-lg bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                                >
+                                  저장
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="mt-3 text-[15px] text-gray-700 leading-7 whitespace-pre-wrap">
+                              {comment.content}
+                            </p>
+                          )}
 
+                          {editingCommentId !== comment.comment_id && (
                             <button
                               type="button"
                               onClick={() => {
-                                setReplyTargetId(null);
+                                setReplyTargetId(comment.comment_id);
                                 setReplyText('');
                               }}
-                              className="px-4 py-2 rounded-xl bg-gray-100 text-gray-500 text-sm font-bold"
+                              className="mt-3 text-xs font-bold text-gray-400 hover:text-purple-600 transition-colors"
                             >
-                              취소
+                              답글
                             </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                          )}
 
-                    {/* 대댓글 목록 */}
-                    {comment.children && comment.children.length > 0 && (
-                      <div className="ml-14 space-y-5 border-l-2 border-gray-50 pl-6">
-                        {comment.children.map((reply) => {
-                          const isMyReply = currentUserId === reply.member_id;
+                          {/* 대댓글 입력 */}
+                          {replyTargetId === comment.comment_id && (
+                            <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                              <input
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                placeholder="답글을 입력하세요."
+                                className="flex-1 h-10 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm outline-none focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
+                              />
 
-                          return (
-                            <div key={reply.comment_id} className="flex gap-3">
-                              <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex-shrink-0">
-                                <img
-                                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${reply.nickname || reply.member_id}`}
-                                  alt=""
-                                />
-                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddReply(comment.comment_id)}
+                                  disabled={!replyText.trim()}
+                                  className="h-10 px-4 rounded-xl bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                                >
+                                  등록
+                                </button>
 
-                              <div className="flex-grow">
-                                <div className="flex items-center justify-between mb-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-black text-xs text-gray-900">
-                                      {reply.nickname || reply.member_id || '알 수 없는 사용자'}
-                                    </span>
-
-                                    <span className="text-[9px] font-bold text-gray-400">
-                                      {formatDate(reply.created_at)}
-                                    </span>
-                                  </div>
-
-                                  {/* 대댓글 액션 */}
-                                  <div className="flex items-center gap-3">
-                                    {isMyReply ? (
-                                      <>
-                                        {/* 본인 대댓글: 수정 */}
-                                        <button
-                                          type="button"
-                                          onClick={() => handleEditComment(reply)}
-                                          className="text-gray-300 hover:text-[var(--festival-purple)] transition-colors"
-                                          title="대댓글 수정"
-                                        >
-                                          <Edit3 className="w-3.5 h-3.5" />
-                                        </button>
-
-                                        {/* 본인 대댓글: 삭제 */}
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDeleteComment(reply.comment_id)}
-                                          className="text-gray-300 hover:text-rose-500 transition-colors"
-                                          title="대댓글 삭제"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </>
-                                    ) : (
-                                      <>
-                                        {/* 다른 사람 대댓글: 좋아요 */}
-                                        <button
-                                          type="button"
-                                          onClick={() => handleToggleCommentLike(reply.comment_id)}
-                                          className={`flex items-center gap-1 text-[11px] font-bold transition-colors ${commentLikes[reply.comment_id]
-                                              ? 'text-rose-500'
-                                              : 'text-gray-400 hover:text-rose-500'
-                                            }`}
-                                          title="대댓글 좋아요"
-                                        >
-                                          <Heart
-                                            className={`w-3.5 h-3.5 ${commentLikes[reply.comment_id] ? 'fill-current' : ''
-                                              }`}
-                                          />
-                                          {reply.like_count || 0}
-                                        </button>
-
-                                        {/* 다른 사람 대댓글: 신고 */}
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setReportTargetType('reply');
-                                            setReportTargetId(reply.comment_id);
-                                            setIsReportModalOpen(true);
-                                          }}
-                                          className="text-gray-300 hover:text-red-500 transition-colors"
-                                          title="대댓글 신고"
-                                        >
-                                          <AlertCircle className="w-3.5 h-3.5" />
-                                        </button>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* 대댓글 수정 모드 */}
-                                {editingCommentId === reply.comment_id ? (
-                                  <div className="flex flex-col gap-2">
-                                    <textarea
-                                      value={editedCommentText}
-                                      onChange={(e) => setEditedCommentText(e.target.value)}
-                                      className="w-full bg-gray-50 border-none rounded-xl p-2 text-xs focus:ring-2 focus:ring-[var(--festival-purple)]/20 outline-none resize-none"
-                                      rows="2"
-                                    />
-
-                                    <div className="flex gap-2 justify-end">
-                                      <button
-                                        type="button"
-                                        onClick={handleCancelEdit}
-                                        className="px-3 py-1 rounded-lg bg-gray-100 text-gray-500 text-xs font-bold"
-                                      >
-                                        취소
-                                      </button>
-
-                                      <button
-                                        type="button"
-                                        onClick={() => handleSaveEditedComment(reply.comment_id)}
-                                        disabled={!editedCommentText.trim()}
-                                        className="px-3 py-1 rounded-lg bg-[var(--festival-purple)] text-white text-xs font-bold disabled:opacity-50"
-                                      >
-                                        저장
-                                      </button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p className="text-xs text-gray-600 font-medium">
-                                    {reply.content}
-                                  </p>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReplyTargetId(null);
+                                    setReplyText('');
+                                  }}
+                                  className="h-10 px-4 rounded-xl bg-gray-100 text-gray-500 text-sm font-bold hover:bg-gray-200 transition-colors"
+                                >
+                                  취소
+                                </button>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                          )}
 
-              {comments.length === 0 && (
-                <div className="text-center text-sm text-gray-400 font-bold py-10">
-                  아직 댓글이 없습니다. 첫 댓글을 남겨보세요.
-                </div>
-              )}
-            </div>
+                          {/* 대댓글 목록 */}
+                          {comment.children && comment.children.length > 0 && (
+                            <div className="mt-5 space-y-5 border-l-2 border-gray-100 pl-5">
+                              {comment.children.map((reply) => {
+                                const isMyReply = currentUserId === reply.member_id;
+
+                                return (
+                                  <div key={reply.comment_id} className="flex gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
+                                      <img
+                                        src={reply.profile_image_url || DEFAULT_IMAGES.PROFILE}
+                                        alt=""
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-xs font-black text-gray-900">
+                                              {reply.nickname || reply.member_id || '알 수 없는 사용자'}
+                                            </span>
+
+                                            {reply.member_id === post.member_id && (
+                                              <span className="px-1.5 py-0.5 rounded-md bg-purple-50 text-[10px] font-bold text-purple-600">
+                                                작성자
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <p className="mt-0.5 text-[11px] font-medium text-gray-400">
+                                            {formatDate(reply.created_at)}
+                                          </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-1">
+                                          {isMyReply ? (
+                                            <>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleEditComment(reply)}
+                                                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-purple-600 transition-colors"
+                                                title="수정"
+                                              >
+                                                <Edit3 className="w-3.5 h-3.5" />
+                                              </button>
+
+                                              <button
+                                                type="button"
+                                                onClick={() => handleDeleteComment(reply.comment_id)}
+                                                className="p-1.5 rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"
+                                                title="삭제"
+                                              >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                              </button>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleToggleCommentLike(reply.comment_id)}
+                                                className={`
+                                                  inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-colors
+                                                  ${commentLikes[reply.comment_id]
+                                                    ? 'text-rose-500 bg-rose-50'
+                                                    : 'text-gray-400 hover:bg-rose-50 hover:text-rose-500'
+                                                  }
+                                                `}
+                                              >
+                                                <Heart
+                                                  className={`w-3.5 h-3.5 ${commentLikes[reply.comment_id]
+                                                      ? 'fill-current'
+                                                      : ''
+                                                    }`}
+                                                />
+                                                {reply.like_count || 0}
+                                              </button>
+
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setReportTargetType('reply');
+                                                  setReportTargetId(reply.comment_id);
+                                                  setIsReportModalOpen(true);
+                                                }}
+                                                className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                                                title="신고"
+                                              >
+                                                <AlertCircle className="w-3.5 h-3.5" />
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {editingCommentId === reply.comment_id ? (
+                                        <div className="mt-3">
+                                          <textarea
+                                            value={editedCommentText}
+                                            onChange={(e) => setEditedCommentText(e.target.value)}
+                                            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm resize-none outline-none focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
+                                            rows="2"
+                                          />
+
+                                          <div className="flex justify-end gap-2 mt-2">
+                                            <button
+                                              type="button"
+                                              onClick={handleCancelEdit}
+                                              className="h-8 px-3 rounded-lg bg-gray-100 text-gray-500 text-xs font-bold hover:bg-gray-200 transition-colors"
+                                            >
+                                              취소
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              onClick={() => handleSaveEditedComment(reply.comment_id)}
+                                              disabled={!editedCommentText.trim()}
+                                              className="h-8 px-3 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                                            >
+                                              저장
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <p className="mt-2 text-sm text-gray-700 leading-6 whitespace-pre-wrap">
+                                          {reply.content}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
 
-        {/* 목록 이동 버튼: 글을 다 읽은 후 이동하도록 하단에 배치 */}
-        <div className="flex justify-center mt-10">
+        {/* 하단 목록 버튼 */}
+        <div className="flex justify-center mt-8">
           <button
+            type="button"
             onClick={() => navigate('/community/board/all')}
-            className="flex items-center gap-2 px-8 h-14 rounded-2xl bg-white border border-gray-200 text-gray-700 font-black shadow-sm hover:bg-[var(--festival-purple)] hover:text-white hover:border-[var(--festival-purple)] transition-all active:scale-95"
+            className="inline-flex items-center gap-2 h-12 px-6 rounded-full bg-white border border-gray-200 text-gray-700 text-sm font-black shadow-sm hover:bg-gray-900 hover:text-white hover:border-gray-900 transition-all active:scale-95"
           >
-            <List className="w-5 h-5" />
+            <List className="w-4 h-4" />
             게시글 목록으로 가기
           </button>
         </div>
-      </div>
+      </main>
 
       {/* 공유 모달 */}
       {showShareModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-sm bg-white rounded-[2rem] p-6 shadow-2xl">
-            <h3 className="text-xl font-black text-gray-900 mb-2">
-              게시글 공유하기
-            </h3>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <h3 className="text-xl font-black text-gray-950">
+                  게시글 공유하기
+                </h3>
 
-            <p className="text-sm text-gray-500 font-medium mb-6">
-              친구에게 이 게시글을 공유해보세요.
-            </p>
+                <p className="mt-1 text-sm text-gray-500 font-medium">
+                  친구에게 이 게시글을 공유해보세요.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowShareModal(false)}
+                className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
+                <MoreHorizontal className="w-5 h-5" />
+              </button>
+            </div>
 
             <div className="space-y-3">
               <button
+                type="button"
                 onClick={handleKakaoShare}
-                className="w-full py-4 rounded-2xl bg-[#FEE500] text-[#181600] font-black hover:brightness-95 transition-all"
+                className="w-full h-12 rounded-2xl bg-[#FEE500] text-[#181600] font-black hover:brightness-95 transition-all"
               >
                 카카오톡으로 공유하기
               </button>
 
               <button
+                type="button"
                 onClick={handleCopyLink}
-                className="w-full py-4 rounded-2xl bg-gray-100 text-gray-700 font-black hover:bg-gray-200 transition-all"
+                className="w-full h-12 rounded-2xl bg-gray-100 text-gray-700 font-black hover:bg-gray-200 transition-all"
               >
                 링크 복사하기
               </button>
 
               <button
+                type="button"
                 onClick={() => setShowShareModal(false)}
-                className="w-full py-3 text-sm text-gray-400 font-bold hover:text-gray-600"
+                className="w-full h-10 text-sm text-gray-400 font-bold hover:text-gray-600"
               >
                 닫기
               </button>
