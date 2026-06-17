@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Draggable from 'react-draggable';
-import { Send, X, MessageCircle, Minimize2, User } from 'lucide-react';
+import { Send, X, MessageCircle, Minimize2, User, Paperclip } from 'lucide-react'; // ✨ Paperclip 추가
 import useChatStore from '../../../store/useChatStore';
 import gatheringApi from '../../../api/gatheringApi';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
@@ -24,7 +24,6 @@ const FloatingChat = ({ roomId, index }) => {
   const scrollRef = useRef(null);
   const nodeRef = useRef(null);
 
-  // 스크린샷 피드백 기반: 축제/소셜 로그인 분기 통합 처리
   const user = JSON.parse(localStorage.getItem('user'));
   const userId = user?.member_id || user?.id || user?.userId;
 
@@ -55,7 +54,6 @@ const FloatingChat = ({ roomId, index }) => {
   const activeChat = chatRooms.find(c => c.id === roomId);
   const messages = messagesByRoom[roomId] || [];
 
-  // 1:1 채팅방 상대방 퇴장 여부 실시간 가공 로직
   const chatType = activeChat?.type?.toUpperCase() || activeChat?.room_type?.toUpperCase();
   const isPrivateChat = chatType === 'DIRECT';
 
@@ -66,10 +64,8 @@ const FloatingChat = ({ roomId, index }) => {
       })
     : null;
 
-  // API가 완료되어 참여자 배열이 있고(본인은 들어있음), 상대방이 없으면 퇴장 판정
   const isOpponentLeft = isPrivateChat && participants.length > 0 && !opponent;
 
-  // 타이틀 분기 가공
   const displayRoomTitle = isOpponentLeft
     ? '퇴장한 사용자'
     : activeChat?.title || `채팅방 ${roomId}`;
@@ -110,7 +106,6 @@ const FloatingChat = ({ roomId, index }) => {
         <header className="drag-handle bg-purple-600 text-white cursor-move active:cursor-grabbing flex items-center flex-shrink-0 h-14 px-4 border-b border-gray-100 rounded-t-3xl justify-between">
           <div className="flex items-center gap-2 min-w-0">
             <MessageCircle className="w-5 h-5 text-white flex-shrink-0" />
-            {/* 가공된 디스플레이 룸 타이틀 적용 */}
             <span className="font-black text-xs truncate">{displayRoomTitle}</span>
           </div>
 
@@ -146,16 +141,13 @@ const FloatingChat = ({ roomId, index }) => {
               );
             }
 
-            // 고유 식별 필드 매칭 다각화 (방어 코드)
             const targetUser = participants.find(p => {
               const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
               const pUsername = p.username || p.userId || p.USER_ID || p.loginId;
               return String(pId) === String(msg.senderId) || (pUsername && String(pUsername) === String(msg.senderId));
             });
 
-            // 본인이 아니고 참여자 명단에도 완전히 결여되어 있을 때만 퇴장 유저 판정
             const isLeftUser = !msg.isMe && !targetUser;
-
             const userProfileImg = msg.senderProfile || targetUser?.profile_image_url || targetUser?.PROFILE_IMAGE_URL;
 
             return (
@@ -163,10 +155,8 @@ const FloatingChat = ({ roomId, index }) => {
                 {!msg.isMe && (
                   <div className={`w-8 h-8 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 mt-1 shadow-sm flex items-center justify-center ${isLeftUser ? 'bg-gray-200/50 opacity-60' : ''}`}>
                     {isLeftUser ? (
-                      /* 1. 진짜 퇴장한 사람만 User 아이콘 처리 */
                       <User className="w-4 h-4 text-gray-400" />
                     ) : (
-                      /* 2. 퇴장 안 한 일반 참여자는 이미지 주소 주입 (없으면 기본 아바타) */
                       <img
                         src={userProfileImg || DEFAULT_IMAGES.PROFILE}
                         alt={msg.sender}
@@ -189,8 +179,27 @@ const FloatingChat = ({ roomId, index }) => {
                     </span>
                   )}
                   <div className={`flex items-end gap-1.5 ${msg.isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                    <div className={`px-3 py-1.5 rounded-2xl text-xs font-medium ${msg.isMe ? 'bg-purple-600 text-white rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none border'}`}>
-                      {msg.text}
+                    {/* 플로팅 창 이미지/파일 랜더링 고도화 */}
+                    <div className={`rounded-2xl text-xs font-medium overflow-hidden ${
+                      msg.type === 'IMAGE' || msg.type === 'image'
+                        ? 'p-0 shadow-none'
+                        : msg.isMe ? 'bg-purple-600 text-white rounded-tr-none px-3 py-1.5' : 'bg-white text-gray-800 rounded-tl-none border px-3 py-1.5'
+                    }`}>
+                      {msg.type === 'IMAGE' || msg.type === 'image' ? (
+                        <img 
+                          src={msg.text} 
+                          alt="첨부 이미지" 
+                          className="max-w-[180px] max-h-40 rounded-xl object-cover border border-gray-100 cursor-pointer"
+                          onClick={() => window.open(msg.text, '_blank')}
+                        />
+                      ) : msg.type === 'file' ? (
+                        <div className="flex items-center gap-1">
+                          <Paperclip className="w-3 h-3 text-purple-600 flex-shrink-0" />
+                          <span className="underline truncate max-w-[110px] cursor-pointer" title={msg.text}>{msg.text}</span>
+                        </div>
+                      ) : (
+                        msg.text
+                      )}
                     </div>
                     <span className="text-[8px] text-gray-400 font-bold mb-0.5">{msg.time}</span>
                   </div>
@@ -200,8 +209,26 @@ const FloatingChat = ({ roomId, index }) => {
           })}
         </div>
 
+        {/* 하단 입력 폼 영역 */}
         <div className="p-3 border-t bg-white rounded-b-3xl">
           <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+            {/* 플로팅 챗 이미지 첨부 UI 추가 */}
+            <label className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl cursor-pointer transition-all flex-shrink-0">
+              <input
+                type="file"
+                accept="image/*, .pdf, .doc, .docx, .xls, .xlsx, .txt"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const isImage = file.type.startsWith('image/');
+                    const fileUrl = isImage ? URL.createObjectURL(file) : file.name;
+                    sendMessage(roomId, fileUrl, isImage ? 'IMAGE' : 'file');
+                  }
+                }}
+              />
+              <Paperclip className="w-4 h-4" />
+            </label>
             <input
               type="text"
               value={message}
@@ -209,7 +236,7 @@ const FloatingChat = ({ roomId, index }) => {
               placeholder="메시지 입력..."
               className="flex-grow bg-gray-50 rounded-xl py-1.5 px-3 text-xs outline-none focus:ring-1 focus:ring-purple-500"
             />
-            <button type="submit" className="p-1.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors">
+            <button type="submit" className="p-1.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors flex-shrink-0">
               <Send className="w-3.5 h-3.5" />
             </button>
           </form>
