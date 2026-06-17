@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -14,11 +14,23 @@ import {
   ChevronDown,
   CircleUser,
   UsersRound,
+  LogOut,
 } from 'lucide-react';
+import useAuthStore from '../../store/useAuthStore';
+
 
 const MainAdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const { user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    if (window.confirm('로그아웃 하시겠습니까?')) {
+      logout();
+      navigate('/login');
+    }
+  };
 
   // 현재 라우터에 실제로 등록된 관리자 페이지 기준 메뉴
   const menus = [
@@ -78,11 +90,10 @@ const MainAdminLayout = () => {
                   <button
                     type="button"
                     onClick={() => navigate(menu.path)}
-                    className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all ${
-                      isActive
+                    className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all ${isActive
                         ? 'bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] text-white shadow-lg shadow-purple-100'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-[#6d3df2]'
-                    }`}
+                      }`}
                   >
                     <Icon
                       size={18}
@@ -105,6 +116,20 @@ const MainAdminLayout = () => {
               );
             })}
           </ul>
+
+          <div className="mt-6 border-t border-gray-100 pt-6">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-gray-500 transition-all hover:bg-red-50 hover:text-red-600"
+            >
+              <LogOut
+                size={18}
+                className="text-gray-400 group-hover:text-red-600"
+              />
+              <span className="flex-1 text-left">로그아웃</span>
+            </button>
+          </div>
         </nav>
 
         {/* 하단 가이드 카드 */}
@@ -147,11 +172,21 @@ const MainAdminLayout = () => {
           </p>
         </div>
 
-        <div className="relative">
-          <Bell size={22} className="text-gray-500" />
-          <span className="absolute -right-1 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-yellow-400 text-[10px] font-black text-yellow-900">
-            8
-          </span>
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Bell size={22} className="text-gray-500" />
+            <span className="absolute -right-1 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-yellow-400 text-[10px] font-black text-yellow-900">
+              8
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="text-gray-500 transition hover:text-red-600"
+          >
+            <LogOut size={22} />
+          </button>
         </div>
       </header>
 
@@ -195,24 +230,16 @@ const MainAdminLayout = () => {
                 8
               </span>
             </button>
-
-            <div className="h-8 w-px bg-gray-100" />
-
-            <button
-              type="button"
-              className="flex items-center gap-3 rounded-2xl p-1.5 transition hover:bg-gray-50"
-            >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-100 text-[#6d3df2]">
-                <CircleUser size={24} />
-              </div>
-
-              <div className="text-left">
-                <p className="text-sm font-black text-gray-800">관리자</p>
-                <p className="text-xs font-bold text-gray-400">최고 관리자</p>
-              </div>
-
-              <ChevronDown size={17} className="text-gray-400" />
-            </button>
+     
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                title="로그아웃"
+              >
+                <LogOut size={22} />
+              </button>
+         
           </div>
         </header>
 
