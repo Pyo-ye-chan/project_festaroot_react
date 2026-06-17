@@ -26,6 +26,7 @@ const ROLE_LABELS = {
 const STATUS_LABELS = {
   all: '전체 상태',
   ACTIVE: '정상',
+  DELETED: '탈퇴',
   SUSPENDED: '정지',
   BLACKLISTED: '블랙리스트',
   INACTIVE: '휴면',
@@ -50,7 +51,6 @@ const roleClass = {
   ADMIN: 'bg-purple-50 text-purple-600',
 };
 
-// 🔴 구글(GOOGLE) 가입 경로 스타일을 빨간색 계열로 변경
 const providerClass = {
   LOCAL: 'bg-slate-100 text-slate-500',
   KAKAO: 'bg-yellow-100 text-yellow-700',
@@ -241,7 +241,7 @@ const MemberManagementPage = () => {
       {/* 회원 목록 테이블 */}
       <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
-          <h2 className="text-lg font-black text-gray-900">회원 목록 <span className="ml-1 text-[#6d3df2]">{displayedMembers.length}</span></h2>
+          <h2 className="text-lg font-black text-gray-900">회원 목록 <span className="ml-1 text-[#6d3df2]">{displayedMembers.length}</span> 명</h2>
           <div className="flex gap-2">
             <button className="h-10 px-4 rounded-xl border border-orange-100 bg-orange-50 text-xs font-black text-orange-600 hover:bg-orange-100 transition">정지 선택</button>
             <button className="h-10 px-4 rounded-xl border border-red-100 bg-red-50 text-xs font-black text-red-500 hover:bg-red-100 transition">블랙리스트 추가</button>
