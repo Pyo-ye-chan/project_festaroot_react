@@ -21,7 +21,7 @@ const chatApi = {
     },
 
     // 1:1 채팅방 나가기 / 차단하고 나가기 연동
-    leavePrivateRoom: async (room_id, member_id, isBlock = false, targetMemberId = null) => {
+    leaveDirectRoom: async (room_id, member_id, isBlock = false, targetMemberId = null) => {
         const response = await maxios.post(`${BASE_PATH}/rooms/${room_id}/leave`, {
             memberId: member_id,
             isBlock,
