@@ -1,7 +1,7 @@
-import maxios from 'axios';
+import { maxios } from "./axiosApi";
 
 // 기본 API 경로 설정 (경로 시작 시 '/' 기호 확인)
-const BASE_URL = '/api/admin/members';
+const BASE_URL = '/admin/members';
 
 const adminApi = {
     // 1. 회원 목록 조회 (검색 키워드, 권한, 상태, 정렬, 기간 등 파라미터 전달)

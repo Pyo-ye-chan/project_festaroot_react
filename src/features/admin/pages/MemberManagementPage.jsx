@@ -79,20 +79,29 @@ const MemberManagementPage = () => {
   // 회원 값 가져 오기.
   const fetchMembers = async () => {
     try {
-      const param = {
-        keyword,
-        role,
-        status,
+      // 1. 보낼 데이터를 임시 객체로 생성
+      const rawParam = {
+        keyword: keyword.trim() || null, // 빈 문자열이면 null 처리
+        role: role === 'all' ? null : role, // 'all'이면 보내지 않거나 null 처리
+        status: status === 'all' ? null : status, // 'all'이면 보내지 않거나 null 처리
         sortBy,
-        startDate,
-        endDate
+        startDate: startDate || null, // 선택 안 됐으면 null 처리
+        endDate: endDate || null,     // 선택 안 됐으면 null 처리
       };
 
-      const data = await adminApi.getMembers(param);
+      // 2. null이나 undefined인 키값은 전송 파라미터에서 제외 (깨끗한 객체 만들기)
+      const cleanParam = Object.fromEntries(
+        Object.entries(rawParam).filter(([_, value]) => value !== null && value !== undefined)
+      );
+
+      // 3. 정제된 데이터로 API 요청
+      const data = await adminApi.getMembers(cleanParam);
+      setMembers(data);
+      console.log("받아온 데이터:", data);
     } catch (error) {
-      console.error("회원 목록을 불러오는 중 에러 발생 : ", error)
+      console.error("회원 목록을 불러오는 중 에러 발생 : ", error);
     }
-  }
+  };
 
   // 필터 및 검색 조건이 변경될 때마다 자동 재요청 (디바운싱 처리를 추후 고려해도 좋음)
   useEffect(() => {
@@ -349,15 +358,15 @@ const MemberManagementPage = () => {
                       <p className="text-[11px] font-bold text-gray-400">{m.email}</p>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black ${statusClass[m.status]}`}>{STATUS_LABELS[m.status]}</span>
+                      <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black ${statusClass[m.status]}`}>{STATUS_LABELS[m.status]}</span> {/* status : 활동 상태 */}
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <span className="inline-flex h-6 w-10 items-center justify-center rounded bg-red-50 font-black text-red-500 text-[11px]">{m.reports}건</span>
+                      <span className="inline-flex h-6 w-10 items-center justify-center rounded bg-red-50 font-black text-red-500 text-[11px]">{m.reports}건</span> {/* reports : 누적 신고 건수 */}
                     </td>
-                    <td className="px-4 py-4 font-semibold text-gray-600 truncate" title={m.reportReason}>{m.reportReason}</td>
-                    <td className="px-4 py-4 text-center text-xs font-bold text-gray-400">{m.lastReportDate}</td>
+                    <td className="px-4 py-4 font-semibold text-gray-600 truncate" title={m.reportReason}>{m.reportReason}</td> {/* reportReason : 신고 사유 요약 */}
+                    <td className="px-4 py-4 text-center text-xs font-bold text-gray-400">{m.lastReportDate}</td> {/* lastReportDate : 최근 신고일 */}
                     <td className="px-4 py-4 text-center">
-                      <span className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-[11px] font-black">{m.processingResult}</span>
+                      <span className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-[11px] font-black">{m.processingResult}</span> {/* processingresult : 처리 결과 */}
                     </td>
                     <td className="px-4 py-4 text-center">
                       <button className="text-xs font-black text-[#6d3df2] hover:underline underline-offset-4">상세 조치</button>
