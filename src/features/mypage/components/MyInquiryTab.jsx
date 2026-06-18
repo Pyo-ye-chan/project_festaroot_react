@@ -13,7 +13,7 @@ const MyInquiryTab = () => {
   const { user } = useAuthStore();
   const [openFaq, setOpenFaq] = useState(null);
   const [formData, setFormData] = useState({
-    category: 'SERVICE',
+    category: 'ACCOUNT',
     title: '',
     content: ''
   });
@@ -31,9 +31,11 @@ const MyInquiryTab = () => {
   const [uploading, setUploading] = useState(false);
 
   const categoryMap = {
-    'SERVICE': '서비스 이용 문의',
-    'UPDATE': '축제 정보 수정 요청',
-    'REPORT': '커뮤니티/게시글 신고',
+    'ACCOUNT': '계정/인증',
+    'FESTIVAL': '축제 정보',
+    'GATHERING': '모임/커뮤니티',
+    'REPORT': '신고/이용제한',
+    'ERROR': '오류 제보',
     'ETC': '기타 문의'
   };
 
@@ -92,7 +94,7 @@ const MyInquiryTab = () => {
     setExistingAttachments([]);
     setRemovedAttachIds([]);
     setFormData({
-      category: 'SERVICE',
+      category: 'ACCOUNT',
       title: '',
       content: ''
     });
@@ -470,9 +472,11 @@ const MyInquiryTab = () => {
                     onChange={handleInputChange}
                     className="w-full bg-gray-50 border-none rounded-2xl px-4 py-3 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-purple-500 transition-all outline-none"
                   >
-                    <option value="SERVICE">서비스 이용 문의</option>
-                    <option value="UPDATE">축제 정보 수정 요청</option>
-                    <option value="REPORT">커뮤니티/게시글 신고</option>
+                    <option value="ACCOUNT">계정/인증</option>
+                    <option value="FESTIVAL">축제 정보</option>
+                    <option value="GATHERING">모임/커뮤니티</option>
+                    <option value="REPORT">신고/이용제한</option>
+                    <option value="ERROR">오류 제보</option>
                     <option value="ETC">기타 문의</option>
                   </select>
                 </div>

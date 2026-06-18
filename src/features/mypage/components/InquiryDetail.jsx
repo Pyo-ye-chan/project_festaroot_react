@@ -98,7 +98,7 @@ const InquiryDetail = ({ inquiry, onBack, onEdit, onDelete, getStatusStyle, getS
             답변 내역
           </h3>
 
-          {inquiry.answer_content ? (
+          {inquiry.answer.content ? (
             <div className="space-y-6">
               <div className="flex gap-4 group">
                 <div className="shrink-0">
@@ -112,7 +112,7 @@ const InquiryDetail = ({ inquiry, onBack, onEdit, onDelete, getStatusStyle, getS
                       <span className="text-sm font-black text-gray-900">운영자</span>
                       <span className="px-1.5 py-0.5 bg-purple-100 text-[10px] font-black text-purple-600 rounded">관리자</span>
                     </div>
-                    <span className="text-[10px] font-bold text-gray-400">{inquiry.answered_at}</span>
+                    <span className="text-[10px] font-bold text-gray-400">{inquiry.answer.created_at}</span>
                   </div>
                   <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-purple-100/50 shadow-sm relative">
                     {/* Speech bubble tail */}
@@ -120,7 +120,7 @@ const InquiryDetail = ({ inquiry, onBack, onEdit, onDelete, getStatusStyle, getS
                     
                     <div 
                       className="text-sm text-gray-700 font-medium leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: inquiry.answer_content }}
+                      dangerouslySetInnerHTML={{ __html: inquiry.answer.content }}
                     />
                   </div>
                 </div>

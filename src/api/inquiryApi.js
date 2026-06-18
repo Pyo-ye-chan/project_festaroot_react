@@ -38,7 +38,6 @@ export const deleteInquiry = async (inquiryId, memberId) => {
     params: { memberId }
   });
 };
-
 /**
  * 문의 수정
  * @param {number} inquiryId 
@@ -50,5 +49,29 @@ export const updateInquiry = async (inquiryId, formData) => {
       'Content-Type': 'multipart/form-data',
     },
   });
+};
+
+/**
+ * [관리자] 문의 내역 전체 조회
+ */
+export const getAdminInquiryList = async () => {
+  return await maxios.get('/admin/inquiry/list');
+};
+
+/**
+ * [관리자] 문의 답변 등록/수정
+ * @param {number} inquiryId 
+ * @param {object} answerData { answer: string }
+ */
+export const saveInquiryAnswer = async (inquiryId, answerData) => {
+  return await maxios.post(`/admin/inquiry/answer/${inquiryId}`, answerData);
+};
+
+/**
+ * [관리자] 문의 삭제
+ * @param {number} inquiryId 
+ */
+export const deleteInquiryByAdmin = async (inquiryId) => {
+  return await maxios.delete(`/admin/inquiry/delete/${inquiryId}`);
 };
 
