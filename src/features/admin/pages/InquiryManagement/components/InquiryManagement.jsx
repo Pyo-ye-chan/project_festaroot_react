@@ -14,9 +14,12 @@ import {
 } from 'lucide-react';
 import { 
   getAdminInquiryList, 
-  saveInquiryAnswer 
+  getAdminInquiryDetail,
+  saveInquiryAnswer,
+  updateInquiryAnswer
 } from '../../../../../api/inquiryApi';
 import LoadingSpinner from '../../../../../components/LoadingSpinner';
+import Pagination from '../../../../gathering/components/Pagination';
 
 const INQUIRY_CATEGORIES = {
   ALL: '전체 카테고리',
@@ -36,10 +39,18 @@ const InquiryManagement = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [answerText, setAnswerText] = useState('');
+  const [isUpdateMode, setIsUpdateMode] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchInquiries();
   }, []);
+
+  // 필터가 변경될 때 페이지를 1로 리셋
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [inquiryKeyword, inquiryCategory, statusFilter]);
 
   const fetchInquiries = async () => {
     try {
@@ -65,8 +76,8 @@ const InquiryManagement = () => {
     return inquiries.filter((item) => {
       const lowerKeyword = inquiryKeyword.trim().toLowerCase();
       const title = item.title || '';
-      const author = item.member_id || item.author || '';
-      const id = String(item.inquiry_id || item.id || '');
+      const author = item.member_id || '';
+      const id = String(item.inquiry_id || '');
 
       const keywordMatch = !lowerKeyword || 
         title.toLowerCase().includes(lowerKeyword) ||
@@ -75,7 +86,7 @@ const InquiryManagement = () => {
       
       const categoryMatch = inquiryCategory === 'ALL' || item.category === inquiryCategory;
       
-      const isAnswered = item.status === 1 || item.status === 'ANSWERED' || !!item.answer;
+      const isAnswered = item.status === 'ANSWERED' || item.status === '1' || !!item.answer;
       const currentStatus = isAnswered ? 'ANSWERED' : 'PENDING';
       const statusMatch = statusFilter === 'ALL' || currentStatus === statusFilter;
       
@@ -83,9 +94,40 @@ const InquiryManagement = () => {
     });
   }, [inquiries, inquiryKeyword, inquiryCategory, statusFilter]);
 
-  const handleOpenInquiryDetail = (inquiry) => {
-    setSelectedInquiry(inquiry);
-    setAnswerText(inquiry.answer || '');
+  const paginatedInquiries = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredInquiries.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredInquiries, currentPage, itemsPerPage]);
+
+  const handleOpenInquiryDetail = async (inquiry) => {
+    const inquiryId = inquiry.inquiry_id || inquiry.id;
+    try {
+      const response = await getAdminInquiryDetail(inquiryId);
+      const result = response.data;
+      let detailData = inquiry;
+
+      if (result) {
+        if (result.success && result.data) {
+          detailData = result.data;
+        } else if (!result.success && result.message) {
+          console.error('API error:', result.message);
+        } else {
+          detailData = result;
+        }
+      }
+      
+      setSelectedInquiry(detailData);
+      // answer가 DTO 객체인 경우 content를 추출, 문자열인 경우 그대로 사용
+      const answerContent = detailData.answer?.content || (typeof detailData.answer === 'string' ? detailData.answer : '');
+      setAnswerText(answerContent);
+      setIsUpdateMode(false);
+    } catch (error) {
+      console.error('Failed to fetch inquiry detail:', error);
+      // Fallback to list data if fetch fails
+      setSelectedInquiry(inquiry);
+      setAnswerText(inquiry.answer || '');
+      setIsUpdateMode(false);
+    }
   };
 
   const handleSubmitInquiryAnswer = async () => {
@@ -93,14 +135,20 @@ const InquiryManagement = () => {
     const inquiryId = selectedInquiry.inquiry_id || selectedInquiry.id;
     
     try {
-      const response = await saveInquiryAnswer(inquiryId, { content : answerText });
+      let response;
+      if (isUpdateMode) {
+        response = await updateInquiryAnswer(inquiryId, { content: answerText });
+      } else {
+        response = await saveInquiryAnswer(inquiryId, { content: answerText });
+      }
+
       const result = response.data;
       if (result && result.success) {
-        alert('답변이 등록되었습니다.');
+        alert(isUpdateMode ? '답변이 수정되었습니다.' : '답변이 등록되었습니다.');
         fetchInquiries();
         setSelectedInquiry(null);
       } else {
-        alert(result?.message || '답변 등록에 실패했습니다.');
+        alert(result?.message || '처리에 실패했습니다.');
       }
     } catch (error) {
       console.error('Failed to save answer:', error);
@@ -187,10 +235,10 @@ const InquiryManagement = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredInquiries.map((item) => {
-                const isAnswered = item.status === 1 || item.status === 'ANSWERED' || !!item.answer;
+              {paginatedInquiries.map((item) => {
+                const isAnswered = item.status === 'ANSWERED' || item.status === '1' || !!item.answer;
                 return (
-                  <tr key={item.inquiry_id || item.id} className="group transition hover:bg-gray-50/50">
+                  <tr key={item.inquiry_id} className="group transition hover:bg-gray-50/50">
                     <td className="px-7 py-5">
                       <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-black ${
                         isAnswered ? 'bg-purple-50 text-[#6d3df2]' : 'bg-orange-50 text-orange-500'
@@ -209,7 +257,7 @@ const InquiryManagement = () => {
                         {item.title}
                       </button>
                     </td>
-                    <td className="px-7 py-5 text-sm font-bold text-gray-600">{item.member_id || item.author}</td>
+                    <td className="px-7 py-5 text-sm font-bold text-gray-600">{item.member_id}</td>
                     <td className="px-7 py-5 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button onClick={() => handleOpenInquiryDetail(item)} className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-400 transition hover:border-[#6d3df2] hover:text-[#6d3df2] hover:shadow-sm">
@@ -230,6 +278,18 @@ const InquiryManagement = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {filteredInquiries.length > 0 && (
+          <div className="pt-4 border-t border-gray-50">
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredInquiries.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={(page) => setCurrentPage(page)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Inquiry Detail Modal */}
@@ -241,15 +301,15 @@ const InquiryManagement = () => {
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-sm text-[#6d3df2]"><ShieldAlert size={20} /></div>
                 <div>
                   <h3 className="text-lg font-black text-gray-900">문의 상세보기</h3>
-                  <p className="text-xs font-bold text-gray-400">ID: {selectedInquiry.inquiry_id || selectedInquiry.id}</p>
+                  <p className="text-xs font-bold text-gray-400">ID: {selectedInquiry.inquiry_id}</p>
                 </div>
               </div>
               <button onClick={() => setSelectedInquiry(null)} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-400 shadow-sm"><X size={20} /></button>
             </div>
             <div className="max-h-[70vh] overflow-y-auto px-8 py-8 space-y-8">
               <div className="flex flex-wrap gap-4 rounded-3xl bg-gray-50 p-5">
-                <div className="flex items-center gap-3 min-w-[140px]"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-gray-400"><User size={18} /></div><div><p className="text-[10px] font-black text-gray-400">작성자</p><p className="text-sm font-bold text-gray-900">{selectedInquiry.member_id || selectedInquiry.author}</p></div></div>
-                <div className="flex items-center gap-3 min-w-[140px]"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-gray-400"><Calendar size={18} /></div><div><p className="text-[10px] font-black text-gray-400">작성일</p><p className="text-sm font-bold text-gray-900">{selectedInquiry.created_at || selectedInquiry.createdAt}</p></div></div>
+                <div className="flex items-center gap-3 min-w-[140px]"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-gray-400"><User size={18} /></div><div><p className="text-[10px] font-black text-gray-400">작성자</p><p className="text-sm font-bold text-gray-900">{selectedInquiry.member_id}</p></div></div>
+                <div className="flex items-center gap-3 min-w-[140px]"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-gray-400"><Calendar size={18} /></div><div><p className="text-[10px] font-black text-gray-400">작성일</p><p className="text-sm font-bold text-gray-900">{selectedInquiry.created_at}</p></div></div>
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#6d3df2]"></span><h4 className="text-sm font-black text-gray-900">문의 내용</h4></div>
@@ -284,13 +344,54 @@ const InquiryManagement = () => {
                 </div>
               </div>
               <div className="space-y-4 pt-4">
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400"></span><h4 className="text-sm font-black text-gray-900">관리자 답변</h4></div></div>
-                <textarea placeholder="문의에 대한 답변을 입력해주세요..." value={answerText} onChange={(e) => setAnswerText(e.target.value)} className="min-h-[160px] w-full resize-none rounded-3xl border border-gray-200 bg-white p-6 text-sm font-bold outline-none focus:border-[#6d3df2] focus:ring-4 focus:ring-purple-100" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+                    <h4 className="text-sm font-black text-gray-900">관리자 답변</h4>
+                  </div>
+                  {selectedInquiry.answer?.created_at && (
+                    <span className="text-[10px] font-bold text-gray-400">
+                      답변일: {selectedInquiry.answer.created_at}
+                    </span>
+                  )}
+                </div>
+
+                {selectedInquiry.answer ? (
+                  <div className="rounded-3xl border border-emerald-100 bg-emerald-50/30 p-6 shadow-sm">
+                    <p className="text-sm font-bold leading-7 text-gray-700 whitespace-pre-wrap">
+                      {selectedInquiry.answer.content}
+                    </p>
+                    <div className="mt-4 pt-4 border-t border-emerald-100/50 flex justify-end">
+                      <button 
+                        onClick={() => {
+                          const content = selectedInquiry.answer?.content || '';
+                          setAnswerText(content);
+                          setSelectedInquiry({ ...selectedInquiry, answer: null });
+                          setIsUpdateMode(true);
+                        }}
+                        className="text-[11px] font-black text-emerald-600 hover:underline"
+                      >
+                        답변 수정하기
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <textarea 
+                    placeholder="문의에 대한 답변을 입력해주세요..." 
+                    value={answerText} 
+                    onChange={(e) => setAnswerText(e.target.value)} 
+                    className="min-h-[160px] w-full resize-none rounded-3xl border border-gray-200 bg-white p-6 text-sm font-bold outline-none focus:border-[#6d3df2] focus:ring-4 focus:ring-purple-100" 
+                  />
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3 border-t border-gray-100 bg-gray-50/50 px-8 py-6">
               <button onClick={() => setSelectedInquiry(null)} className="flex-1 py-4 text-sm font-black text-gray-500 bg-white border border-gray-200 rounded-2xl">닫기</button>
-              <button onClick={handleSubmitInquiryAnswer} className="flex-[2] py-4 text-sm font-black text-white bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] rounded-2xl shadow-lg shadow-purple-100">답변 등록하기</button>
+              {!selectedInquiry.answer && (
+                <button onClick={handleSubmitInquiryAnswer} className="flex-[2] py-4 text-sm font-black text-white bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] rounded-2xl shadow-lg shadow-purple-100">
+                  {answerText ? '답변 등록/수정하기' : '답변 등록하기'}
+                </button>
+              )}
             </div>
           </div>
         </div>

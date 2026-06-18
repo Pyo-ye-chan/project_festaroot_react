@@ -59,12 +59,29 @@ export const getAdminInquiryList = async () => {
 };
 
 /**
- * [관리자] 문의 답변 등록/수정
+ * [관리자] 문의 상세 조회
  * @param {number} inquiryId 
- * @param {object} answerData { answer: string }
+ */
+export const getAdminInquiryDetail = async (inquiryId) => {
+  return await maxios.get(`/admin/inquiry/detail/${inquiryId}`);
+};
+
+/**
+ * [관리자] 문의 답변 등록
+ * @param {number} inquiryId 
+ * @param {object} answerData { content: string }
  */
 export const saveInquiryAnswer = async (inquiryId, answerData) => {
   return await maxios.post(`/admin/inquiry/answer/${inquiryId}`, answerData);
+};
+
+/**
+ * [관리자] 문의 답변 수정
+ * @param {number} inquiryId 
+ * @param {object} answerData { content: string }
+ */
+export const updateInquiryAnswer = async (inquiryId, answerData) => {
+  return await maxios.put(`/admin/inquiry/answer/update/${inquiryId}`, answerData);
 };
 
 /**
