@@ -24,7 +24,10 @@ const ChatSidebar = ({
   };
 
   return (
-    <aside className={`flex flex-col bg-white z-20 overflow-y-auto transition-all duration-500 ${customScrollbarClass} ${selectedChatId ? 'w-full md:w-64 lg:w-72 border-r border-gray-100' : 'flex-grow w-full'}`}>
+    <aside className={`flex flex-col bg-white z-20 overflow-y-auto transition-all duration-500 ${customScrollbarClass} ${selectedChatId
+        ? 'hidden md:flex md:w-64 lg:w-72 border-r border-gray-100'
+        : 'w-full'
+      }`}>
       <div className="p-6 border-b border-gray-100">
         <h1 className="text-2xl font-black text-gray-900 mb-6 flex items-center gap-2">
           <MessageCircle className="w-6 h-6 text-purple-600" />
@@ -51,7 +54,7 @@ const ChatSidebar = ({
 
             // 검색 필터링 시에도 1:1 채팅방의 상대방 닉네임 기준으로 검색되도록 개선
             let displayTitle = c.room_title || c.ROOM_TITLE || c.title || c.TITLE || '';
-            
+
             if (roomType === 'DIRECT') {
               const opponent = c.participants?.find(p => {
                 const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
@@ -137,6 +140,7 @@ const ChatSidebar = ({
                       const currentCount = chat.current_count ?? chat.CURRENT_COUNT;
                       const maxCapacity = chat.max_capacity ?? chat.MAX_CAPACITY;
                       const lastMessage = chat.lastMessage || chat.last_message || chat.LAST_MESSAGE;
+                      const lastMessageType = chat.lastMessageType || chat.last_message_type || chat.LAST_MESSAGE_TYPE || chat.message_type;
 
                       if (roomType === 'DIRECT') {
                         // 1) 만약 내부 participants 배열이 존재하는 경우 탐색
@@ -215,7 +219,27 @@ const ChatSidebar = ({
                               )}
                             </div>
                             <p className="text-sm font-medium text-gray-500 truncate mt-0.5">
-                              {lastMessage || '대화 내용이 없습니다.'}
+                              {(() => {
+                                if (!lastMessage) return '대화 내용이 없습니다.';
+
+                                // 조건 A: 백엔드에서 마지막 메시지 타입을 명확히 내려주는 경우 (가장 이상적)
+                                if (lastMessageType?.toUpperCase() === 'IMAGE') {
+                                  return '이미지를 보냈습니다.';
+                                }
+                                if (lastMessageType?.toUpperCase() === 'FILE') {
+                                  return '파일을 보냈습니다.';
+                                }
+
+                                // 조건 B: 타입이 없어서 프론트에서 URL 주소 자체로 판별해야 하는 경우 (안전 장치)
+                                if (typeof lastMessage === 'string' && lastMessage.startsWith('http')) {
+                                  // GCS의 chat 폴더 경로를 포함하거나 이미지 확장자로 끝나는지 체크
+                                  if (lastMessage.includes('/chat/') || lastMessage.match(/\.(jpeg|jpg|gif|png|webp|svg)/i)) {
+                                    return '이미지를 보냈습니다.';
+                                  }
+                                }
+
+                                return lastMessage;
+                              })()}
                             </p>
                           </div>
                         </button>

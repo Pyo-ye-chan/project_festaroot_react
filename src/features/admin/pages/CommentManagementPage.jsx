@@ -201,11 +201,6 @@ const CommentManagementPage = () => {
       <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div>
-            <p className="flex items-center gap-1.5 text-sm font-black text-[#6d3df2]">
-              <span>FestaRoute Admin</span>
-              <span>&gt;</span>
-              <span>Comment Management</span>
-            </p>
 
             <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
               댓글 관리

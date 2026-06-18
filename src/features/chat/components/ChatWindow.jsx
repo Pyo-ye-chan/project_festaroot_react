@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ExternalLink, Users, X, Paperclip, Send, User, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
+import chatApi from '../../../api/chatApi';
 
 const ChatWindow = ({
   selectedChat,
@@ -17,23 +18,18 @@ const ChatWindow = ({
   setMessage,
   handleSendMessage,
   participants,
-  onStartDirectChat, // ✨ ChatDetails와 명칭을 통일하여 1:1 채팅 함수 연동
-  currentUserId // 로그인한 본인 아이디 받아오기 추가
+  onStartDirectChat,
+  currentUserId
 }) => {
 
   const navigate = useNavigate();
-
-  // 프로필 클릭 시 드롭다운을 표시하기 위한 메시지 ID 상태 관리
   const [activeProfileMenuId, setActiveProfileMenuId] = useState(null);
 
-  // 데이터 key 바인딩 가공
   const currentRoomId = selectedChat?.id || selectedChat?.room_id;
   const currentRoomTitle = selectedChat?.title || selectedChat?.room_title;
-
   const chatType = selectedChat?.type?.toUpperCase() || selectedChat?.room_type?.toUpperCase();
-  const isPrivateChat = chatType === 'DIRECT'; // 현재 방이 1:1 채팅방인지 여부 확인
+  const isPrivateChat = chatType === 'DIRECT';
 
-  // 1:1 채팅방일 때 참여자 목록(participants)에서 내가 아닌 상대방 추출
   const opponent = isPrivateChat
     ? participants.find(p => {
       const pId = p.member_id || p.MEMBER_ID || p.id || p.ID;
@@ -41,10 +37,8 @@ const ChatWindow = ({
     })
     : null;
 
-  // 1. 1:1 채팅방이면서 상대방(opponent)을 찾을 수 없는 경우 퇴장 플래그 생성
   const isOpponentLeft = isPrivateChat && !opponent;
 
-  // 2. 퇴장 플래그가 true면 타이틀을 '퇴장한 사용자'로 강제 고정
   const displayRoomTitle = isOpponentLeft
     ? '퇴장한 사용자'
     : opponent
@@ -55,7 +49,6 @@ const ChatWindow = ({
     ? (opponent.profile_image_url || opponent.PROFILE_IMAGE_URL)
     : selectedChat?.room_image;
 
-  // 타입별 기본 룸 이미지 선택 함수
   const getDefaultRoomImage = (type) => {
     return type === 'FESTIVAL' ? DEFAULT_IMAGES.FESTIVAL_FALLBACK : DEFAULT_IMAGES.ROOM_COVER;
   };
@@ -68,13 +61,10 @@ const ChatWindow = ({
           className={`flex items-center gap-4 min-w-0 ${!isPrivateChat ? 'cursor-pointer group' : ''}`}
           onClick={() => !isPrivateChat && toggleSidebar('details')}
         >
-          {/* 아이콘 중앙 정렬을 위해 flex items-center justify-center 추가 */}
           <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
             {isOpponentLeft ? (
-              // 상대방이 나간 1:1 채팅방이면 Lucide User 아이콘 렌더링
               <User className="w-6 h-6 text-gray-400" />
             ) : (
-              // 정상 채팅방 혹은 기존 룸 이미지 로직 그대로 유지
               <img
                 src={displayRoomImage || (isPrivateChat ? DEFAULT_IMAGES.PROFILE : getDefaultRoomImage(chatType))}
                 alt={displayRoomTitle}
@@ -86,7 +76,6 @@ const ChatWindow = ({
               />
             )}
           </div>
-          {/* 가공된 상대방 닉네임 타이틀 실시간 바인딩 */}
           <h2
             className="font-bold text-lg cursor-pointer hover:text-purple-600 transition-colors"
             onClick={() => toggleSidebar('details')}
@@ -121,16 +110,12 @@ const ChatWindow = ({
           });
 
           const isLeftUser = !msg.isMe && !targetUser;
-
           const existingName = targetUser?.nickname || targetUser?.NICKNAME || msg.senderName || msg.sender;
           const displayNickname = isLeftUser
             ? (existingName ? `${existingName}(퇴장한 사용자)` : '퇴장한 사용자')
             : existingName;
 
-          const userProfileImg =
-            msg.senderProfile ||
-            targetUser?.profile_image_url ||
-            targetUser?.PROFILE_IMAGE_URL;
+          const userProfileImg = msg.senderProfile || targetUser?.profile_image_url || targetUser?.PROFILE_IMAGE_URL;
 
           const isSenderHost =
             targetUser?.is_host === 'Y' || targetUser?.IS_HOST === 'Y' ||
@@ -155,7 +140,6 @@ const ChatWindow = ({
             <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'} items-start gap-3`}>
               {!msg.isMe && (
                 <div className="relative">
-                  {/* 이미 1:1 채팅방(isPrivateChat)일 경우 클릭 이벤트 및 마우스 커서 비활성화 */}
                   <div
                     onClick={(e) => {
                       e.stopPropagation();
@@ -183,7 +167,6 @@ const ChatWindow = ({
                     )}
                   </div>
 
-                  {/* 채팅방 내부 프로필 사진 클릭 시 뜨는 1:1 채팅 미니 팝업 UI */}
                   {activeProfileMenuId === msg.id && !isLeftUser && !isPrivateChat && (
                     <div className="absolute left-0 top-14 w-44 bg-white border border-gray-150/80 rounded-2xl shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                       <div className="px-3 py-1 border-b border-gray-50 mb-1">
@@ -194,7 +177,7 @@ const ChatWindow = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           const memberId = targetUser?.member_id || targetUser?.MEMBER_ID || targetUser?.id || msg.senderId;
-                          onStartDirectChat(memberId, displayNickname); // ✨ 통일된 1:1 대화 시작 함수 호출
+                          onStartDirectChat(memberId, displayNickname);
                           setActiveProfileMenuId(null);
                         }}
                         className="w-full px-3 py-2 text-left text-xs font-bold text-purple-700 hover:bg-purple-50 flex items-center gap-2 transition-colors"
@@ -209,7 +192,6 @@ const ChatWindow = ({
 
               <div className={`flex flex-col gap-1.5 max-w-[75%] ${msg.isMe ? 'items-end' : 'items-start'}`}>
                 {!msg.isMe && (
-                  /* 닉네임 클릭 시에도 1:1 채팅방이면 팝업 방지 및 스타일링 분기 */
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
@@ -217,24 +199,36 @@ const ChatWindow = ({
                         setActiveProfileMenuId(activeProfileMenuId === msg.id ? null : msg.id);
                       }
                     }}
-                    className={`text-sm font-black ml-1 select-none ${isLeftUser
-                      ? 'text-gray-400 cursor-default'
-                      : 'text-black cursor-default'
-                      }`}
+                    className="text-sm font-black ml-1 select-none text-black cursor-default"
                   >
                     {isSenderHost && <span className="text-amber-500 text-xs" title="방장">👑 </span>}
                     {displayNickname}
                   </span>
                 )}
                 <div className={`flex items-end gap-2 ${msg.isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className={`px-6 py-3.5 rounded-2xl text-base font-medium shadow-sm ${msg.isMe ? 'bg-purple-600 text-white rounded-tr-none' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'}`}>
-                    {msg.type === 'file' ? (
+
+                  {/* 이미지/텍스트/파일 분기 렌더링 최적화 고도화 */}
+                  <div className={`rounded-2xl text-base font-medium shadow-sm ${msg.type === 'IMAGE' || msg.type === 'image'
+                    ? 'p-0 overflow-hidden shadow-none'
+                    : msg.isMe ? 'bg-purple-600 text-white rounded-tr-none px-6 py-3.5' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-none px-6 py-3.5'
+                    }`}>
+                    {msg.type === 'IMAGE' || msg.type === 'image' ? (
+                      <img
+                        src={msg.text}
+                        alt="첨부 이미지"
+                        className="max-w-[280px] max-h-64 rounded-2xl object-cover border border-gray-100 cursor-pointer hover:opacity-95 transition-opacity"
+                        onClick={() => window.open(msg.text, '_blank')}
+                      />
+                    ) : msg.type === 'file' ? (
                       <div className="flex items-center gap-2">
                         <div className="p-2 bg-purple-50 rounded-lg text-purple-600"><Paperclip className="w-5 h-5" /></div>
                         <span className="underline cursor-pointer decoration-purple-300 underline-offset-4">{msg.text}</span>
                       </div>
-                    ) : msg.text}
+                    ) : (
+                      msg.text
+                    )}
                   </div>
+
                   <span className="text-xs text-gray-400 font-bold mb-1 flex-shrink-0">{msg.time}</span>
                 </div>
               </div>
@@ -247,13 +241,36 @@ const ChatWindow = ({
       <div className="p-6 border-t border-gray-100 bg-white flex-shrink-0">
         <form onSubmit={handleSendMessage} className="flex items-center gap-3">
           <label className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl cursor-pointer transition-all">
+
+            {/* GCS 서버 API 비동기 연동 반영 - 오브젝트 버그 수정 */}
             <input
               type="file"
+              accept="image/*, .pdf, .doc, .docx, .xls, .xlsx, .txt"
               className="hidden"
-              onChange={(e) => {
+              onChange={async (e) => {
                 const file = e.target.files[0];
-                if (file) {
-                  sendMessage(currentRoomId, file.name, 'file');
+                if (!file) return;
+
+                try {
+                  const isImage = file.type.startsWith('image/');
+                  if (isImage) {
+                    // 1. GCS 백엔드 서버에서 { success: true, imageUrl: "..." } 객체를 받아옴
+                    const res = await chatApi.uploadChatImage(file);
+
+                    // 객체에서 순수한 문자열 URL만 추출하여 STOMP 발행 🌟
+                    if (res && res.imageUrl) {
+                      sendMessage(currentRoomId, res.imageUrl, 'IMAGE');
+                    } else {
+                      console.error("이미지 URL을 가져오지 못했습니다.", res);
+                    }
+                  } else {
+                    // 일반 파일 처리 규격 유지
+                    sendMessage(currentRoomId, file.name, 'file');
+                  }
+                } catch (error) {
+                  console.error("파일 업로드 도중 에러 발생:", error);
+                } finally {
+                  e.target.value = ''; // 동일 파일 재선택 가능하도록 초기화
                 }
               }}
             />

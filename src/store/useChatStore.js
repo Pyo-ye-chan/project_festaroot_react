@@ -185,8 +185,8 @@ const useChatStore = create((set, get) => ({
       senderId: loggedUser.id,
       senderName: loggedUser.name,
       senderProfile: loggedUser.profileImg,
-      message: text,
-      type: type
+      message: text, // 이미지 url
+      type: type // IMAGE
     };
 
     client.publish({
