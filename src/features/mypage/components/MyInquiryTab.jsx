@@ -5,6 +5,7 @@ import Image from '@tiptap/extension-image';
 import MenuBar from '../../community/components/MenuBar';
 import { uploadImage } from '../../../api/boardApi';
 import { addInquiry, getMyInquiries, getInquiryDetail, deleteInquiry, updateInquiry } from '../../../api/inquiryApi';
+import { getFaqList } from '../../../api/faqApi';
 import useAuthStore from '../../../store/useAuthStore';
 import { Image as ImageIcon, Paperclip, XCircle } from 'lucide-react';
 import InquiryDetail from './InquiryDetail';
@@ -29,6 +30,8 @@ const MyInquiryTab = () => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [faqs, setFaqs] = useState([]);
+  const [isLoadingFaqs, setIsLoadingFaqs] = useState(false);
 
   const categoryMap = {
     'ACCOUNT': '계정/인증',
@@ -137,30 +140,25 @@ const MyInquiryTab = () => {
 
   useEffect(() => {
     fetchInquiryHistory();
+    fetchFaqs();
   }, [user]);
 
-  const faqs = [
-    {
-      id: 1,
-      question: "축제 정보는 얼마나 자주 업데이트되나요?",
-      answer: "우리는 한국관광공사의 공공 API와 연동하여 실시간으로 최신 축제 정보를 불러오고 있습니다. 또한 사용자 제보를 통해 정보 오류가 확인되는 즉시 수동으로도 업데이트를 진행하고 있습니다."
-    },
-    {
-      id: 2,
-      question: "AI 플래너는 어떻게 사용하나요?",
-      answer: "AI 플래너는 사용자의 취향과 일정에 맞춰 최적의 축제 여행 코스를 제안합니다. 'AI 플래너' 메뉴에서 여행하고 싶은 지역과 날짜, 선호하는 테마를 선택하면 단 몇 초 만에 맞춤형 일정이 생성됩니다."
-    },
-    {
-      id: 3,
-      question: "작성한 게시글이나 댓글을 삭제하고 싶어요.",
-      answer: "마이페이지의 '내가 쓴 게시글' 탭에서 작성하신 모든 게시글과 댓글을 확인하고 삭제하실 수 있습니다. 게시글 상세 페이지에서도 직접 삭제가 가능합니다."
-    },
-    {
-      id: 4,
-      question: "축제 알림 설정은 어디서 하나요?",
-      answer: "관심 있는 축제의 상세 페이지에서 '좋아요(하트)'를 누르시면 해당 축제의 일정 변경이나 새로운 소식이 있을 때 앱 내 알림을 통해 알려드립니다."
+  const fetchFaqs = async () => {
+    setIsLoadingFaqs(true);
+    try {
+      const response = await getFaqList();
+      const result = response.data;
+      if (result && Array.isArray(result)) {
+        setFaqs(result.slice(0, 4)); // 마이페이지에서는 상위 4개만 표시
+      } else if (result && result.success && Array.isArray(result.data)) {
+        setFaqs(result.data.slice(0, 4));
+      }
+    } catch (error) {
+      console.error('FAQ 로드 실패:', error);
+    } finally {
+      setIsLoadingFaqs(false);
     }
-  ];
+  };
 
   const formatFileSize = (size) => {
     if (size < 1024) return `${size}B`;
@@ -356,38 +354,47 @@ const MyInquiryTab = () => {
             </div>
             
             <div className="grid grid-cols-1 gap-4">
-              {faqs.map((faq) => (
-
-                <div 
-                  key={faq.id} 
-                  className={`bg-white rounded-[24px] border transition-all duration-300 overflow-hidden ${
-                    openFaq === faq.id ? 'border-purple-200 shadow-md' : 'border-gray-100 shadow-sm'
-                  }`}
-                >
-                  <button 
-                    onClick={() => toggleFaq(faq.id)}
-                    className="w-full px-6 py-5 text-left flex items-center justify-between gap-4"
-                  >
-                    <span className={`text-sm font-bold transition-colors ${openFaq === faq.id ? 'text-purple-600' : 'text-gray-700'}`}>
-                      {faq.question}
-                    </span>
-                    <span className={`text-gray-400 transition-transform duration-300 ${openFaq === faq.id ? 'rotate-180' : ''}`}>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </span>
-                  </button>
-                  {openFaq === faq.id && (
-                    <div className="px-6 pb-5">
-                      <div className="pt-4 border-t border-gray-50">
-                        <p className="text-sm text-gray-600 leading-relaxed font-medium">
-                          {faq.answer}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+              {isLoadingFaqs ? (
+                <div className="flex justify-center py-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                 </div>
-              ))}
+              ) : faqs.length > 0 ? (
+                faqs.map((faq) => (
+                  <div 
+                    key={faq.faq_id || faq.id} 
+                    className={`bg-white rounded-[24px] border transition-all duration-300 overflow-hidden ${
+                      openFaq === (faq.faq_id || faq.id) ? 'border-purple-200 shadow-md' : 'border-gray-100 shadow-sm'
+                    }`}
+                  >
+                    <button 
+                      onClick={() => toggleFaq(faq.faq_id || faq.id)}
+                      className="w-full px-6 py-5 text-left flex items-center justify-between gap-4"
+                    >
+                      <span className={`text-sm font-bold transition-colors ${openFaq === (faq.faq_id || faq.id) ? 'text-purple-600' : 'text-gray-700'}`}>
+                        {faq.question}
+                      </span>
+                      <span className={`text-gray-400 transition-transform duration-300 ${openFaq === (faq.faq_id || faq.id) ? 'rotate-180' : ''}`}>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </span>
+                    </button>
+                    {openFaq === (faq.faq_id || faq.id) && (
+                      <div className="px-6 pb-5">
+                        <div className="pt-4 border-t border-gray-50">
+                          <p className="text-sm text-gray-600 leading-relaxed font-medium">
+                            {faq.answer}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="py-10 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <p className="text-sm text-gray-400 font-bold">등록된 자주 묻는 질문이 없습니다.</p>
+                </div>
+              )}
             </div>
           </section>
 
