@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 const REPORT_REASONS = [
-  '부적절한 내용',
-  '광고/홍보',
-  '욕설/비방',
-  '개인정보 침해',
-  '허위 사실',
+    { id: 'inappropriate', label: '부적절한 내용' },
+    { id: 'ad_spam', label: '광고/홍보' },
+    { id: 'abuse_slander', label: '욕설/비방' },
+    { id: 'privacy_violation', label: '개인정보 침해' },
+    { id: 'false_information', label: '허위 사실' },
+    { id: 'etc', label: '기타' },
 ];
+
+
 
 const ReportModal = ({ isOpen, onClose, onSubmit, reviewId, memberId }) => {
   const [selectedReason, setSelectedReason] = useState('');
@@ -85,9 +88,9 @@ const ReportModal = ({ isOpen, onClose, onSubmit, reviewId, memberId }) => {
             <div className="space-y-2">
               {[...REPORT_REASONS, '기타'].map((reason) => (
                 <label
-                  key={reason}
+                  key={reason.id}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition ${
-                    selectedReason === reason
+                    selectedReason === reason.id
                       ? 'bg-purple-50 border border-purple-300'
                       : 'bg-white border border-gray-100 hover:bg-gray-50'
                   }`}
@@ -95,15 +98,15 @@ const ReportModal = ({ isOpen, onClose, onSubmit, reviewId, memberId }) => {
                   <input
                     type="radio"
                     name="reportReason"
-                    value={reason}
-                    checked={selectedReason === reason}
-                    onChange={() => handleReasonChange(reason)}
+                    value={reason.id}
+                    checked={selectedReason === reason.id}
+                    onChange={() => handleReasonChange(reason.id)}
                     className="w-4 h-4 accent-purple-600"
                   />
 
                   <span
                     className={`text-sm font-bold ${
-                      selectedReason === reason
+                      selectedReason === reason.label
                         ? 'text-purple-700'
                         : 'text-gray-700'
                     }`}

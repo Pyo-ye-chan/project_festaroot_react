@@ -78,6 +78,9 @@ const SignupPreferencesPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (isSubmitting) return;
+
+
     if (!signupData.email) {
       alert('이메일 정보가 없습니다.');
       navigate(
@@ -98,21 +101,45 @@ const SignupPreferencesPage = () => {
       return;
     }
 
+    const isSocial =
+      signupData.social_provider &&
+      signupData.social_provider !== 'LOCAL';
+
+    const uniqueRegions = [...new Set(selectedRegions || [])].filter(
+      (code) => code && code !== 'ALL'
+    );
+
+    const uniqueThemes = [...new Set(selectedThemes || [])].filter(
+      (code) => code
+    );
+
     const finalData = {
-      ...signupData,
+      member_id: isSocial
+        ? `${signupData.social_provider.toLowerCase()}${signupData.social_id}`
+        : signupData.member_id,
+
+      password: isSocial ? null : signupData.password,
+
+      name: signupData.name,
+      nickname: signupData.nickname,
+      phone: signupData.phone,
+      email: signupData.email,
+      gender: signupData.gender,
+      birthdate: signupData.birthdate,
 
       social_provider: signupData.social_provider || 'LOCAL',
-      profile_image_url: signupData.profile_image_url || '',
-      title_id: signupData.title_id || 1,
+      social_id: signupData.social_id || null,
 
-      // 회원가입 1단계에서 받은 주소 정보 유지
+      profile_image_url: signupData.profile_image_url || null,
+      title_id: signupData.title_id ? String(signupData.title_id) : null,
+
       addr_sido: signupData.addr_sido || '',
       reside_area_code: signupData.reside_area_code || '',
       addr_sigungu: signupData.addr_sigungu || '',
       reside_sigungu_code: signupData.reside_sigungu_code || '',
 
-      regions: selectedRegions,
-      themes: selectedThemes
+      regions: uniqueRegions,
+      themes: uniqueThemes,
     };
 
     try {
@@ -122,19 +149,24 @@ const SignupPreferencesPage = () => {
 
       const response = await signup(finalData);
 
-      if (response.data === 'success') {
+      console.log('회원가입 응답:', response);
+
+      if (response === 'success' || response?.success === true) {
         alert('회원가입이 완료되었습니다!');
         resetSignupData();
         navigate('/login');
       } else {
-        alert('회원가입에 실패했습니다.');
+        alert(response?.message || '회원가입에 실패했습니다.');
       }
     } catch (error) {
-      console.error(error);
-      alert('서버 오류가 발생했습니다.');
+      console.error('회원가입 실패:', error);
+      console.error('서버 응답:', error.response?.data);
+
+      alert(error.response?.data?.message || '서버 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
     }
+
   };
 
   return (
@@ -167,8 +199,8 @@ const SignupPreferencesPage = () => {
               type="button"
               onClick={() => handleRegionToggle('ALL')}
               className={`min-w-[72px] h-11 px-4 rounded-full text-sm font-bold transition-all border whitespace-nowrap ${selectedRegions.includes('ALL')
-                  ? 'bg-festival-purple border-festival-purple text-white shadow-md shadow-purple-100'
-                  : 'bg-white border-gray-100 text-gray-500 hover:border-festival-purple hover:text-festival-purple'
+                ? 'bg-festival-purple border-festival-purple text-white shadow-md shadow-purple-100'
+                : 'bg-white border-gray-100 text-gray-500 hover:border-festival-purple hover:text-festival-purple'
                 }`}
             >
               전국
@@ -183,8 +215,8 @@ const SignupPreferencesPage = () => {
                   type="button"
                   onClick={() => handleRegionToggle(regionCode)}
                   className={`min-w-[72px] h-11 px-4 rounded-full text-sm font-bold transition-all border whitespace-nowrap ${selectedRegions.includes(regionCode)
-                      ? 'bg-festival-purple border-festival-purple text-white shadow-md shadow-purple-100'
-                      : 'bg-white border-gray-100 text-gray-500 hover:border-festival-purple hover:text-festival-purple'
+                    ? 'bg-festival-purple border-festival-purple text-white shadow-md shadow-purple-100'
+                    : 'bg-white border-gray-100 text-gray-500 hover:border-festival-purple hover:text-festival-purple'
                     }`}
                 >
                   {region.region_name}
@@ -215,8 +247,8 @@ const SignupPreferencesPage = () => {
                   type="button"
                   onClick={() => handleThemeToggle(themeCode)}
                   className={`h-10 px-4 sm:px-5 rounded-full text-sm font-bold transition-all border whitespace-nowrap ${selectedThemes.includes(themeCode)
-                      ? 'bg-festival-yellow border-festival-yellow text-gray-900 shadow-md shadow-yellow-50'
-                      : 'bg-white border-gray-100 text-gray-500 hover:border-festival-yellow hover:text-gray-900'
+                    ? 'bg-festival-yellow border-festival-yellow text-gray-900 shadow-md shadow-yellow-50'
+                    : 'bg-white border-gray-100 text-gray-500 hover:border-festival-yellow hover:text-gray-900'
                     }`}
                 >
                   {theme.theme_name}
