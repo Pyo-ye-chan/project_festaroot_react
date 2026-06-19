@@ -12,14 +12,14 @@ const MyPageSidebar = ({ activeTab, setActiveTab }) => {
         { id: 'likes', label: '찜한 축제', icon: '❤️' },
       ]
     },
-    {
-      title: '설정 및 지원',
-      items: [
-        { id: 'inquiry', label: '문의하기', icon: '🙋' },
-        { id: 'account', label: '계정 설정', icon: '⚙️' },
-        { id: 'notifications', label: '알림 설정', icon: '🔔' },
-      ]
-    }
+    // {
+    //   title: '설정 및 지원',
+    //   items: [
+    //     { id: 'inquiry', label: '문의하기', icon: '🙋' },
+    //     { id: 'account', label: '계정 설정', icon: '⚙️' },
+    //     { id: 'notifications', label: '알림 설정', icon: '🔔' },
+    //   ]
+    // }
   ];
 
   return (
@@ -28,7 +28,7 @@ const MyPageSidebar = ({ activeTab, setActiveTab }) => {
       <div className="hidden md:block p-6">
         <h2 className="text-xl font-black text-gray-900 mb-8 px-2">마이페이지</h2>
       </div>
-      
+
       {/* Mobile & Desktop Menu Container */}
       <div className="flex-grow overflow-x-auto md:overflow-x-visible no-scrollbar">
         <div className="flex md:flex-col p-4 md:p-6 md:space-y-8 min-w-max md:min-w-0">
@@ -42,11 +42,10 @@ const MyPageSidebar = ({ activeTab, setActiveTab }) => {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`flex items-center gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl text-sm font-bold transition-all duration-200 whitespace-nowrap ${
-                      activeTab === item.id
+                    className={`flex items-center gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl text-sm font-bold transition-all duration-200 whitespace-nowrap ${activeTab === item.id
                         ? 'bg-purple-50 text-purple-600'
                         : 'text-gray-500 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     <span className={`text-base md:text-lg ${activeTab === item.id ? 'opacity-100' : 'opacity-50'}`}>
                       {item.icon}
@@ -61,7 +60,7 @@ const MyPageSidebar = ({ activeTab, setActiveTab }) => {
           ))}
         </div>
       </div>
-      
+
       {/* Logout button - hidden on mobile sidebar, usually placed elsewhere or at end of scroll */}
       {/* <div className="hidden md:block p-6 border-t border-gray-50">
         <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all group">

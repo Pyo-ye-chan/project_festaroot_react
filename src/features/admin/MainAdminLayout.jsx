@@ -40,8 +40,8 @@ const MainAdminLayout = () => {
     { name: '게시글 관리', path: '/admin/posts', icon: Newspaper },
     { name: '댓글 관리', path: '/admin/comments', icon: MessageSquare },
     { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound },
-    { name: '공지 및 알림', path: '/admin/notices', icon: Megaphone },
-    { name: '신고 및 문의', path: '/admin/inquiries', icon: ShieldAlert, badge: '12' },
+    { name: '공지사항 관리 ', path: '/admin/notices', icon: Megaphone },
+    { name: '문의 관리', path: '/admin/inquiries', icon: ShieldAlert },
   ];
 
   // 현재 경로에 맞는 메뉴명 찾기
@@ -91,8 +91,8 @@ const MainAdminLayout = () => {
                     type="button"
                     onClick={() => navigate(menu.path)}
                     className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all ${isActive
-                        ? 'bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] text-white shadow-lg shadow-purple-100'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-[#6d3df2]'
+                      ? 'bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] text-white shadow-lg shadow-purple-100'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-[#6d3df2]'
                       }`}
                   >
                     <Icon
@@ -187,16 +187,16 @@ const MainAdminLayout = () => {
                 8
               </span>
             </button>
-     
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                title="로그아웃"
-              >
-                <LogOut size={22} />
-              </button>
-         
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+              title="로그아웃"
+            >
+              <LogOut size={22} />
+            </button>
+
           </div>
         </header>
 

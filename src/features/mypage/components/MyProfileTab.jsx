@@ -4,6 +4,8 @@ import { updateMemberProfile } from '../../../api/memberApi';
 import { getSidoList } from '../../../api/regionApi';
 import { getThemeList } from '../../../api/themeApi';
 import { toast } from 'react-toastify';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
+
 
 const MyProfileTab = ({ userDetails, onRefresh }) => {
   const navigate = useNavigate();
@@ -13,16 +15,18 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
   const [editThemes, setEditThemes] = useState([]);
   const [profilePreview, setProfilePreview] = useState(null);
   const [profileFile, setProfileFile] = useState(null);
-  
+
   const [allSidos, setAllSidos] = useState([]);
   const [allThemes, setAllThemes] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // 모달 상태 추가
   const [isRegionModalOpen, setIsRegionModalOpen] = useState(false);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
-  
+
   const fileInputRef = useRef(null);
+
+  const { PROFILE } = DEFAULT_IMAGES;
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -49,7 +53,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
     );
   }
 
-  const { member, interestRegions, interestThemes, recentLogs ,likedFestivals,level,titleName,currentExp,nextLevelExp,myCommentCount,myPostCount} = userDetails;
+  const { member, interestRegions, interestThemes, recentLogs, likedFestivals, level, titleName, currentExp, nextLevelExp, myCommentCount, myPostCount } = userDetails;
 
   // 성장 정보 추출 (백엔드 DTO 매핑)
   // const { 
@@ -86,7 +90,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
   };
 
   const toggleRegion = (region) => {
-    setEditRegions(prev => 
+    setEditRegions(prev =>
       prev.find(r => r.region_code === region.region_code)
         ? prev.filter(r => r.region_code !== region.region_code)
         : [...prev, region]
@@ -94,7 +98,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
   };
 
   const toggleTheme = (theme) => {
-    setEditThemes(prev => 
+    setEditThemes(prev =>
       prev.find(t => t.theme_code === theme.theme_code)
         ? prev.filter(t => t.theme_code !== theme.theme_code)
         : [...prev, theme]
@@ -122,7 +126,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
 
       setIsEditing(false);
       if (onRefresh) onRefresh();
-      
+
       toast.success('프로필이 수정되었습니다.');
 
     } catch (error) {
@@ -164,11 +168,10 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
                     <button
                       key={s.region_code}
                       onClick={() => toggleRegion(s)}
-                      className={`px-4 py-3 rounded-2xl text-xs font-bold transition-all border ${
-                        isSelected 
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-100' 
+                      className={`px-4 py-3 rounded-2xl text-xs font-bold transition-all border ${isSelected
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-100'
                         : 'bg-gray-50 text-gray-600 border-gray-100 hover:bg-white hover:border-purple-200'
-                      }`}
+                        }`}
                     >
                       {s.region_name}
                     </button>
@@ -177,7 +180,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
               </div>
             </div>
             <div className="p-6 bg-gray-50 flex justify-end">
-              <button 
+              <button
                 onClick={() => setIsRegionModalOpen(false)}
                 className="px-8 py-3 bg-purple-600 text-white text-sm font-black rounded-xl shadow-lg shadow-purple-100"
               >
@@ -205,11 +208,10 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
                     <button
                       key={t.theme_code}
                       onClick={() => toggleTheme(t)}
-                      className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all border ${
-                        isSelected 
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' 
+                      className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all border ${isSelected
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100'
                         : 'bg-gray-50 text-gray-600 border-gray-100 hover:bg-white hover:border-indigo-200'
-                      }`}
+                        }`}
                     >
                       # {t.theme_name}
                     </button>
@@ -218,7 +220,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
               </div>
             </div>
             <div className="p-6 bg-gray-50 flex justify-end">
-              <button 
+              <button
                 onClick={() => setIsThemeModalOpen(false)}
                 className="px-8 py-3 bg-indigo-600 text-white text-sm font-black rounded-xl shadow-lg shadow-indigo-100"
               >
@@ -233,13 +235,13 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
       <div className="bg-white p-6 sm:p-8 md:p-10 rounded-[24px] border border-gray-100 shadow-sm flex flex-col md:flex-row items-center gap-6 sm:gap-10">
         <div className="relative group">
           <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-purple-100 overflow-hidden border-4 border-white shadow-lg relative">
-            <img 
-              src={isEditing && profilePreview ? profilePreview : (member.profile_image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.nickname}`)} 
-              alt="Profile" 
-              className="w-full h-full object-cover" 
+            <img
+              src={isEditing && profilePreview ? profilePreview : (member.profile_image_url && member.profile_image_url !== 'null' ? member.profile_image_url : PROFILE)}
+              alt="Profile"
+              className="w-full h-full object-cover"
             />
             {isEditing && (
-              <div 
+              <div
                 onClick={() => fileInputRef.current.click()}
                 className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
               >
@@ -247,18 +249,18 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
               </div>
             )}
           </div>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleImageChange} 
-            className="hidden" 
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageChange}
+            className="hidden"
             accept="image/*"
           />
           <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-purple-600 text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black border-4 border-white shadow-md text-xs sm:text-sm">
             {level}
           </div>
         </div>
-        
+
         <div className="flex-grow text-center md:text-left space-y-4 w-full">
           <div>
             <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2 sm:gap-3 mb-1 sm:mb-2">
@@ -289,7 +291,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
               <span className="text-gray-400">{currentExp?.toLocaleString()} / {nextLevelExp?.toLocaleString()}</span>
             </div>
             <div className="h-2 sm:h-3 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-50 shadow-inner">
-              <div 
+              <div
                 className="h-full bg-gradient-to-r from-purple-500 to-purple-700 transition-all duration-1000 ease-out"
                 style={{ width: `${Math.min((currentExp / nextLevelExp) * 100, 100)}%` }}
               />
@@ -305,14 +307,13 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5">
                 {(isEditing ? editRegions : interestRegions)?.length > 0 ? (
                   (isEditing ? editRegions : interestRegions).map(r => (
-                    <span 
-                      key={r.region_code} 
+                    <span
+                      key={r.region_code}
                       onClick={() => isEditing && toggleRegion(r)}
-                      className={`text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-sm transition-all ${
-                        isEditing 
-                        ? 'bg-purple-600 text-white border-purple-600 cursor-pointer hover:bg-purple-700' 
+                      className={`text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-sm transition-all ${isEditing
+                        ? 'bg-purple-600 text-white border-purple-600 cursor-pointer hover:bg-purple-700'
                         : 'bg-white text-gray-600 border-gray-200'
-                      }`}
+                        }`}
                     >
                       📍 {r.region_name} {isEditing && '×'}
                     </span>
@@ -321,7 +322,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
                   <span className="text-[11px] text-gray-400">설정된 지역이 없습니다.</span>
                 )}
                 {isEditing && (
-                  <button 
+                  <button
                     onClick={() => setIsRegionModalOpen(true)}
                     className="text-[11px] font-bold bg-gray-50 border border-gray-200 border-dashed px-3 py-1 rounded-full text-gray-400 hover:border-purple-300 hover:text-purple-500 transition-all"
                   >
@@ -337,14 +338,13 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5">
                 {(isEditing ? editThemes : interestThemes)?.length > 0 ? (
                   (isEditing ? editThemes : interestThemes).map(t => (
-                    <span 
-                      key={t.theme_code} 
+                    <span
+                      key={t.theme_code}
                       onClick={() => isEditing && toggleTheme(t)}
-                      className={`text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-sm transition-all ${
-                        isEditing 
-                        ? 'bg-indigo-600 text-white border-indigo-600 cursor-pointer hover:bg-indigo-700' 
+                      className={`text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-sm transition-all ${isEditing
+                        ? 'bg-indigo-600 text-white border-indigo-600 cursor-pointer hover:bg-indigo-700'
                         : 'bg-white text-gray-600 border-gray-200'
-                      }`}
+                        }`}
                     >
                       ✨ {t.theme_name} {isEditing && '×'}
                     </span>
@@ -353,7 +353,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
                   <span className="text-[11px] text-gray-400">설정된 테마가 없습니다.</span>
                 )}
                 {isEditing && (
-                  <button 
+                  <button
                     onClick={() => setIsThemeModalOpen(true)}
                     className="text-[11px] font-bold bg-gray-50 border border-gray-200 border-dashed px-3 py-1 rounded-full text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-all"
                   >
@@ -368,14 +368,14 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
         <div className="flex flex-row md:flex-col gap-2 w-full md:w-auto shrink-0">
           {isEditing ? (
             <div className="flex flex-row md:flex-col gap-2 w-full">
-              <button 
+              <button
                 onClick={handleSave}
                 disabled={isSaving}
                 className="flex-1 px-5 py-2.5 bg-purple-600 text-white text-xs font-black rounded-xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-100 disabled:opacity-50"
               >
                 {isSaving ? '저장 중' : '저장'}
               </button>
-              <button 
+              <button
                 onClick={handleCancel}
                 className="flex-1 px-5 py-2.5 bg-gray-100 text-gray-500 text-xs font-black rounded-xl hover:bg-gray-200 transition-all"
               >
@@ -383,7 +383,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
               </button>
             </div>
           ) : (
-            <button 
+            <button
               onClick={handleEditStart}
               className="w-full px-5 py-2.5 bg-white text-gray-700 border border-gray-200 text-xs font-black rounded-xl hover:bg-gray-50 transition-all shadow-sm"
             >
@@ -418,26 +418,26 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
           <h3 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2">
             최근 본 축제
           </h3>
-          <button className="text-xs sm:text-sm font-bold text-purple-600 hover:underline transition-all">전체보기</button>
+          {/* <button className="text-xs sm:text-sm font-bold text-purple-600 hover:underline transition-all">전체보기</button> */}
         </div>
-        
+
         {recentLogs?.filter(log => log.type === 'VIEW').length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {recentLogs
               .filter(log => log.type === 'VIEW')
               .slice(0, 4)
               .map((log) => (
-                <div 
-                  key={log.log_id} 
+                <div
+                  key={log.log_id}
                   onClick={() => navigate(`/festival/${log.festivalId}`)}
                   className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-purple-200 hover:bg-purple-50/30 transition-all cursor-pointer group"
                 >
 
                   <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 shadow-sm border border-gray-100">
                     {log.first_image ? (
-                      <img 
-                        src={log.first_image} 
-                        alt={log.title} 
+                      <img
+                        src={log.first_image}
+                        alt={log.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                     ) : (
@@ -466,7 +466,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
             </div>
             <p className="text-gray-400 font-bold text-base sm:text-lg">최근 본 축제가 없습니다.</p>
             <p className="text-gray-400 text-xs sm:text-sm">관심 있는 축제를 구경해 보세요!</p>
-            <button 
+            <button
               onClick={() => navigate('/search')}
               className="mt-6 px-6 sm:px-8 py-2.5 sm:py-3 bg-purple-600 text-white text-sm sm:text-base font-bold rounded-xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-100"
             >

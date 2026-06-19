@@ -1,17 +1,17 @@
 import { maxios } from './axiosApi';
 
-export const uploadImage = async (file, folder = 'board/image') => {
+export const uploadImage = async (file, folder = '/board/image') => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('folder', folder);
 
   console.log('Uploading image:', file);
 
-  const response = await maxios.post(`storage/board/image`, formData);
+  const response = await maxios.post(`/storage/board/image`, formData);
   return response.data;
 };
 
-export const addPost = async (data) => maxios.post('board/post', data);
+export const addPost = async (data) => maxios.post('/board/post', data);
 
 export const getPosts = async (cpage = 1, category = 'all', sortBy = 'latest', searchType = 'title', keyword = '') => {
   return await maxios.get(`/board/posts`, {
@@ -25,13 +25,13 @@ export const getPosts = async (cpage = 1, category = 'all', sortBy = 'latest', s
   });
 };
 
-export const getPostDetail = async (id) => await maxios.get(`board/post/${id}`);
+export const getPostDetail = async (id) => await maxios.get(`/board/post/${id}`);
 
-export const updatePost = async (id, data) => await maxios.put(`board/post/${id}`, data);
+export const updatePost = async (id, data) => await maxios.put(`/board/post/${id}`, data);
 
-export const deletePost = async (id) => await maxios.delete(`board/post/${id}`);
+export const deletePost = async (id) => await maxios.delete(`/board/post/${id}`);
 
-export const getMyPost = async (id) => await maxios.get(`board/mypost/${id}`);
+export const getMyPost = async (id) => await maxios.get(`/board/mypost/${id}`);
 
 // 댓글 목록 조회
 export const getComments = async (postId) =>
