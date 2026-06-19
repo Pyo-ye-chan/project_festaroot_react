@@ -32,6 +32,12 @@ const adminMemberApi = {
     getMainStats: async () => {
         const response = await maxios.get(`${BASE_URL}/stats`);
         return response.data;
+    },
+
+    // 기존 adminApi 객체 내부에 추가
+    getMemberDetail: async (id) => {
+        const response = await maxios.get(`${BASE_URL}/${id}/detail`);
+        return response.data;
     }
 };
 
