@@ -174,7 +174,7 @@ const Header = () => {
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Notification */}
             <div className="relative" ref={notificationRef}>
-              <button 
+              {/* <button
                 onClick={() => setIsNotificationOpen(!isNotificationOpen)}
                 className={`p-2 rounded-full transition-all relative ${isNotificationOpen ? 'bg-purple-50 text-purple-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
               >
@@ -185,13 +185,13 @@ const Header = () => {
                 {unreadCount > 0 && (
                   <span className="absolute top-2 right-2 w-2 h-2 rounded-full border-2 border-white bg-rose-500"></span>
                 )}
-              </button>
+              </button> */}
 
               {/* Notification Dropdown Component */}
-              <NotificationDropdown 
-                isOpen={isNotificationOpen} 
-                onClose={() => setIsNotificationOpen(false)} 
-                notifications={notifications} 
+              <NotificationDropdown
+                isOpen={isNotificationOpen}
+                onClose={() => setIsNotificationOpen(false)}
+                notifications={notifications}
               />
             </div>
 

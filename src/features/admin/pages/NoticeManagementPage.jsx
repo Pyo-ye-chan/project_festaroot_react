@@ -10,7 +10,7 @@ import {
   Eye,
   RefreshCw
 } from 'lucide-react';
-import { getPosts, deletePost } from '../../../api/boardApi';
+import { getPosts, deletePost, getPostDetail } from '../../../api/boardApi';
 
 const NoticeManagementPage = () => {
   const navigate = useNavigate();
@@ -51,9 +51,29 @@ const NoticeManagementPage = () => {
     navigate('/community/write?category=notice');
   };
 
-  const handleEditNotice = (notice) => {
-    const id = notice.post_id || notice.id;
-    navigate(`/community/update/${id}`);
+  const handleEditNotice = async (notice) => {
+    try {
+      setLoading(true);
+      const noticeId = notice.post_id || notice.id;
+      const response = await getPostDetail(noticeId);
+      const postData = response.data?.dto || response.data || notice;
+      const attachments = response.data?.list || postData.attachments || [];
+
+      // 커뮤니티 수정화면으로 이동할 때 기존 글의 모든 정보를 state로 전달합니다.
+      navigate(`/community/update/${noticeId}`, {
+        state: {
+          post: {
+            ...postData,
+            attachments: attachments
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Failed to load post detail for edit:', error);
+      alert('상세 정보를 불러오는 데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (noticeId) => {
@@ -131,30 +151,30 @@ const NoticeManagementPage = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-50 bg-gray-50/50">
-                <th className="px-8 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider w-16 text-center">번호</th>
+                <th className="px-4 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider w-20 text-center whitespace-nowrap">번호</th>
                 <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider">제목</th>
-                <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-center w-32">등록일</th>
-                <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-center w-24">조회수</th>
-                <th className="px-8 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-right w-24">관리</th>
+                <th className="px-4 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-center w-40 whitespace-nowrap">등록일</th>
+                <th className="px-4 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-center w-24 whitespace-nowrap">조회수</th>
+                <th className="px-8 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-right w-24 whitespace-nowrap">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td className="px-8 py-6 text-center">
+                    <td className="px-4 py-6 text-center whitespace-nowrap">
                       <div className="h-4 bg-gray-200 rounded w-6 mx-auto"></div>
                     </td>
                     <td className="px-6 py-6">
                       <div className="h-4 bg-gray-200 rounded w-2/3"></div>
                     </td>
-                    <td className="px-6 py-6 text-center">
+                    <td className="px-4 py-6 text-center whitespace-nowrap">
                       <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
                     </td>
-                    <td className="px-6 py-6 text-center">
+                    <td className="px-4 py-6 text-center whitespace-nowrap">
                       <div className="h-4 bg-gray-200 rounded w-10 mx-auto"></div>
                     </td>
-                    <td className="px-8 py-6 text-right">
+                    <td className="px-4 py-6 text-right whitespace-nowrap">
                       <div className="flex justify-end gap-2">
                         <div className="h-9 w-9 bg-gray-100 rounded-xl"></div>
                         <div className="h-9 w-9 bg-gray-100 rounded-xl"></div>
@@ -175,7 +195,7 @@ const NoticeManagementPage = () => {
 
                   return (
                     <tr key={id} className="group hover:bg-gray-50/50 transition-colors">
-                      <td className="px-8 py-6 text-center text-xs font-bold text-gray-400">
+                      <td className="px-4 py-6 text-center text-xs font-bold text-gray-400 whitespace-nowrap">
                         {noticeNumber}
                       </td>
                       <td className="px-6 py-6">
@@ -183,19 +203,19 @@ const NoticeManagementPage = () => {
                           {notice.title}
                         </span>
                       </td>
-                      <td className="px-6 py-6 text-center text-xs font-bold text-gray-500">
+                      <td className="px-4 py-6 text-center text-xs font-bold text-gray-500 whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
                           <Calendar size={12} className="text-gray-300" />
                           {formatDate(notice.created_at || notice.createdAt)}
                         </div>
                       </td>
-                      <td className="px-6 py-6 text-center text-xs font-bold text-gray-500">
+                      <td className="px-4 py-6 text-center text-xs font-bold text-gray-500 whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
                           <Eye size={12} className="text-gray-300" />
                           {(notice.view_count || notice.viewCount || 0).toLocaleString()}
                         </div>
                       </td>
-                      <td className="px-8 py-6 text-right">
+                      <td className="px-8 py-6 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleEditNotice(notice)}
