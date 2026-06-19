@@ -124,12 +124,16 @@ const INITIAL_REVIEWS_FALLBACK = [
   }
 ];
 
-const FestivalReviewManagement = () => {
+const FestivalReviewManagement = ({ initialSearchKeyword = '', onSearchKeywordChange }) => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('ALL'); // ALL, REPORTED, BLOCKED
   const [ratingFilter, setRatingFilter] = useState('ALL'); // ALL, 5, 4, 3, 2, 1
-  const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchKeyword, setSearchKeyword] = useState(initialSearchKeyword);
+
+  useEffect(() => {
+    setSearchKeyword(initialSearchKeyword);
+  }, [initialSearchKeyword]);
   
   // 백엔드 페이징을 수용하는 상태 선언
   const [currentPage, setCurrentPage] = useState(1);
@@ -366,7 +370,11 @@ const FestivalReviewManagement = () => {
               placeholder="후기/작성자/축제ID 검색"
               className="h-10 w-56 rounded-xl border border-gray-200 bg-white pl-9 pr-4 text-xs font-bold outline-none focus:ring-2 focus:ring-purple-100 transition-all"
               value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearchKeyword(val);
+                if (onSearchKeywordChange) onSearchKeywordChange(val);
+              }}
             />
           </div>
         </div>

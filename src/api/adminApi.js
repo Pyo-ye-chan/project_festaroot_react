@@ -135,6 +135,20 @@ export const getAdminFestivalList = () => {
 };
 
 /**
+ * [관리자] 축제 데이터 동기화 시작 트리거
+ */
+export const startAdminFestivalSync = () => {
+  return maxios.post('/admin/festivals/sync/start');
+};
+
+/**
+ * [관리자] 축제 데이터 동기화 상태 조회
+ */
+export const getAdminFestivalSyncStatus = () => {
+  return maxios.get('/admin/festivals/sync/status');
+};
+
+/**
  * [관리자] 축제 노출 여부 토글
  */
 export const updateFestivalVisibility = (contentId, isVisible) => {

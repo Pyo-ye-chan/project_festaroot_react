@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, 
-  Filter, 
-  Plus, 
   MapPin, 
   Calendar, 
-  MoreVertical, 
-  Edit2, 
-  Trash2, 
-  ExternalLink,
-  RefreshCw,
-  CheckCircle2,
-  AlertCircle,
-  Clock
+  RefreshCw, 
+  CheckCircle2, 
+  AlertCircle, 
+  Clock, 
+  Eye, 
+  Heart, 
+  Bookmark, 
+  Star
 } from 'lucide-react';
-import { getAdminFestivalList, updateFestivalVisibility } from '../../../api/adminApi';
+import { getAdminFestivalList, updateFestivalVisibility, startAdminFestivalSync, getAdminFestivalSyncStatus } from '../../../api/adminApi';
 import FestivalReviewManagement from '../components/FestivalReviewManagement';
 
 const FestivalDataManagementPage = () => {
@@ -23,9 +21,101 @@ const FestivalDataManagementPage = () => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [regionFilter, setRegionFilter] = useState('ALL');
   const [visibilityFilter, setVisibilityFilter] = useState('ALL'); // 'ALL', 'VISIBLE', 'HIDDEN'
+  const [sortBy, setSortBy] = useState('DEFAULT'); // 'DEFAULT', 'VIEWS_DESC', 'LIKES_DESC', 'SAVES_DESC', 'REVIEWS_DESC', 'RATING_DESC'
   
+  const [reviewSearchKeyword, setReviewSearchKeyword] = useState('');
+
+  const handleGoToReviews = (contentId) => {
+    setReviewSearchKeyword(String(contentId));
+    setActiveTab('REPORTS');
+  };
+
   const [festivals, setFestivals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('대기 중');
+  const [syncState, setSyncState] = useState('IDLE');
+
+  // 페이지 진입 시 동기화 현황 확인 및 백그라운드 구동 중일 시 자동 폴링 재개
+  useEffect(() => {
+    checkCurrentSyncStatus();
+  }, []);
+
+  const checkCurrentSyncStatus = async () => {
+    try {
+      const response = await getAdminFestivalSyncStatus();
+      const statusData = response.data || {};
+      const status = statusData.status || 'IDLE';
+      const message = statusData.message || '대기 중';
+      
+      setSyncState(status);
+      setSyncMessage(message);
+
+      if (status === 'RUNNING') {
+        setSyncing(true);
+      }
+    } catch (error) {
+      console.error('Failed to check initial sync status:', error);
+    }
+  };
+
+  // 실시간 폴링 타이머 구동
+  useEffect(() => {
+    let intervalId = null;
+
+    if (syncing) {
+      intervalId = setInterval(async () => {
+        try {
+          const response = await getAdminFestivalSyncStatus();
+          const statusData = response.data || {};
+          const status = statusData.status || 'IDLE';
+          const message = statusData.message || '대기 중';
+
+          setSyncState(status);
+          setSyncMessage(message);
+
+          if (status === 'COMPLETED') {
+            clearInterval(intervalId);
+            setSyncing(false);
+            alert('전체 동기화 파이프라인이 성공적으로 완료되었습니다.');
+            fetchFestivals();
+          } else if (status === 'FAILED') {
+            clearInterval(intervalId);
+            setSyncing(false);
+            alert(`동기화 중 오류가 발생했습니다: ${message}`);
+          }
+        } catch (error) {
+          console.error('Error during status polling:', error);
+        }
+      }, 2500);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [syncing]);
+
+  const handleSyncFestivals = async () => {
+    if (syncing) return;
+    try {
+      setSyncing(true);
+      setSyncMessage('동기화 요청 중...');
+      const response = await startAdminFestivalSync();
+      const data = response.data || {};
+      
+      if (data.success) {
+        setSyncState('RUNNING');
+        setSyncMessage(data.message || '동기화가 시작되었습니다.');
+      } else {
+        alert(data.message || '이미 동기화가 진행 중입니다.');
+        checkCurrentSyncStatus();
+      }
+    } catch (error) {
+      console.error('Failed to start sync pipeline:', error);
+      alert('동기화 요청을 시작하는 도중 오류가 발생했습니다.');
+      setSyncing(false);
+    }
+  };
 
   // 페이징 처리를 위한 상태 추가
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,10 +125,10 @@ const FestivalDataManagementPage = () => {
     fetchFestivals();
   }, []);
 
-  // 검색, 필터링 변경 시 현재 페이지 1페이지로 리셋
+  // 검색, 필터링, 정렬 변경 시 현재 페이지 1페이지로 리셋
   useEffect(() => {
     setCurrentPage(1);
-  }, [subStatus, regionFilter, searchKeyword, activeTab, visibilityFilter]);
+  }, [subStatus, regionFilter, searchKeyword, activeTab, visibilityFilter, sortBy]);
 
   const fetchFestivals = async () => {
     try {
@@ -94,14 +184,45 @@ const FestivalDataManagementPage = () => {
       return visibilityFilter === 'VISIBLE' ? isVisible : !isVisible;
     });
 
+  // 정렬 적용
+  const sortedFestivals = [...filteredFestivals].sort((a, b) => {
+    if (sortBy === 'DEFAULT') return 0;
+    
+    const aViews = a.view_count ?? a.viewCount ?? 0;
+    const bViews = b.view_count ?? b.viewCount ?? 0;
+    const aLikes = a.like_count ?? a.likeCount ?? 0;
+    const bLikes = b.like_count ?? b.likeCount ?? 0;
+    const aSaves = a.save_count ?? a.saveCount ?? 0;
+    const bSaves = b.save_count ?? b.saveCount ?? 0;
+    const aReviews = a.review_count ?? a.reviewCount ?? 0;
+    const bReviews = b.review_count ?? b.reviewCount ?? 0;
+    const aRating = a.avg_rating ?? a.rating_avg ?? a.avgRating ?? 0.0;
+    const bRating = b.avg_rating ?? b.rating_avg ?? b.avgRating ?? 0.0;
+
+    switch (sortBy) {
+      case 'VIEWS_DESC':
+        return bViews - aViews;
+      case 'LIKES_DESC':
+        return bLikes - aLikes;
+      case 'SAVES_DESC':
+        return bSaves - aSaves;
+      case 'REVIEWS_DESC':
+        return bReviews - aReviews;
+      case 'RATING_DESC':
+        return bRating - aRating;
+      default:
+        return 0;
+    }
+  });
+
   // 페이징 계산 변수들
-  const totalItems = filteredFestivals.length;
+  const totalItems = sortedFestivals.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const validCurrentPage = Math.min(currentPage, totalPages || 1);
   
   const startIndex = (validCurrentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedFestivals = filteredFestivals.slice(startIndex, endIndex);
+  const paginatedFestivals = sortedFestivals.slice(startIndex, endIndex);
 
   // 표시할 페이지 번호 범위 계산 (최대 5개 버튼 표시)
   const getPageNumbers = () => {
@@ -194,16 +315,23 @@ const FestivalDataManagementPage = () => {
           <p className="text-gray-500 font-bold mt-1">공공 데이터 동기화 및 축제 정보를 관리합니다.</p>
         </div>
         <div className="flex items-center gap-3">
+          {syncing && (
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-purple-50 border border-purple-100 rounded-2xl text-xs font-bold text-[#6d3df2] animate-pulse">
+              <span className="h-2 w-2 rounded-full bg-[#6d3df2]"></span>
+              <span>{syncMessage}</span>
+            </div>
+          )}
           <button 
-            onClick={fetchFestivals}
-            className="flex h-12 items-center gap-2 rounded-2xl bg-white border border-gray-200 px-6 text-sm font-black text-gray-600 shadow-sm transition hover:bg-gray-50"
+            onClick={handleSyncFestivals}
+            disabled={syncing}
+            className={`flex h-12 items-center gap-2 rounded-2xl border px-6 text-sm font-black shadow-sm transition ${
+              syncing 
+                ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' 
+                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 cursor-pointer'
+            }`}
           >
-            <RefreshCw size={18} className="text-gray-400" />
-            데이터 동기화
-          </button>
-          <button className="flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] px-6 text-sm font-black text-white shadow-lg shadow-purple-100 transition hover:brightness-110">
-            <Plus size={18} />
-            신규 축제 등록
+            <RefreshCw size={18} className={`text-gray-400 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? '동기화 중...' : '데이터 동기화'}
           </button>
         </div>
       </div>
@@ -297,6 +425,18 @@ const FestivalDataManagementPage = () => {
                 <option value="VISIBLE">노출중</option>
                 <option value="HIDDEN">숨김</option>
               </select>
+              <select 
+                className="h-10 px-4 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-600 outline-none focus:ring-2 focus:ring-purple-100"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="DEFAULT">기본 정렬 순</option>
+                <option value="VIEWS_DESC">조회수 많은 순</option>
+                <option value="LIKES_DESC">좋아요 많은 순</option>
+                <option value="SAVES_DESC">저장수 많은 순</option>
+                <option value="REVIEWS_DESC">후기 많은 순</option>
+                <option value="RATING_DESC">평점 높은 순</option>
+              </select>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <input
@@ -319,9 +459,9 @@ const FestivalDataManagementPage = () => {
                     <th className="px-8 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider">축제 정보</th>
                     <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-center">노출 여부</th>
                     <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-center">지역</th>
+                    <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-center">인기도 / 평점</th>
                     <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-center">기간</th>
                     <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-center">상태</th>
-                    <th className="px-8 py-5 text-[11px] font-black text-gray-400 uppercase tracking-wider text-right">관리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -344,6 +484,13 @@ const FestivalDataManagementPage = () => {
                         <td className="px-6 py-6 text-center">
                           <div className="h-4 bg-gray-200 rounded-md w-16 mx-auto"></div>
                         </td>
+                        {/* 인기도/평점 스켈레톤 */}
+                        <td className="px-6 py-6 text-center">
+                          <div className="space-y-1.5 mx-auto">
+                            <div className="h-4 bg-gray-200 rounded-md w-16 mx-auto"></div>
+                            <div className="h-3 bg-gray-200 rounded-md w-24 mx-auto"></div>
+                          </div>
+                        </td>
                         <td className="px-6 py-6 text-center">
                           <div className="space-y-1.5">
                             <div className="h-3.5 bg-gray-200 rounded-md w-24 mx-auto"></div>
@@ -352,13 +499,6 @@ const FestivalDataManagementPage = () => {
                         </td>
                         <td className="px-6 py-6">
                           <div className="h-6 bg-gray-200 rounded-full w-16 mx-auto"></div>
-                        </td>
-                        <td className="px-8 py-6 text-right">
-                          <div className="flex justify-end gap-2">
-                            <div className="h-9 w-9 bg-gray-100 rounded-xl"></div>
-                            <div className="h-9 w-9 bg-gray-100 rounded-xl"></div>
-                            <div className="h-9 w-9 bg-gray-100 rounded-xl"></div>
-                          </div>
                         </td>
                       </tr>
                     ))
@@ -377,6 +517,13 @@ const FestivalDataManagementPage = () => {
                       const endDate = festival.eventEndDate || festival.event_end_date;
                       const imageUrl = festival.firstImage || festival.first_image;
                       const isVisible = festival.isVisible === 'Y' || festival.isVisible === true || festival.is_visible === 1 || festival.is_visible === 'Y' || festival.is_visible === true;
+
+                      // 통계 지표 정보 추출 (DTO 매핑)
+                      const viewCount = festival.view_count ?? festival.viewCount ?? 0;
+                      const likeCount = festival.like_count ?? festival.likeCount ?? 0;
+                      const reviewCount = festival.review_count ?? festival.reviewCount ?? 0;
+                      const saveCount = festival.save_count ?? festival.saveCount ?? 0;
+                      const avgRating = festival.avg_rating ?? festival.rating_avg ?? festival.avgRating ?? 0.0;
 
                       return (
                         <tr key={id} className="group hover:bg-gray-50/50 transition-colors">
@@ -418,6 +565,37 @@ const FestivalDataManagementPage = () => {
                               </div>
                             </div>
                           </td>
+                          {/* 인기도 / 평점 정보 열 */}
+                          <td className="px-6 py-6">
+                            <div className="flex flex-col items-center gap-1">
+                              {/* 별점과 리뷰 수 */}
+                              <div className="flex items-center gap-1.5 text-xs font-black text-amber-500 justify-center">
+                                <Star size={12} fill="currentColor" />
+                                <span>{Number(avgRating).toFixed(2)}</span>
+                                <button 
+                                  onClick={() => handleGoToReviews(id)}
+                                  className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded hover:bg-purple-100 transition ml-1 shrink-0 cursor-pointer border border-transparent"
+                                >
+                                  후기 {reviewCount}건
+                                </button>
+                              </div>
+                              {/* 조회수 / 저장수 / 좋아요수 */}
+                              <div className="flex items-center gap-2 mt-1 text-[10px] font-bold text-gray-400 justify-center">
+                                <span className="flex items-center gap-0.5" title="조회수">
+                                  <Eye size={10} />
+                                  {viewCount}
+                                </span>
+                                <span className="flex items-center gap-0.5" title="저장수">
+                                  <Bookmark size={10} />
+                                  {saveCount}
+                                </span>
+                                <span className="flex items-center gap-0.5" title="좋아요수">
+                                  <Heart size={10} />
+                                  {likeCount}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
                           <td className="px-6 py-6 text-center">
                             <div className="flex flex-col items-center gap-1 text-xs font-bold text-gray-500">
                               <div className="flex items-center gap-1">
@@ -430,19 +608,6 @@ const FestivalDataManagementPage = () => {
                           <td className="px-6 py-6">
                             <div className="flex justify-center">
                               {getStatusBadge(festival.status)}
-                            </div>
-                          </td>
-                          <td className="px-8 py-6 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button className="h-9 w-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition shadow-sm">
-                                <Edit2 size={16} />
-                              </button>
-                              <button className="h-9 w-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-500 transition shadow-sm">
-                                <Trash2 size={16} />
-                              </button>
-                              <button className="h-9 w-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition shadow-sm">
-                                <MoreVertical size={16} />
-                              </button>
                             </div>
                           </td>
                         </tr>
@@ -503,7 +668,10 @@ const FestivalDataManagementPage = () => {
           </div>
         </>
       ) : (
-        <FestivalReviewManagement />
+        <FestivalReviewManagement 
+          initialSearchKeyword={reviewSearchKeyword}
+          onSearchKeywordChange={setReviewSearchKeyword}
+        />
       )}
     </div>
   );

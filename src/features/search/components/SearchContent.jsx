@@ -88,7 +88,7 @@ const SearchContent = ({
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
                       <Star className="w-3.5 h-3.5 text-[#FFD23F] fill-current" />
-                      <span className="text-xs font-black text-gray-700">{fest.rating_avg ? fest.rating_avg.toFixed(1) : '0.0'}</span>
+                      <span className="text-xs font-black text-gray-700">{(fest.rating_avg ?? fest.avg_rating) ? Number(fest.rating_avg ?? fest.avg_rating).toFixed(1) : '0.0'}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-400">
                       <Eye className="w-3.5 h-3.5" />
@@ -144,7 +144,7 @@ const SearchContent = ({
                   <div className="flex gap-4">
                     <div className="flex items-center gap-1.5">
                       <Star className="w-4 h-4 text-[#FFD23F] fill-current" />
-                      <span className="text-sm font-black text-gray-700">{fest.rating_avg ? fest.rating_avg.toFixed(1) : '0.0'}</span>
+                      <span className="text-sm font-black text-gray-700">{(fest.rating_avg ?? fest.avg_rating) ? Number(fest.rating_avg ?? fest.avg_rating).toFixed(1) : '0.0'}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-500">
                       <Eye className="w-4 h-4" /> <span className="text-sm font-black">{fest.view_count || 0}</span>
