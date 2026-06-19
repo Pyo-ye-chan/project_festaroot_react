@@ -38,6 +38,12 @@ const adminMemberApi = {
     getMemberDetail: async (id) => {
         const response = await maxios.get(`${BASE_URL}/${id}/detail`);
         return response.data;
+    },
+
+    // 3회 이상 신고받은 주의 대상 회원 목록 통합 조회
+    getCautionMembers: async () => {
+        const response = await maxios.get(`${BASE_URL}/caution`);
+        return response.data;
     }
 };
 
