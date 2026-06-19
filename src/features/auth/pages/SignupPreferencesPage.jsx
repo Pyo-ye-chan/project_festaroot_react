@@ -145,24 +145,21 @@ const SignupPreferencesPage = () => {
     try {
       setIsSubmitting(true);
 
-      console.log('최종 회원가입 데이터:', finalData);
-
       const response = await signup(finalData);
 
-      console.log('회원가입 응답:', response);
-
-      if (response === 'success' || response?.success === true) {
+      if (response.status >= 200 && response.status < 300) {
         alert('회원가입이 완료되었습니다!');
         resetSignupData();
         navigate('/login');
-      } else {
-        alert(response?.message || '회원가입에 실패했습니다.');
       }
     } catch (error) {
       console.error('회원가입 실패:', error);
-      console.error('서버 응답:', error.response?.data);
 
-      alert(error.response?.data?.message || '서버 오류가 발생했습니다.');
+      alert(
+        error.response?.data?.message ||
+        error.response?.data ||
+        '서버 오류가 발생했습니다.'
+      );
     } finally {
       setIsSubmitting(false);
     }
