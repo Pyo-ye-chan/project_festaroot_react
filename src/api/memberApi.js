@@ -4,7 +4,7 @@ export const signup = (formData) => maxios.post('/member/signup', formData);
 
 export const sendVerificationCode = async (email) => {
     const response = await maxios.post('/email/send', { email });
-    return response.data;
+    return response;
 };
 
 export const verifyEmailCode = async (email, code) => {
