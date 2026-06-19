@@ -26,6 +26,12 @@ const adminApi = {
     restoreMember: async (id) => {
         const response = await maxios.put(`${BASE_URL}/${id}/restore`);
         return response.data;
+    },
+
+    // 5. 상단 요약 통계 데이터 조회 (검색 필터 독립)
+    getMainStats: async () => {
+        const response = await maxios.get(`${BASE_URL}/stats`);
+        return response.data;
     }
 };
 

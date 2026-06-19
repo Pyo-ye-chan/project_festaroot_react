@@ -62,7 +62,11 @@ const formatNumber = (value) => Number(value || 0).toLocaleString();
 
 const MemberManagementPage = () => {
   const [members, setMembers] = useState([]);
-  const [totalCount, setTotalCount] = useState(0); // 전체 인원수
+  const [totalCount, setTotalCount] = useState(0);
+
+  // 독립적인 상단 전체 대시보드 통계 상태 정보
+  const [mainStats, setMainStats] = useState({ total: 0, newToday: 0, suspended: 0, blacklisted: 0 });
+
   const [keyword, setKeyword] = useState('');
   const [role, setRole] = useState('all');
   const [status, setStatus] = useState('all');
@@ -70,18 +74,26 @@ const MemberManagementPage = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // 페이지네이션 상태 (백엔드 연결 대비)
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(5); // 임시 더미 값
+  const [totalPages, setTotalPages] = useState(1);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetMember, setTargetMember] = useState(null);
   const [suspensionDays, setSuspensionDays] = useState('7');
 
-  // Zustand 스토어에서 구조분해할당으로 가져옴
   const { isLoading, startLoading, stopLoading } = useLoadingStore();
 
-  // 회원 값 가져 오기
+  // 1. 대시보드 고정 통계 수집 호출 (필터와 무관)
+  const fetchStats = async () => {
+    try {
+      const data = await adminApi.getMainStats();
+      setMainStats(data);
+    } catch (error) {
+      console.error("통계 정보를 가져오는 중 오류 발생 : ", error);
+    }
+  };
+
+  // 2. 검색 조건이 반영된 페이지네이션 회원 목록 호출
   const fetchMembers = async () => {
     try {
       startLoading();
@@ -92,21 +104,19 @@ const MemberManagementPage = () => {
         sortBy,
         startDate: startDate || null,
         endDate: endDate || null,
-        page: currentPage, // 1부터 시작하는 페이지 번호
-        size: 10,          // 한 페이지에 보여줄 개수 고정
+        page: currentPage,
+        size: 10,
       };
 
       const cleanParam = Object.fromEntries(
         Object.entries(rawParam).filter(([_, value]) => value !== null && value !== undefined)
       );
 
-      // 백엔드 응답 구조 변경 대응
       const response = await adminApi.getMembers(cleanParam);
 
       setMembers(response.memberList || []);
       setTotalPages(response.totalPages || 1);
-
-      setTotalCount(response.totalElements || 0);
+      setTotalCount(response.totalElements || 0); // 검색 조건에 걸린 토탈 수
 
     } catch (error) {
       console.error("회원 목록을 불러오는 중 에러 발생 : ", error);
@@ -115,28 +125,23 @@ const MemberManagementPage = () => {
     }
   };
 
+  // 초기 로드 시 대시보드 고정 수치 반영
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  // 필터 조건 변경 시 멤버 리스트 리로드
   useEffect(() => {
     fetchMembers();
   }, [keyword, role, status, sortBy, startDate, endDate, currentPage]);
 
-  // 목록 및 통계에서 관리자(ADMIN)를 제외한 진짜 '일반 회원' 데이터만 필터링
   const displayedMembers = useMemo(() => {
     return members.filter((m) => m.role !== 'ADMIN');
   }, [members]);
 
-  // 주의 대상 회원 필터링 (관리자 제외 & 신고수 5건 이상)
   const cautionMembers = useMemo(() => {
     return displayedMembers.filter((m) => m.reports >= 5);
   }, [displayedMembers]);
-
-  const stats = useMemo(() => {
-    return {
-      total: totalCount, // 전체 회원수(관리자 제외)
-      newToday: displayedMembers.filter((m) => m.joinedAt === '2026.06.17').length, // 당일 가입은 현재 페이지 기준 혹은 백엔드 통계 추천
-      suspended: displayedMembers.filter((m) => m.status === 'SUSPENDED').length,
-      blacklisted: displayedMembers.filter((m) => m.status === 'BLACKLISTED').length,
-    };
-  }, [totalCount, displayedMembers]);
 
   const handleReset = () => {
     setKeyword('');
@@ -161,6 +166,7 @@ const MemberManagementPage = () => {
       setIsModalOpen(false);
       setTargetMember(null);
       fetchMembers();
+      fetchStats(); // 상태 변경 처리에 맞춰 고정 통계 리프레시
     } catch (error) {
       alert("정지 처리 중 오류가 발생했습니다.");
     }
@@ -172,6 +178,7 @@ const MemberManagementPage = () => {
         await adminApi.blacklistMember(member.id);
         alert("블랙리스트로 등록되었습니다.");
         fetchMembers();
+        fetchStats(); // 상태 변경 처리에 맞춰 고정 통계 리프레시
       } catch (error) {
         alert("블랙리스트 등록 중 오류가 발생했습니다.");
       }
@@ -186,6 +193,7 @@ const MemberManagementPage = () => {
         await adminApi.restoreMember(memberId);
         alert("제재가 해제되었습니다.");
         fetchMembers();
+        fetchStats(); // 상태 변경 처리에 맞춰 고정 통계 리프레시
       } catch (error) {
         alert("제재 해제 중 오류가 발생했습니다.");
       }
@@ -200,12 +208,12 @@ const MemberManagementPage = () => {
         <p className="mt-2 text-sm font-medium text-gray-500">회원 정보를 조회하고 서비스 이용을 제한하거나 관리합니다.</p>
       </section>
 
-      {/* 요약 카드 */}
+      {/* 요약 카드 (검색결과에 영향 받지 않는 데이터 바인딩) */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard icon={Users} title="전체 회원" value={stats.total} unit="명" iconClass="bg-purple-50 text-[#6d3df2]" />
-        <SummaryCard icon={UserPlus} title="오늘 가입" value={stats.newToday} unit="명" iconClass="bg-blue-50 text-blue-600" />
-        <SummaryCard icon={UserMinus} title="정지 회원" value={stats.suspended} unit="명" iconClass="bg-orange-50 text-orange-600" />
-        <SummaryCard icon={UserX} title="블랙리스트" value={stats.blacklisted} unit="명" iconClass="bg-red-50 text-red-500" />
+        <SummaryCard icon={Users} title="전체 회원" value={mainStats.total} unit="명" iconClass="bg-purple-50 text-[#6d3df2]" />
+        <SummaryCard icon={UserPlus} title="오늘 가입" value={mainStats.newToday} unit="명" iconClass="bg-blue-50 text-blue-600" />
+        <SummaryCard icon={UserMinus} title="정지 회원" value={mainStats.suspended} unit="명" iconClass="bg-orange-50 text-orange-600" />
+        <SummaryCard icon={UserX} title="블랙리스트" value={mainStats.blacklisted} unit="명" iconClass="bg-red-50 text-red-500" />
       </section>
 
       {/* 검색 및 필터 UI */}
@@ -218,7 +226,6 @@ const MemberManagementPage = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* 왼쪽: 검색어 및 기간 (길게 배치) */}
           <div className="md:col-span-9 space-y-5">
             <div>
               <label className="mb-2 block text-xs font-black text-gray-400 uppercase">검색어 (닉네임, 이메일, ID)</label>
@@ -226,7 +233,7 @@ const MemberManagementPage = () => {
                 <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
                 <input
                   value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
+                  onChange={(e) => { setKeyword(e.target.value); setCurrentPage(1); }}
                   placeholder="검색어를 입력하세요..."
                   className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 pl-11 pr-4 text-sm font-bold text-gray-700 outline-none transition focus:border-[#6d3df2]/40 focus:bg-white"
                 />
@@ -235,17 +242,16 @@ const MemberManagementPage = () => {
             <div>
               <label className="mb-2 block text-xs font-black text-gray-400 uppercase">가입 기간 설정</label>
               <div className="flex items-center gap-2">
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 text-xs font-bold text-gray-700 outline-none focus:bg-white focus:border-[#6d3df2]/40" />
+                <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }} className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 text-xs font-bold text-gray-700 outline-none focus:bg-white focus:border-[#6d3df2]/40" />
                 <span className="text-gray-300 font-bold">~</span>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 text-xs font-bold text-gray-700 outline-none focus:bg-white focus:border-[#6d3df2]/40" />
+                <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }} className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 text-xs font-bold text-gray-700 outline-none focus:bg-white focus:border-[#6d3df2]/40" />
               </div>
             </div>
           </div>
 
-          {/* 오른쪽: 상태 및 정렬 (위아래 배치) */}
           <div className="md:col-span-3 space-y-5">
-            <FilterSelect label="활동 상태" value={status} onChange={setStatus} options={Object.entries(STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))} />
-            <FilterSelect label="정렬 기준" value={sortBy} onChange={setSortBy} options={[
+            <FilterSelect label="활동 상태" value={status} onChange={(v) => { setStatus(v); setCurrentPage(1); }} options={Object.entries(STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))} />
+            <FilterSelect label="정렬 기준" value={sortBy} onChange={(v) => { setSortBy(v); setCurrentPage(1); }} options={[
               { value: 'latest', label: '최근 가입순' },
               { value: 'oldest', label: '오래된 가입순' },
               { value: 'lastLogin', label: '최근 접속순' },
@@ -258,7 +264,8 @@ const MemberManagementPage = () => {
       {/* 회원 목록 테이블 */}
       <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
-          <h2 className="text-lg font-black text-gray-900">회원 목록 <span className="ml-1 text-[#6d3df2]">{displayedMembers.length}</span> 명</h2>
+          {/* 해당 검색 조건에 만족하는 전체 데이터 개수 바인딩 하도록 totalCount 적용 */}
+          <h2 className="text-lg font-black text-gray-900">회원 목록 <span className="ml-1 text-[#6d3df2]">{totalCount}</span> 명</h2>
           <div className="flex gap-2">
             <button className="h-10 px-4 rounded-xl border border-orange-100 bg-orange-50 text-xs font-black text-orange-600 hover:bg-orange-100 transition">정지 선택</button>
             <button className="h-10 px-4 rounded-xl border border-red-100 bg-red-50 text-xs font-black text-red-500 hover:bg-red-100 transition">블랙리스트 추가</button>
@@ -296,7 +303,6 @@ const MemberManagementPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {/* 로딩 중일 때 테이블 내부 스피너 표시 */}
               {isLoading ? (
                 <tr>
                   <td colSpan={11} className="px-4 py-16 text-center font-bold text-gray-400">
@@ -334,19 +340,37 @@ const MemberManagementPage = () => {
                     </td>
                     <td className="px-4 py-4 text-center text-xs font-bold text-gray-400">{member.joinedAt}</td>
                     <td className="px-4 py-4 text-center text-xs font-bold text-gray-400">{member.lastLogin}</td>
-                    <td className="px-4 py-4 text-center text-xs font-black text-orange-600 bg-orange-50/30">{member.suspensionEndDate}</td>
+                    <td className="px-4 py-4 text-center text-xs font-black text-orange-600 bg-orange-50/30">{member.suspensionEndDate || '-'}</td>
                     <td className="px-4 py-4 text-right font-black text-gray-400">
                       <span className={member.reports >= 5 ? 'text-red-500' : ''}>{member.reports}</span>
                     </td>
                     <td className="px-4 py-4 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button title="상세보기" className="p-1.5 rounded-lg border border-gray-100 hover:bg-white text-[#6d3df2] transition"><Eye size={13} /></button>
-                        {member.status === 'ACTIVE' ? (
-                          <button onClick={() => openSuspensionModal(member)} title="활동 정지" className="p-1.5 rounded-lg border border-gray-100 hover:bg-white text-orange-500 transition"><Lock size={13} /></button>
-                        ) : (
-                          <button onClick={() => handleStatusRestore(member.id)} title="제재 해제" className="p-1.5 rounded-lg border border-gray-100 hover:bg-white text-emerald-500 transition"><Unlock size={13} /></button>
-                        )}
-                        <button onClick={() => handleBlacklist(member)} title="블랙리스트 등록" className="p-1.5 rounded-lg border border-gray-100 hover:bg-white text-red-500 transition"><Ban size={13} /></button>
+
+                        {/* 1. 활동 정지 상태 조작 아이콘 UI 피드백 부여 */}
+                        <button
+                          onClick={() => member.status === 'SUSPENDED' ? handleStatusRestore(member.id) : openSuspensionModal(member)}
+                          title={member.status === 'SUSPENDED' ? "제재 해제 복원" : "활동 정지 조치"}
+                          className={`p-1.5 rounded-lg border transition ${member.status === 'SUSPENDED'
+                              ? 'bg-orange-500 border-orange-500 text-white hover:bg-orange-600'
+                              : 'border-gray-100 hover:bg-white text-orange-500'
+                            }`}
+                        >
+                          {member.status === 'SUSPENDED' ? <Unlock size={13} /> : <Lock size={13} />}
+                        </button>
+
+                        {/* 2. 블랙리스트 상태 조작 아이콘 UI 피드백 부여 */}
+                        <button
+                          onClick={() => member.status === 'BLACKLISTED' ? handleStatusRestore(member.id) : handleBlacklist(member)}
+                          title={member.status === 'BLACKLISTED' ? "제재 해제 복원" : "블랙리스트 등록"}
+                          className={`p-1.5 rounded-lg border transition ${member.status === 'BLACKLISTED'
+                              ? 'bg-red-500 border-red-500 text-white hover:bg-red-600'
+                              : 'border-gray-100 hover:bg-white text-red-500'
+                            }`}
+                        >
+                          <Ban size={13} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -356,7 +380,7 @@ const MemberManagementPage = () => {
           </table>
         </div>
 
-        {/* 페이지네이션 (백엔드 연결 대비용 UI) */}
+        {/* 페이지네이션 */}
         <div className="py-8 border-t border-gray-50">
           <div className="flex items-center justify-center gap-2">
             <button
@@ -420,7 +444,6 @@ const MemberManagementPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-sm">
-                {/* 로딩 중일 때 모니터링 스피너 처리 및 데이터 없을 때 안내문구 추가 */}
                 {isLoading ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center font-bold text-gray-400">
