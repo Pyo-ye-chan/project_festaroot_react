@@ -44,19 +44,19 @@ const InquiryDetail = ({ inquiry, onBack, onEdit, onDelete, getStatusStyle, getS
         <div className="p-6 sm:p-8 border-b border-gray-50 bg-slate-50/30">
           <div className="flex items-center gap-3 mb-4">
             <span className={`text-[10px] font-black px-2.5 py-1 rounded-md ${getStatusStyle(inquiry.status)}`}>
-              {getStatusLabel(inquiry.status)}
+              {getStatusLabel(inquiry?.status)}
             </span>
             <span className="text-xs font-bold text-gray-400">
-              {categoryMap[inquiry.category] || inquiry.category}
+              {categoryMap[inquiry?.category] || inquiry?.category}
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-2">{inquiry.title}</h2>
           <div className="flex items-center gap-3 text-[11px] font-bold text-gray-400">
             <span className="flex items-center gap-1">
-              <User className="w-3 h-3" /> {inquiry.member_name || '작성자'}
+              <User className="w-3 h-3" /> {inquiry?.member_name || '작성자'}
             </span>
             <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {inquiry.created_at}
+              <Clock className="w-3 h-3" /> {inquiry?.created_at}
             </span>
           </div>
         </div>
@@ -65,25 +65,25 @@ const InquiryDetail = ({ inquiry, onBack, onEdit, onDelete, getStatusStyle, getS
         <div className="p-6 sm:p-8 min-h-[200px]">
           <div 
             className="prose prose-sm max-w-none text-gray-700 font-medium leading-relaxed inquiry-content"
-            dangerouslySetInnerHTML={{ __html: inquiry.content }}
+            dangerouslySetInnerHTML={{ __html: inquiry?.content }}
           />
           
-          {inquiry.attachments && inquiry.attachments.length > 0 && (
+          {inquiry?.attachments && inquiry?.attachments.length > 0 && (
             <div className="mt-8 pt-8 border-t border-gray-50">
               <h4 className="text-xs font-black text-gray-400 mb-4 flex items-center gap-2 uppercase tracking-wider">
-                <Paperclip className="w-3.5 h-3.5" /> 첨부파일 ({inquiry.attachments.length})
+                <Paperclip className="w-3.5 h-3.5" /> 첨부파일 ({inquiry?.attachments.length})
               </h4>
               <div className="flex flex-wrap gap-2">
-                {inquiry.attachments.map((file, idx) => (
+                {inquiry?.attachments.map((file, idx) => (
                   <a 
                     key={idx}
-                    href={file.file_path}
+                    href={file?.file_path}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[11px] font-bold text-gray-600 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-100 transition-all"
                   >
                     <Paperclip className="w-3 h-3" />
-                    {file.file_name || `첨부파일 ${idx + 1}`}
+                    {file?.file_name || `첨부파일 ${idx + 1}`}
                   </a>
                 ))}
               </div>
@@ -98,7 +98,7 @@ const InquiryDetail = ({ inquiry, onBack, onEdit, onDelete, getStatusStyle, getS
             답변 내역
           </h3>
 
-          {inquiry.answer.content ? (
+          {inquiry?.answer?.content ? (
             <div className="space-y-6">
               <div className="flex gap-4 group">
                 <div className="shrink-0">
@@ -112,7 +112,7 @@ const InquiryDetail = ({ inquiry, onBack, onEdit, onDelete, getStatusStyle, getS
                       <span className="text-sm font-black text-gray-900">운영자</span>
                       <span className="px-1.5 py-0.5 bg-purple-100 text-[10px] font-black text-purple-600 rounded">관리자</span>
                     </div>
-                    <span className="text-[10px] font-bold text-gray-400">{inquiry.answer.created_at}</span>
+                    <span className="text-[10px] font-bold text-gray-400">{inquiry?.answer?.created_at}</span>
                   </div>
                   <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-purple-100/50 shadow-sm relative">
                     {/* Speech bubble tail */}
@@ -120,7 +120,7 @@ const InquiryDetail = ({ inquiry, onBack, onEdit, onDelete, getStatusStyle, getS
                     
                     <div 
                       className="text-sm text-gray-700 font-medium leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: inquiry.answer.content }}
+                      dangerouslySetInnerHTML={{ __html: inquiry?.answer?.content }}
                     />
                   </div>
                 </div>
