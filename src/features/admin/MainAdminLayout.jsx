@@ -40,7 +40,7 @@ const MainAdminLayout = () => {
     { name: '게시글 관리', path: '/admin/posts', icon: Newspaper },
     { name: '댓글 관리', path: '/admin/comments', icon: MessageSquare },
     { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound },
-    { name: '공지사항 관리 ', path: '/admin/notices', icon: Megaphone },
+    { name: '공지사항 관리', path: '/admin/notices', icon: Megaphone },
     { name: '문의 관리', path: '/admin/inquiries', icon: ShieldAlert },
   ];
 
