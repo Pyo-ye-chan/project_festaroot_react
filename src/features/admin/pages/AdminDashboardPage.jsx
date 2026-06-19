@@ -26,16 +26,27 @@ const emptyDashboardData = {
   summary: {
     memberCount: 0,
     todayNewMembers: 0,
+    memberChange: 0,
+
     festivalCount: 0,
     visibleFestivalCount: 0,
+    festivalChange: 0,
+
     postCount: 0,
     todayPostCount: 0,
+    postChange: 0,
+
     reportCount: 0,
     waitingReportCount: 0,
+    reportChange: 0,
+
     waitingInquiryCount: 0,
     todayInquiryCount: 0,
+    inquiryChange: 0,
+
     noticeCount: 0,
     visibleNoticeCount: 0,
+    noticeChange: 0,
   },
   weeklyStats: [],
   festivalStatusStats: [],
@@ -102,6 +113,7 @@ const AdminDashboardPage = () => {
       const apiData = response?.data ?? response;
 
       setDashboardData(normalizeDashboardData(apiData));
+      console.log(dashboardData);
     } catch (error) {
       console.error('관리자 대시보드 조회 실패:', error);
 
@@ -140,6 +152,34 @@ const AdminDashboardPage = () => {
     return numberValue.toLocaleString();
   };
 
+  const formatChange = (value) => {
+    const numberValue = Number(value || 0);
+
+    if (numberValue > 0) {
+      return `+${numberValue}`;
+    }
+
+    if (numberValue < 0) {
+      return `${numberValue}`;
+    }
+
+    return '0';
+  };
+
+  const getChangeClass = (value) => {
+    const numberValue = Number(value || 0);
+
+    if (numberValue > 0) {
+      return 'bg-emerald-50 text-emerald-600';
+    }
+
+    if (numberValue < 0) {
+      return 'bg-red-50 text-red-500';
+    }
+
+    return 'bg-gray-50 text-gray-400';
+  };
+
   const summary = dashboardData.summary ?? emptyDashboardData.summary;
 
   const statisticCards = [
@@ -147,7 +187,7 @@ const AdminDashboardPage = () => {
       title: '전체 회원',
       value: `${formatNumber(summary.memberCount)}명`,
       subText: `신규 가입 ${formatNumber(summary.todayNewMembers)}명`,
-      change: '-',
+      change: summary.memberChange,
       icon: Users,
       tone: 'purple',
     },
@@ -155,7 +195,7 @@ const AdminDashboardPage = () => {
       title: '축제 데이터',
       value: `${formatNumber(summary.festivalCount)}건`,
       subText: `노출 중 ${formatNumber(summary.visibleFestivalCount)}건`,
-      change: '-',
+      change: summary.festivalChange,
       icon: Database,
       tone: 'purple',
     },
@@ -163,7 +203,7 @@ const AdminDashboardPage = () => {
       title: '게시글',
       value: `${formatNumber(summary.postCount)}건`,
       subText: `오늘 작성 ${formatNumber(summary.todayPostCount)}건`,
-      change: '-',
+      change: summary.postChange,
       icon: FileText,
       tone: 'purple',
     },
@@ -171,7 +211,7 @@ const AdminDashboardPage = () => {
       title: '신고 접수',
       value: `${formatNumber(summary.reportCount)}건`,
       subText: `처리 대기 ${formatNumber(summary.waitingReportCount)}건`,
-      change: '-',
+      change: summary.reportChange,
       icon: ShieldAlert,
       tone: 'red',
     },
@@ -179,7 +219,7 @@ const AdminDashboardPage = () => {
       title: '문의 대기',
       value: `${formatNumber(summary.waitingInquiryCount)}건`,
       subText: `오늘 접수 ${formatNumber(summary.todayInquiryCount)}건`,
-      change: '-',
+      change: summary.inquiryChange,
       icon: MessageSquare,
       tone: 'yellow',
     },
@@ -187,11 +227,12 @@ const AdminDashboardPage = () => {
       title: '공지사항',
       value: `${formatNumber(summary.noticeCount)}건`,
       subText: `노출 중 ${formatNumber(summary.visibleNoticeCount)}건`,
-      change: '-',
+      change: summary.noticeChange,
       icon: Megaphone,
       tone: 'green',
     },
   ];
+
 
   const weeklyStats = dashboardData.weeklyStats ?? [];
   const regionStats = dashboardData.regionStats ?? [];
@@ -258,7 +299,7 @@ const AdminDashboardPage = () => {
     {
       name: '공지 작성',
       icon: Megaphone,
-      path: '/admin/notices/write',
+      path: '/admin/notices',
     },
   ];
 
@@ -307,6 +348,24 @@ const AdminDashboardPage = () => {
         return 'bg-gray-100 text-gray-500';
       default:
         return 'bg-gray-100 text-gray-500';
+    }
+  };
+
+  const getReportStatusClass = (status) => {
+    switch (status) {
+      case '완료':
+        return 'bg-green-50 text-green-600';
+
+      case '검토중':
+      case '처리중':
+        return 'bg-blue-50 text-blue-600';
+
+      case '반려':
+        return 'bg-gray-100 text-gray-500';
+
+      case '접수':
+      default:
+        return 'bg-purple-50 text-[#6d3df2]';
     }
   };
 
@@ -364,8 +423,12 @@ const AdminDashboardPage = () => {
                   <Icon size={24} />
                 </div>
 
-                <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-black text-gray-500">
-                  {card.change}
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-black ${getChangeClass(
+                    card.change
+                  )}`}
+                >
+                  전일 {formatChange(card.change)}
                 </span>
               </div>
 
@@ -411,15 +474,6 @@ const AdminDashboardPage = () => {
                 />
               </label>
 
-              <button
-                type="button"
-                onClick={() => fetchDashboard(selectedDate)}
-                disabled={loading}
-                className="inline-flex h-11 items-center gap-2 rounded-2xl bg-[#6d3df2] px-4 text-sm font-black text-white shadow-lg shadow-purple-100 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />
-                {loading ? '불러오는 중' : '조회'}
-              </button>
             </div>
           </div>
 
@@ -607,8 +661,18 @@ const AdminDashboardPage = () => {
                     {festival.rank ?? index + 1}
                   </span>
 
-                  <div className="flex h-14 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-100 via-yellow-50 to-purple-200">
-                    <MapPin size={22} className="text-[#6d3df2]" />
+                  <div className="h-14 w-16 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-purple-100 via-yellow-50 to-purple-200">
+                    {festival.firstImage ? (
+                      <img
+                        src={festival.firstImage}
+                        alt={festival.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <MapPin size={22} className="text-[#6d3df2]" />
+                      </div>
+                    )}
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -695,21 +759,21 @@ const AdminDashboardPage = () => {
       <section className="grid grid-cols-1 gap-5 2xl:grid-cols-12">
         {/* 최근 신고 접수 */}
         <article className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm 2xl:col-span-7">
-          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h3 className="flex items-center gap-2 text-lg font-black text-gray-900">
                 <ShieldAlert size={20} className="text-red-500" />
                 최근 신고 접수
               </h3>
               <p className="mt-1 text-xs font-bold text-gray-400">
-                통계에서 확인된 신고 현황의 최근 접수 내역입니다.
+                게시글에 접수된 최근 신고 내역입니다.
               </p>
             </div>
 
             <button
               type="button"
               onClick={() => navigate('/admin/inquiries')}
-              className="inline-flex w-fit items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-xs font-black text-gray-500 transition hover:border-[#6d3df2]/30 hover:text-[#6d3df2]"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-black text-gray-600 transition hover:border-[#6d3df2]/30 hover:text-[#6d3df2]"
             >
               신고 관리
               <ArrowRight size={14} />
@@ -717,20 +781,32 @@ const AdminDashboardPage = () => {
           </div>
 
           {recentReports.length === 0 ? (
-            <div className="flex h-48 items-center justify-center rounded-2xl bg-gray-50 text-sm font-black text-gray-400">
-              최근 신고 접수 내역이 없습니다.
+            <div className="flex h-44 flex-col items-center justify-center rounded-2xl bg-gray-50 text-center">
+              <ShieldAlert size={26} className="mb-2 text-gray-300" />
+              <p className="text-sm font-black text-gray-400">
+                최근 신고 접수 내역이 없습니다.
+              </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-left">
+            <div className="overflow-hidden rounded-2xl border border-gray-100">
+              <table className="w-full table-fixed text-center">
+                <colgroup>
+                  <col className="w-[13%]" />
+                  <col className="w-[17%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[28%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[12%]" />
+                </colgroup>
+
                 <thead>
-                  <tr className="border-y border-gray-100 bg-gray-50 text-xs font-black text-gray-500">
-                    <th className="px-4 py-3">접수번호</th>
-                    <th className="px-4 py-3">유형</th>
-                    <th className="px-4 py-3">대상</th>
-                    <th className="px-4 py-3">신고자</th>
-                    <th className="px-4 py-3">접수일시</th>
-                    <th className="px-4 py-3">상태</th>
+                  <tr className="border-b border-gray-100 bg-gray-50 text-xs font-black text-gray-500">
+                    <th className="px-3 py-3.5">접수 번호</th>
+                    <th className="px-3 py-3.5">접수 일자</th>
+                    <th className="px-3 py-3.5">신고 사유</th>
+                    <th className="px-3 py-3.5">제목</th>
+                    <th className="px-3 py-3.5">신고자</th>
+                    <th className="px-3 py-3.5">상태</th>
                   </tr>
                 </thead>
 
@@ -738,22 +814,53 @@ const AdminDashboardPage = () => {
                   {recentReports.map((report, index) => (
                     <tr
                       key={`${report.id}-${index}`}
-                      className="border-b border-gray-50 text-xs font-bold text-gray-600 transition hover:bg-gray-50"
+                      className="border-b border-gray-50 text-xs font-bold text-gray-600 transition last:border-b-0 hover:bg-purple-50/30"
                     >
-                      <td className="px-4 py-4 font-black text-gray-800">
-                        {report.id}
+                      <td className="px-3 py-4 align-middle">
+                        <span className="block truncate font-black tabular-nums text-gray-900">
+                          {report.id || '-'}
+                        </span>
                       </td>
-                      <td className="px-4 py-4">{report.type}</td>
-                      <td className="px-4 py-4">{report.target}</td>
-                      <td className="px-4 py-4">{report.reporter}</td>
-                      <td className="px-4 py-4">{report.date}</td>
-                      <td className="px-4 py-4">
+
+                      <td className="px-3 py-4 align-middle">
+                        <span className="block truncate tabular-nums text-gray-500">
+                          {report.date || '-'}
+                        </span>
+                      </td>
+
+                      <td className="px-3 py-4 align-middle">
+                        <span className="mx-auto inline-flex max-w-full items-center justify-center rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-black text-red-500">
+                          <span className="truncate">
+                            {report.type || '기타'}
+                          </span>
+                        </span>
+                      </td>
+
+                      <td className="px-3 py-4 align-middle">
+                        <p
+                          title={report.target || ''}
+                          className="mx-auto max-w-full truncate text-center font-black text-gray-800"
+                        >
+                          {report.target || '신고 대상 정보 없음'}
+                        </p>
+                      </td>
+
+                      <td className="px-3 py-4 align-middle">
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-black ${getStatusClass(
+                          title={report.reporter || ''}
+                          className="block truncate text-center font-bold text-gray-700"
+                        >
+                          {report.reporter || '-'}
+                        </span>
+                      </td>
+
+                      <td className="px-3 py-4 align-middle">
+                        <span
+                          className={`mx-auto inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[11px] font-black ${getReportStatusClass(
                             report.status
                           )}`}
                         >
-                          {report.status}
+                          {report.status || '접수'}
                         </span>
                       </td>
                     </tr>
