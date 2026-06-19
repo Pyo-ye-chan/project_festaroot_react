@@ -185,6 +185,7 @@ const PostDetailPage = () => {
 
     try {
       await deletePost(id);
+     
       alert('게시글이 삭제되었습니다.');
       navigate('/community/board/all');
     } catch (error) {
