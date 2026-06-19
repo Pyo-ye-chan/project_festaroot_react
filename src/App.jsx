@@ -48,7 +48,7 @@ import PostManagementPage from './features/admin/pages/PostManagementPage';
 import CommentManagementPage from './features/admin/pages/CommentManagementPage';
 import GatheringManagementPage from './features/admin/pages/GatheringManagementPage';
 import NoticeManagementPage from './features/admin/pages/NoticeManagementPage';
-import InquiryManagementPage from './features/admin/pages/InquiryManagementPage';
+import InquiryManagementPage from './features/admin/pages/InquiryManagement/pages/InquiryManagementPage';
 
 import useAuthStore from './store/useAuthStore';
 

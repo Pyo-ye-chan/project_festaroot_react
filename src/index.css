@@ -68,3 +68,19 @@ body {
 
 
 
+
+/* Inquiry Content Styling */
+.inquiry-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 1rem;
+  margin: 1rem 0;
+}
+
+.inquiry-content p {
+  margin-bottom: 0.5rem;
+}
+
+.inquiry-content p:last-child {
+  margin-bottom: 0;
+}
