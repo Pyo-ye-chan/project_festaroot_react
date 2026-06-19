@@ -31,7 +31,7 @@ const MainAdminLayout = () => {
     }
   };
 
-  // 현재 라우터에 실제로 등록된 관리자 페이지 기준 메뉴
+  // 현재 라우터에 실제로 등록된 관리자 페이지 기준 메뉴 (충돌 해결: 모임 관리 주석 유지)
   const menus = [
     { name: '대시보드', path: '/admin', icon: Home },
     { name: '회원 관리', path: '/admin/members', icon: Users },
@@ -177,7 +177,7 @@ const MainAdminLayout = () => {
                 8
               </span>
             </button>
-     
+
             <button
               type="button"
               onClick={handleLogout}

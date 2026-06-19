@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../../store/useAuthStore';
 import { getMyPost } from '../../../api/boardApi';
 import Pagination from '../../gathering/components/Pagination';
 
 
 const MyPostsTab = () => {
+  const navigate = useNavigate();
 
   const categoryMap = {
   free: '자유',
@@ -141,9 +143,10 @@ const getCategoryClasses = (postCategory) => {
         <>
           {currentPosts.length > 0 ? (
             <div className="space-y-3 sm:space-y-4">
-              {currentPosts.map((post) => (
+               {currentPosts.map((post) => (
                 <div
                   key={post.post_id}
+                  onClick={() => navigate(`/community/post/${post.post_id || post.id}`)}
                   className="group bg-white p-4 sm:p-6 rounded-[20px] sm:rounded-[24px] border border-gray-100 shadow-sm hover:shadow-md hover:border-purple-100 transition-all cursor-pointer"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

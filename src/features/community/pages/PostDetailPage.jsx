@@ -185,6 +185,7 @@ const PostDetailPage = () => {
 
     try {
       await deletePost(id);
+     
       alert('게시글이 삭제되었습니다.');
       navigate('/community/board/all');
     } catch (error) {
@@ -488,15 +489,19 @@ const PostDetailPage = () => {
                   {post.view_count || 0}
                 </span>
 
-                <span className="inline-flex items-center gap-1">
-                  <Heart className="w-4 h-4" />
-                  {likeCount}
-                </span>
+                {post.category !== 'notice' && (
+                  <>
+                    <span className="inline-flex items-center gap-1">
+                      <Heart className="w-4 h-4" />
+                      {likeCount}
+                    </span>
 
-                <span className="inline-flex items-center gap-1">
-                  <MessageSquare className="w-4 h-4" />
-                  {totalCommentCount}
-                </span>
+                    <span className="inline-flex items-center gap-1">
+                      <MessageSquare className="w-4 h-4" />
+                      {totalCommentCount}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </header>
@@ -563,7 +568,7 @@ const PostDetailPage = () => {
             <div className="mt-12 pt-7 border-t border-gray-100">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  {!isPostOwner && (
+                  {!isPostOwner && post.category !== 'notice' && (
                     <button
                       type="button"
                       onClick={handleTogglePostLike}
@@ -616,18 +621,20 @@ const PostDetailPage = () => {
                       </button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setReportTargetType('post');
-                        setReportTargetId(post.post_id);
-                        setIsReportModalOpen(true);
-                      }}
-                      className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                    >
-                      <AlertCircle className="w-4 h-4" />
-                      신고
-                    </button>
+                    post.category !== 'notice' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReportTargetType('post');
+                          setReportTargetId(post.post_id);
+                          setIsReportModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-bold text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                      >
+                        <AlertCircle className="w-4 h-4" />
+                        신고
+                      </button>
+                    )
                   )}
                 </div>
               </div>
@@ -636,7 +643,8 @@ const PostDetailPage = () => {
         </article>
 
         {/* 댓글 섹션 */}
-        <section className="mt-6 bg-white rounded-3xl border border-gray-200/70 shadow-sm overflow-hidden">
+        {post.category !== 'notice' && (
+          <section className="mt-6 bg-white rounded-3xl border border-gray-200/70 shadow-sm overflow-hidden">
           <div className="px-6 sm:px-10 py-6 border-b border-gray-100">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-purple-600" />
@@ -1011,6 +1019,7 @@ const PostDetailPage = () => {
             )}
           </div>
         </section>
+        )}
 
         {/* 하단 목록 버튼 */}
         <div className="flex justify-center mt-8">
