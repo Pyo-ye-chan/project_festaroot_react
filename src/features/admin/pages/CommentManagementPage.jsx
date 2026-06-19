@@ -1,533 +1,836 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import CommentDetailView from '../components/CommentDetailView';
 import {
   Search,
   RotateCcw,
   CalendarDays,
   MessageCircle,
-  AlertTriangle,
-  ShieldCheck,
-  EyeOff,
+  ShieldAlert,
+  Eye,
   Trash2,
-  CheckCircle2,
-  MoreHorizontal,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Ban,
-  FileText,
-  RefreshCw,
-  ArrowRight,
+  CheckCircle2,
+  ClipboardCheck,
+  CornerDownRight,
 } from 'lucide-react';
+
+const CATEGORY_LABELS = {
+  all: '전체',
+  free: '자유',
+  review: '리뷰',
+  tip: '팁',
+  notice: '공지',
+};
+
+const SEARCH_TYPE_OPTIONS = [
+  { value: 'content', label: '내용 검색' },
+  { value: 'author', label: '작성자' },
+  { value: 'id', label: '댓글 ID' },
+  { value: 'postTitle', label: '게시글 제목' },
+  { value: 'postId', label: '게시글 ID' },
+];
+
+
+const REPORT_RESULT_LABELS = {
+  WAITING: '접수',
+  ACCEPTED: '인정',
+  REJECTED: '반려',
+};
+
+const REPORT_RESULT_CLASSES = {
+  WAITING: 'bg-yellow-50 text-yellow-600',
+  ACCEPTED: 'bg-red-50 text-red-500',
+  REJECTED: 'bg-gray-100 text-gray-500',
+};
+
+const COMMENT_PAGE_SIZE = 5;
+const REPORT_PAGE_SIZE = 4;
+
+const commentTypeClass = {
+  COMMENT: 'bg-purple-50 text-purple-600',
+  REPLY: 'bg-blue-50 text-blue-600',
+};
 
 const dummyComments = [
   {
-    id: 1,
-    content: '올해 축제 라인업 진짜 대박이에요! 기대됩니다 🔥',
-    postTitle: '서울빛초롱축제 2025 라인업 공개!',
-    author: 'festival_love',
-    type: '댓글',
-    createdAt: '2026.06.16 14:32',
-    reportCount: 3,
-    reportReason: '광고/홍보',
-    status: '신고 접수',
-    authorStatus: '정상',
-    depth: 0,
+    commentId: 1,
+    postId: 11,
+    postTitle: '첫번째 게시글',
+    postCategory: 'review',
+    memberId: 'festival_love',
+    parentCommentId: null,
+    content: '첫 번째 댓글 예시입니다.',
+    createdAt: '2026.06.17 14:32',
+    updatedAt: '2026.06.17 14:32',
+    likeCount: 12,
+    reportItems: [
+      {
+        reportId: 301,
+        reporterMemberId: 'user_1201',
+        reason: '욕설',
+        createdAt: '2026.06.17 15:02',
+        status: 'WAITING',
+        adminMemo: '',
+        processedAt: '',
+      },
+      {
+        reportId: 302,
+        reporterMemberId: 'user_7744',
+        reason: '도배',
+        createdAt: '2026.06.17 15:15',
+        status: 'WAITING',
+        adminMemo: '',
+        processedAt: '',
+      },
+    ],
   },
   {
-    id: 2,
-    content: '저도 다녀왔는데 너무 좋았어요! 특히 야경이 최고였어요 😊',
-    postTitle: '서울빛초롱축제 2025 라인업 공개!',
-    author: 'sunny_day',
-    type: '대댓글',
-    createdAt: '2026.06.16 14:45',
-    reportCount: 1,
-    reportReason: '기타',
-    status: '검토 중',
-    authorStatus: '정상',
-    depth: 1,
+    commentId: 2,
+    postId: 11,
+    postTitle: '두번째 게시글',
+    postCategory: 'review',
+    memberId: 'sunny_day',
+    parentCommentId: 1,
+    content: '대댓글 예시입니다.',
+    createdAt: '2026.06.17 14:45',
+    updatedAt: '2026.06.17 14:45',
+    likeCount: 4,
+    reportItems: [
+      {
+        reportId: 303,
+        reporterMemberId: 'user_4031',
+        reason: '불쾌한 표현',
+        createdAt: '2026.06.17 15:20',
+        status: 'REJECTED',
+        adminMemo: '무효 처리',
+        processedAt: '2026.06.17 16:02',
+      },
+    ],
   },
   {
-    id: 3,
-    content: '맞아요! 사진도 정말 예쁘게 나왔어요 📸',
-    postTitle: '서울빛초롱축제 2025 라인업 공개!',
-    author: 'photo_king',
-    type: '대댓글',
-    createdAt: '2026.06.16 14:47',
-    reportCount: 0,
-    reportReason: '-',
-    status: '정상',
-    authorStatus: '정상',
-    depth: 1,
-  },
-  {
-    id: 4,
-    content: '주차장 너무 협소해서 짜증났어요. 개선 좀 해주세요.',
-    postTitle: '강남 미디어 아트 페스티벌 후기',
-    author: 'angry_user',
-    type: '댓글',
-    createdAt: '2026.06.16 13:12',
-    reportCount: 5,
-    reportReason: '욕설/비하',
-    status: '신고 접수',
-    authorStatus: '경고',
-    depth: 0,
-  },
-  {
-    id: 5,
-    content: '그건 좀 심한 표현 아닌가요? 서로 배려해요~',
-    postTitle: '강남 미디어 아트 페스티벌 후기',
-    author: 'kind_heart',
-    type: '대댓글',
-    createdAt: '2026.06.16 13:25',
-    reportCount: 0,
-    reportReason: '-',
-    status: '정상',
-    authorStatus: '정상',
-    depth: 1,
-  },
-  {
-    id: 6,
-    content: '맞아요, 너무 과격한 표현은 자제해주세요.',
-    postTitle: '강남 미디어 아트 페스티벌 후기',
-    author: 'mod_festival',
-    type: '대댓글',
-    createdAt: '2026.06.16 13:28',
-    reportCount: 0,
-    reportReason: '-',
-    status: '정상',
-    authorStatus: '관리자',
-    depth: 1,
+    commentId: 3,
+    postId: 12,
+    postTitle: '세번째 게시글',
+    postCategory: 'free',
+    memberId: 'angry_user',
+    parentCommentId: null,
+    content: '자유글 댓글 예시입니다.',
+    createdAt: '2026.06.17 13:12',
+    updatedAt: '2026.06.17 13:12',
+    likeCount: 2,
+    reportItems: [
+      {
+        reportId: 304,
+        reporterMemberId: 'user_8812',
+        reason: '욕설',
+        createdAt: '2026.06.17 13:20',
+        status: 'WAITING',
+        adminMemo: '',
+        processedAt: '',
+      },
+    ],
   },
 ];
-
-const recentRestrictions = [
-  {
-    id: 1,
-    author: 'angry_user',
-    type: '경고',
-    period: '-',
-    reason: '욕설/비하 반복',
-    date: '2026.06.16 13:15',
-    status: '활성',
-  },
-  {
-    id: 2,
-    author: 'spam_promo123',
-    type: '게시글 작성 제한',
-    period: '7일',
-    reason: '광고/홍보 반복',
-    date: '2026.06.16 11:40',
-    status: '활성',
-  },
-  {
-    id: 3,
-    author: 'bad_commenter',
-    type: '댓글 작성 제한',
-    period: '3일',
-    reason: '욕설/비하',
-    date: '2026.06.16 09:22',
-    status: '활성',
-  },
-];
-
-const statusClass = {
-  정상: 'bg-emerald-50 text-emerald-600',
-  '검토 중': 'bg-blue-50 text-blue-600',
-  '신고 접수': 'bg-orange-50 text-orange-600',
-  숨김: 'bg-gray-100 text-gray-500',
-  삭제: 'bg-red-50 text-red-500',
-};
-
-const authorStatusClass = {
-  정상: 'bg-emerald-50 text-emerald-600',
-  경고: 'bg-orange-50 text-orange-600',
-  관리자: 'bg-purple-50 text-purple-600',
-  정지: 'bg-red-50 text-red-500',
-};
-
-const typeClass = {
-  댓글: 'bg-purple-50 text-purple-600',
-  대댓글: 'bg-blue-50 text-blue-600',
-};
-
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 
+const getTodayKey = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const date = String(today.getDate()).padStart(2, '0');
+
+  return `${year}.${month}.${date}`;
+};
+
+const getNowText = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const date = String(now.getDate()).padStart(2, '0');
+  const hour = String(now.getHours()).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+
+  return `${year}.${month}.${date} ${hour}:${minute}`;
+};
+
+const getCommentCode = (comment) => `CMT-${String(comment.commentId).padStart(5, '0')}`;
+
+const getPostCode = (comment) => `POST-${String(comment.postId).padStart(3, '0')}`;
+
+const normalizeCategory = (category) => String(category || '').toLowerCase();
+
+const getCommentType = (comment) => (comment.parentCommentId ? 'REPLY' : 'COMMENT');
+
+const getCommentTypeLabel = (comment) => (comment.parentCommentId ? '대댓글' : '댓글');
+
+const getReportCount = (comment) => Number(comment.reportItems?.length || 0);
+
+const getPendingReportCount = (comment) =>
+  Number(comment.reportItems?.filter((report) => report.status === 'WAITING').length || 0);
+
+const getSearchPlaceholder = (searchType) => {
+  if (searchType === 'author') return '작성자 ID를 입력해 주세요.';
+  if (searchType === 'id') return '댓글 ID를 입력해 주세요.';
+  if (searchType === 'postTitle') return '게시글 제목을 입력해 주세요.';
+  if (searchType === 'postId') return '게시글 ID를 입력해 주세요.';
+  return '내용을 입력해 주세요.';
+};
+
 const CommentManagementPage = () => {
+  const [comments, setComments] = useState(dummyComments);
+  const [keywordInput, setKeywordInput] = useState('');
   const [keyword, setKeyword] = useState('');
-  const [type, setType] = useState('전체');
-  const [reason, setReason] = useState('전체');
-  const [status, setStatus] = useState('전체');
+  const [searchType, setSearchType] = useState('content');
+  const [category, setCategory] = useState('all');
+  const [commentType, setCommentType] = useState('all');
+  const [selectedCommentIds, setSelectedCommentIds] = useState([]);
+  const [selectedCommentId, setSelectedCommentId] = useState(null);
+  const [reportPage, setReportPage] = useState(1);
+  const [commentPage, setCommentPage] = useState(1);
+
+  const selectedComment = useMemo(() => {
+    if (!selectedCommentId) return null;
+    return comments.find((comment) => comment.commentId === selectedCommentId) || null;
+  }, [comments, selectedCommentId]);
 
   const filteredComments = useMemo(() => {
-    return dummyComments.filter((comment) => {
-      const lowerKeyword = keyword.toLowerCase();
+    const lowerKeyword = keyword.trim().toLowerCase();
+
+    return comments.filter((comment) => {
+      const currentCategory = normalizeCategory(comment.postCategory);
+      const currentType = getCommentType(comment);
+      const keywordTarget = {
+        content: comment.content,
+        author: comment.memberId,
+        id: getCommentCode(comment),
+        postTitle: comment.postTitle,
+        postId: getPostCode(comment),
+      }[searchType];
+
       const keywordMatch =
-        comment.content.toLowerCase().includes(lowerKeyword) ||
-        comment.postTitle.toLowerCase().includes(lowerKeyword) ||
-        comment.author.toLowerCase().includes(lowerKeyword);
+        !lowerKeyword || String(keywordTarget || '').toLowerCase().includes(lowerKeyword);
+      const categoryMatch = category === 'all' || currentCategory === category;
+      const typeMatch = commentType === 'all' || currentType === commentType;
 
-      const typeMatch = type === '전체' || comment.type === type;
-      const reasonMatch = reason === '전체' || comment.reportReason === reason;
-      const statusMatch = status === '전체' || comment.status === status;
-
-      return keywordMatch && typeMatch && reasonMatch && statusMatch;
+      return keywordMatch && categoryMatch && typeMatch;
     });
-  }, [keyword, type, reason, status]);
+  }, [comments, keyword, searchType, category, commentType]);
+
+  const waitingReportRows = useMemo(() => {
+    return comments
+      .flatMap((comment) =>
+        (comment.reportItems || [])
+          .filter((report) => report.status === 'WAITING')
+          .map((report) => ({ comment, report }))
+      )
+      .sort((a, b) => Number(b.report.reportId || 0) - Number(a.report.reportId || 0));
+  }, [comments]);
+
+  const reportTotalPages = Math.max(1, Math.ceil(waitingReportRows.length / REPORT_PAGE_SIZE));
+  const safeReportPage = Math.min(reportPage, reportTotalPages);
+
+  const pagedWaitingReportRows = useMemo(() => {
+    const startIndex = (safeReportPage - 1) * REPORT_PAGE_SIZE;
+    return waitingReportRows.slice(startIndex, startIndex + REPORT_PAGE_SIZE);
+  }, [waitingReportRows, safeReportPage]);
+
+  const commentTotalPages = Math.max(1, Math.ceil(filteredComments.length / COMMENT_PAGE_SIZE));
+  const safeCommentPage = Math.min(commentPage, commentTotalPages);
+
+  const pagedComments = useMemo(() => {
+    const startIndex = (safeCommentPage - 1) * COMMENT_PAGE_SIZE;
+    return filteredComments.slice(startIndex, startIndex + COMMENT_PAGE_SIZE);
+  }, [filteredComments, safeCommentPage]);
 
   const stats = useMemo(() => {
-    const total = dummyComments.length;
-    const reported = dummyComments.filter((comment) => comment.reportCount > 0).length;
-    const replies = dummyComments.filter((comment) => comment.type === '대댓글').length;
-    const restricted = recentRestrictions.length;
+    const todayKey = getTodayKey();
+    const reportedCommentCount = comments.filter((comment) => getReportCount(comment) > 0).length;
+    const pendingReportCount = comments.reduce(
+      (total, comment) => total + getPendingReportCount(comment),
+      0
+    );
+    const replyCount = comments.filter((comment) => comment.parentCommentId).length;
 
     return {
-      total,
-      reported,
-      replyRate: total > 0 ? ((replies / total) * 100).toFixed(1) : '0.0',
-      restricted,
+      total: comments.length,
+      today: comments.filter((comment) => comment.createdAt.startsWith(todayKey)).length,
+      reportedCommentCount,
+      pendingReportCount,
+      replyCount,
     };
-  }, []);
+  }, [comments]);
+
+  const isAllChecked =
+    pagedComments.length > 0 &&
+    pagedComments.every((comment) => selectedCommentIds.includes(comment.commentId));
+
+  const handleSearch = () => {
+    setKeyword(keywordInput.trim());
+    setSelectedCommentIds([]);
+    setCommentPage(1);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') handleSearch();
+  };
 
   const handleReset = () => {
+    setKeywordInput('');
     setKeyword('');
-    setType('전체');
-    setReason('전체');
-    setStatus('전체');
+    setSearchType('content');
+    setCategory('all');
+    setCommentType('all');
+    setSelectedCommentIds([]);
+    setCommentPage(1);
   };
+
+  const handleChangeCategory = (nextCategory) => {
+    setCategory(nextCategory);
+    setSelectedCommentIds([]);
+    setCommentPage(1);
+  };
+
+  const handleChangeCommentType = (nextType) => {
+    setCommentType(nextType);
+    setSelectedCommentIds([]);
+    setCommentPage(1);
+  };
+
+  const handleChangeSearchType = (nextSearchType) => {
+    setSearchType(nextSearchType);
+    setCommentPage(1);
+  };
+
+  const handleOpenDetail = (commentId) => {
+    setSelectedCommentId(commentId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToList = () => {
+    setSelectedCommentId(null);
+  };
+
+  const handleToggleAll = () => {
+    const currentPageIds = pagedComments.map((comment) => comment.commentId);
+
+    if (isAllChecked) {
+      setSelectedCommentIds((prev) => prev.filter((id) => !currentPageIds.includes(id)));
+      return;
+    }
+
+    setSelectedCommentIds((prev) => Array.from(new Set([...prev, ...currentPageIds])));
+  };
+
+  const handleToggleComment = (commentId) => {
+    setSelectedCommentIds((prev) => {
+      if (prev.includes(commentId)) return prev.filter((id) => id !== commentId);
+      return [...prev, commentId];
+    });
+  };
+
+  const handleDeleteComment = (commentId) => {
+    const target = comments.find((comment) => comment.commentId === commentId);
+    if (!target) return;
+
+    const isConfirmed = window.confirm(
+      `댓글과 연결된 신고 기록을 함께 삭제합니다.\n\n댓글 ID: ${getCommentCode(target)}\n내용: ${target.content}\n\n정말 완전 삭제할까요?`
+    );
+
+    if (!isConfirmed) return;
+
+    setComments((prev) => prev.filter((comment) => comment.commentId !== commentId));
+    setSelectedCommentIds((prev) => prev.filter((id) => id !== commentId));
+
+    if (selectedCommentId === commentId) setSelectedCommentId(null);
+  };
+
+  const handleDeleteSelectedComments = () => {
+    if (selectedCommentIds.length === 0) return;
+
+    const isConfirmed = window.confirm(
+      `선택한 댓글 ${selectedCommentIds.length}건을 완전 삭제할까요?\n\nPOST_COMMENT와 COMMENT_REPORT 연결 데이터가 함께 정리되어야 합니다.`
+    );
+
+    if (!isConfirmed) return;
+
+    setComments((prev) => prev.filter((comment) => !selectedCommentIds.includes(comment.commentId)));
+    setSelectedCommentIds([]);
+  };
+
+  const handleProcessReport = ({ commentId, reportId, resultStatus, adminMemo }) => {
+    const targetComment = comments.find((comment) => comment.commentId === commentId);
+    const targetReport = targetComment?.reportItems?.find((report) => report.reportId === reportId);
+
+    if (!targetComment || !targetReport) {
+      window.alert('처리할 신고 내역을 찾을 수 없습니다.');
+      return;
+    }
+
+    if (targetReport.status !== 'WAITING') {
+      window.alert('이미 처리된 신고 내역입니다.');
+      return;
+    }
+
+    const resultLabel = REPORT_RESULT_LABELS[resultStatus] || resultStatus;
+    const isConfirmed = window.confirm(
+      `신고 ${`RPT-${String(reportId).padStart(5, '0')}`}건을 '${resultLabel}' 처리할까요?\n\n댓글 자체 상태가 아니라 COMMENT_REPORT.STATUS와 MEMBER_REPORT_HISTORY 처리 이력이 변경됩니다.`
+    );
+
+    if (!isConfirmed) return;
+
+    const processedAt = getNowText();
+
+    setComments((prev) =>
+      prev.map((comment) => {
+        if (comment.commentId !== commentId) return comment;
+
+        return {
+          ...comment,
+          reportItems: (comment.reportItems || []).map((report) => {
+            if (report.reportId !== reportId) return report;
+
+            return {
+              ...report,
+              status: resultStatus,
+              adminMemo,
+              processedAt,
+            };
+          }),
+        };
+      })
+    );
+  };
+
+  if (selectedComment) {
+    return (
+      <CommentDetailView
+        key={selectedComment.commentId}
+        comment={selectedComment}
+        onBack={handleBackToList}
+        onDelete={handleDeleteComment}
+        onProcessReport={handleProcessReport}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* 상단 제목 영역 */}
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div>
-
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
-              댓글 관리
-            </h1>
-          </div>
-          <p className="mt-2 text-sm font-medium text-gray-500">
-            신고된 댓글과 대댓글을 검토하고 숨김, 삭제, 작성자 제재를 처리합니다.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-700 shadow-sm transition hover:border-[#6d3df2]/30 hover:text-[#6d3df2]"
-          >
-            <CalendarDays size={17} />
-            2026.06.16
-          </button>
-
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-2xl bg-[#6d3df2] px-4 py-3 text-sm font-black text-white shadow-lg shadow-purple-100 transition hover:-translate-y-0.5"
-          >
-            <RefreshCw size={17} />
-            새로고침
-          </button>
-        </div>
+      <section>
+        <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
+          댓글 관리
+        </h1>
+        <p className="mt-2 text-sm font-medium text-gray-500">
+          댓글 원문과 연결 게시글을 확인하고, 접수된 댓글 신고는 관리자 메모와 함께 인정 또는 반려 처리합니다.
+        </p>
       </section>
 
-      {/* 안내 배너 */}
-      <section className="rounded-3xl border border-purple-100 bg-gradient-to-r from-purple-50 via-white to-yellow-50 p-5 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[#6d3df2] shadow-sm">
-              <MessageCircle size={24} />
-            </div>
-
-            <div>
-              <h2 className="text-base font-black text-gray-900">
-                건전한 커뮤니티 환경을 위해 신고 댓글을 확인해주세요.
-              </h2>
-              <p className="mt-1 break-keep text-sm font-medium leading-6 text-gray-500">
-                축제로에서 실제 구현 가능한 범위는 신고 확인, 숨김 처리, 완전 삭제, 작성자 제재입니다.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="inline-flex w-fit items-center justify-center gap-2 rounded-2xl bg-[#6d3df2] px-5 py-3 text-sm font-black text-white shadow-lg shadow-purple-100 transition hover:-translate-y-0.5"
-          >
-            신고 접수 댓글 보기
-            <ArrowRight size={16} />
-          </button>
-        </div>
-      </section>
-
-      {/* 요약 카드 */}
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           icon={MessageCircle}
-          title="전체 댓글"
+          title="총 댓글"
           value={stats.total}
           unit="개"
-          change="댓글/대댓글 전체"
+          description="게시글 댓글 수"
           iconClass="bg-purple-50 text-[#6d3df2]"
         />
         <SummaryCard
-          icon={AlertTriangle}
-          title="신고 댓글"
-          value={stats.reported}
+          icon={CalendarDays}
+          title="오늘 등록"
+          value={stats.today}
           unit="개"
-          change="신고 1회 이상"
+          description="오늘 기준 신규 댓글"
+          iconClass="bg-blue-50 text-blue-600"
+        />
+        <SummaryCard
+          icon={ShieldAlert}
+          title="신고 댓글"
+          value={stats.reportedCommentCount}
+          unit="개"
+          description="신고된 댓글 수"
           iconClass="bg-red-50 text-red-500"
         />
         <SummaryCard
-          icon={MessageCircle}
-          title="대댓글 비율"
-          value={stats.replyRate}
-          unit="%"
-          change="전체 댓글 기준"
+          icon={ClipboardCheck}
+          title="처리 대기"
+          value={stats.pendingReportCount}
+          unit="개"
+          description="상태가 WAITING인 항목"
           iconClass="bg-yellow-50 text-yellow-600"
         />
-        <SummaryCard
-          icon={ShieldCheck}
-          title="최근 제재"
-          value={stats.restricted}
-          unit="건"
-          change="경고/작성 제한"
-          iconClass="bg-emerald-50 text-emerald-600"
-        />
+      </section>
+      <section className="overflow-hidden rounded-3xl border border-red-100 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-red-50 px-5 py-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-black text-gray-900">신고 접수 댓글</h2>
+              <span className="inline-flex h-7 items-center rounded-full bg-red-50 px-3 text-xs font-black text-red-500">
+                {formatNumber(waitingReportRows.length)}건
+              </span>
+              <span className="inline-flex h-7 items-center rounded-full bg-red-50/70 px-3 text-xs font-black text-red-500">
+                우선 확인
+              </span>
+            </div>
+            <p className="mt-1 text-xs font-bold text-gray-400">
+              접수된 COMMENT_REPORT 단위로 댓글 원문 확인과 처리 화면으로 이동합니다.
+            </p>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1050px] table-fixed text-left">
+            <colgroup>
+              <col className="w-[120px]" />
+              <col className="w-[145px]" />
+              <col className="w-[145px]" />
+              <col className="w-[330px]" />
+              <col className="w-[130px]" />
+              <col className="w-[130px]" />
+              <col className="w-[95px]" />
+              <col className="w-[95px]" />
+            </colgroup>
+
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50 text-center text-xs font-black text-gray-500">
+                <th className="px-4 py-4">접수 번호</th>
+                <th className="px-4 py-4">접수 일자</th>
+                <th className="px-4 py-4">신고 사유</th>
+                <th className="px-4 py-4">댓글 내용</th>
+                <th className="px-4 py-4">신고자</th>
+                <th className="px-4 py-4">작성자</th>
+                <th className="px-4 py-4">상태</th>
+                <th className="px-4 py-4">관리</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {pagedWaitingReportRows.length > 0 ? (
+                pagedWaitingReportRows.map(({ comment, report }) => (
+                  <tr
+                    key={report.reportId}
+                    className="border-b border-gray-50 text-sm transition hover:bg-red-50/30"
+                  >
+                    <td className="px-4 py-4 text-center align-middle font-black text-gray-700">
+                      RPT-{String(report.reportId).padStart(5, '0')}
+                    </td>
+                    <td className="px-4 py-4 text-center align-middle text-xs font-bold leading-5 text-gray-500">
+                      {report.createdAt}
+                    </td>
+                    <td className="px-4 py-4 text-center align-middle">
+                      <span className="inline-flex max-w-full items-center justify-center rounded-full bg-red-50 px-3 py-1.5 text-xs font-black text-red-500">
+                        <span className="truncate">{report.reason}</span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 align-middle">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDetail(comment.commentId)}
+                        className="block w-full text-left"
+                      >
+                        <p className="line-clamp-1 break-keep text-sm font-black text-gray-800">
+                          {comment.content}
+                        </p>
+                        <p className="mt-1 truncate text-xs font-semibold text-gray-400">
+                          {getCommentCode(comment)} · {getPostCode(comment)} · {comment.postTitle}
+                        </p>
+                      </button>
+                    </td>
+                    <td className="px-4 py-4 text-center align-middle font-bold text-gray-600">
+                      {report.reporterMemberId}
+                    </td>
+                    <td className="px-4 py-4 text-center align-middle font-bold text-gray-600">
+                      {comment.memberId}
+                    </td>
+                    <td className="px-4 py-4 text-center align-middle">
+                      <StatusBadge className={REPORT_RESULT_CLASSES[report.status]}>
+                        {REPORT_RESULT_LABELS[report.status] || report.status}
+                      </StatusBadge>
+                    </td>
+                    <td className="px-4 py-4 text-center align-middle">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDetail(comment.commentId)}
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#6d3df2] transition hover:border-[#6d3df2]/30 hover:bg-purple-50"
+                      >
+                        <Eye size={14} />
+                        확인
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="px-5 py-12 text-center">
+                    <CheckCircle2 size={28} className="mx-auto text-emerald-500" />
+                    <p className="mt-3 text-sm font-black text-gray-700">
+                      처리 대기 중인 댓글 신고가 없습니다.
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-gray-400">
+                      신규 신고가 접수되면 이 영역에 표시됩니다.
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="border-t border-gray-100 px-5 py-4">
+          <Pagination page={safeReportPage} totalPages={reportTotalPages} onChange={setReportPage} />
+        </div>
       </section>
 
-      {/* 필터 */}
       <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-black text-gray-900">댓글 검색</h2>
-            <p className="mt-1 text-sm font-medium text-gray-500">
-              댓글 유형, 신고 사유, 처리 상태와 키워드로 댓글을 조회합니다.
+            <h2 className="text-lg font-black text-gray-900">전체 댓글 조회</h2>
+            <p className="mt-1 text-xs font-bold text-gray-400">
+              게시글 카테고리와 댓글 유형을 먼저 좁힌 뒤 댓글 내용, 작성자, 댓글 ID 기준으로 검색합니다.
             </p>
           </div>
 
           <button
             type="button"
             onClick={handleReset}
-            className="inline-flex h-11 w-fit items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-black text-gray-600 transition hover:bg-gray-50"
+            className="inline-flex h-11 w-fit items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-black text-gray-600 transition hover:border-[#6d3df2]/30 hover:text-[#6d3df2]"
           >
             <RotateCcw size={17} />
             초기화
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_1fr_1.5fr]">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[0.9fr_0.9fr_0.9fr_2.1fr]">
+          <FilterSelect
+            label="게시글 카테고리"
+            value={category}
+            onChange={handleChangeCategory}
+            options={Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label }))}
+          />
+
           <FilterSelect
             label="댓글 유형"
-            value={type}
-            onChange={setType}
-            options={['전체', '댓글', '대댓글']}
+            value={commentType}
+            onChange={handleChangeCommentType}
+            options={[
+              { value: 'all', label: '전체' },
+              { value: 'COMMENT', label: '댓글' },
+              { value: 'REPLY', label: '대댓글' },
+            ]}
           />
 
           <FilterSelect
-            label="신고 사유"
-            value={reason}
-            onChange={setReason}
-            options={['전체', '욕설/비하', '광고/홍보', '스팸', '음란물', '기타']}
-          />
-
-          <FilterSelect
-            label="처리 상태"
-            value={status}
-            onChange={setStatus}
-            options={['전체', '정상', '검토 중', '신고 접수', '숨김', '삭제']}
+            label="검색 기준"
+            value={searchType}
+            onChange={handleChangeSearchType}
+            options={SEARCH_TYPE_OPTIONS}
           />
 
           <div>
-            <label className="mb-2 block text-xs font-black text-gray-500">
-              검색어
-            </label>
-            <div className="relative">
-              <Search
-                size={17}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder="댓글 내용, 게시글 제목, 작성자 검색"
-                className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm font-semibold text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-[#6d3df2]/40 focus:bg-white focus:ring-4 focus:ring-purple-50"
-              />
+            <label className="mb-2 block text-xs font-black text-gray-500">검색어</label>
+            <div className="flex gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={keywordInput}
+                  onChange={(e) => setKeywordInput(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder={getSearchPlaceholder(searchType)}
+                  className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm font-semibold text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-[#6d3df2]/40 focus:bg-white focus:ring-4 focus:ring-purple-50"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSearch}
+                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#6d3df2] px-5 text-sm font-black text-white shadow-sm transition hover:bg-[#5b2ed8]"
+              >
+                <Search size={17} />
+                검색
+              </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 댓글 목록 */}
       <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-black text-gray-900">댓글 목록</h2>
-            <p className="mt-1 text-sm font-medium text-gray-500">
-              총 <span className="font-black text-[#6d3df2]">{filteredComments.length}</span>개 조회됨
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-black text-gray-900">댓글 목록</h2>
+              <span className="inline-flex h-7 items-center rounded-full bg-purple-50 px-3 text-xs font-black text-[#6d3df2]">
+                {formatNumber(filteredComments.length)}개
+              </span>
+            </div>
+            <p className="mt-1 text-xs font-bold text-gray-400">
+              검색 조건에 맞는 댓글과 대댓글을 페이지 단위로 확인합니다.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-sm font-black text-gray-600 transition hover:bg-gray-50"
-            >
-              <EyeOff size={16} />
-              선택 숨김
-            </button>
-            <button
-              type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 text-sm font-black text-red-500 transition hover:bg-red-100"
-            >
-              <Trash2 size={16} />
-              선택 삭제
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleDeleteSelectedComments}
+            disabled={selectedCommentIds.length === 0}
+            className={`inline-flex h-10 w-fit items-center gap-2 rounded-xl px-4 text-sm font-black transition ${
+              selectedCommentIds.length === 0
+                ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
+                : 'border border-red-100 bg-red-50 text-red-500 hover:bg-red-100'
+            }`}
+          >
+            <Trash2 size={16} />
+            선택 삭제
+            {selectedCommentIds.length > 0 && ` ${selectedCommentIds.length}`}
+          </button>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1120px] table-fixed">
+          <table className="w-full min-w-[1180px] table-fixed text-left">
             <colgroup>
-              <col className="w-[48px]" />
-              <col className="w-[360px]" />
-              <col className="w-[230px]" />
-              <col className="w-[130px]" />
-              <col className="w-[90px]" />
+              <col className="w-[52px]" />
+              <col className="w-[120px]" />
+              <col className="w-[345px]" />
+              <col className="w-[265px]" />
+              <col className="w-[95px]" />
+              <col className="w-[125px]" />
               <col className="w-[145px]" />
-              <col className="w-[80px]" />
-              <col className="w-[105px]" />
-              <col className="w-[105px]" />
-              <col className="w-[140px]" />
+              <col className="w-[75px]" />
+              <col className="w-[85px]" />
+              <col className="w-[118px]" />
             </colgroup>
 
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs font-black text-gray-500">
-                <th className="px-4 py-4 text-left">
-                  <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
+                <th className="px-4 py-4 text-center">
+                  <input
+                    type="checkbox"
+                    checked={isAllChecked}
+                    onChange={handleToggleAll}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
                 </th>
-                <th className="px-4 py-4 text-left">댓글 내용</th>
-                <th className="px-4 py-4 text-left">게시글 제목</th>
-                <th className="px-4 py-4 text-left">작성자</th>
+                <th className="px-4 py-4 text-center">댓글 ID</th>
+                <th className="px-4 py-4">댓글 내용</th>
+                <th className="px-4 py-4">게시글 제목</th>
                 <th className="px-4 py-4 text-center">유형</th>
-                <th className="px-4 py-4 text-center">작성일</th>
-                <th className="px-4 py-4 text-center">신고</th>
-                <th className="px-4 py-4 text-center">처리 상태</th>
                 <th className="px-4 py-4 text-center">작성자</th>
+                <th className="px-4 py-4 text-center">작성일</th>
+                <th className="px-4 py-4 text-right">추천</th>
+                <th className="px-4 py-4 text-right">신고</th>
                 <th className="px-4 py-4 text-center">관리</th>
               </tr>
             </thead>
 
             <tbody>
-              {filteredComments.length > 0 ? (
-                filteredComments.map((comment) => (
-                  <tr
-                    key={comment.id}
-                    className="border-b border-gray-100 text-sm transition hover:bg-purple-50/40"
-                  >
-                    <td className="px-4 py-4 align-middle">
-                      <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
-                    </td>
+              {pagedComments.length > 0 ? (
+                pagedComments.map((comment) => {
+                  const currentType = getCommentType(comment);
+                  const reportCount = getReportCount(comment);
+                  const pendingCount = getPendingReportCount(comment);
+                  const isChecked = selectedCommentIds.includes(comment.commentId);
 
-                    <td className="px-4 py-4 align-middle">
-                      <div className={comment.depth > 0 ? 'pl-5' : ''}>
-                        {comment.depth > 0 && (
-                          <span className="mb-1 block text-xs font-black text-gray-300">
-                            └ 대댓글
+                  return (
+                    <tr
+                      key={comment.commentId}
+                      onClick={() => handleOpenDetail(comment.commentId)}
+                      className="cursor-pointer border-b border-gray-50 text-sm transition hover:bg-purple-50/40"
+                    >
+                      <td className="px-4 py-4 text-center align-middle">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => handleToggleComment(comment.commentId)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                      </td>
+
+                      <td className="px-4 py-4 text-center align-middle text-xs font-black text-gray-500">
+                        {getCommentCode(comment)}
+                      </td>
+
+                      <td className="px-4 py-4 align-middle">
+                        <div className={comment.parentCommentId ? 'pl-4' : ''}>
+                          {comment.parentCommentId && (
+                            <span className="mb-1 flex items-center gap-1 text-xs font-black text-gray-300">
+                              <CornerDownRight size={13} /> 대댓글
+                            </span>
+                          )}
+                          <p className="line-clamp-2 break-keep text-sm font-black leading-5 text-gray-800">
+                            {comment.content}
+                          </p>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-4 align-middle">
+                        <p className="line-clamp-1 break-keep text-sm font-bold text-gray-700">
+                          {comment.postTitle}
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-gray-400">
+                          {getPostCode(comment)} · {CATEGORY_LABELS[normalizeCategory(comment.postCategory)] || comment.postCategory}
+                        </p>
+                      </td>
+
+                      <td className="px-4 py-4 text-center align-middle">
+                        <StatusBadge className={commentTypeClass[currentType]}>
+                          {getCommentTypeLabel(comment)}
+                        </StatusBadge>
+                      </td>
+
+                      <td className="px-4 py-4 text-center align-middle">
+                        <p className="truncate font-black text-gray-700">{comment.memberId}</p>
+                      </td>
+
+                      <td className="px-4 py-4 text-center align-middle">
+                        <p className="text-xs font-bold leading-5 text-gray-600">{comment.createdAt}</p>
+                      </td>
+
+                      <td className="px-4 py-4 text-right align-middle font-bold text-gray-600">
+                        {formatNumber(comment.likeCount)}
+                      </td>
+
+                      <td className="px-4 py-4 text-right align-middle">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span className={reportCount > 0 ? 'font-black text-red-500' : 'font-bold text-gray-300'}>
+                            {formatNumber(reportCount)}
                           </span>
-                        )}
+                          {pendingCount > 0 && (
+                            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-50 px-1.5 text-[10px] font-black text-red-500">
+                              {pendingCount}
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
-                        <p className="line-clamp-2 break-keep text-sm font-bold leading-5 text-gray-700">
-                          {comment.content}
-                        </p>
+                      <td className="px-4 py-4 align-middle">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            title="댓글 보기"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDetail(comment.commentId);
+                            }}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-[#6d3df2] transition hover:bg-purple-50"
+                          >
+                            <Eye size={15} />
+                          </button>
 
-                        <p className="mt-1 truncate text-xs font-semibold text-gray-400">
-                          신고 사유: {comment.reportReason}
-                        </p>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-4 align-middle">
-                      <p className="truncate text-sm font-bold text-gray-600">
-                        {comment.postTitle}
-                      </p>
-                    </td>
-
-                    <td className="px-4 py-4 align-middle">
-                      <p className="truncate font-black text-gray-700">
-                        {comment.author}
-                      </p>
-                    </td>
-
-                    <td className="px-4 py-4 text-center align-middle">
-                      <StatusBadge className={typeClass[comment.type]}>
-                        {comment.type}
-                      </StatusBadge>
-                    </td>
-
-                    <td className="px-4 py-4 text-center align-middle">
-                      <p className="text-xs font-bold leading-5 text-gray-600">
-                        {comment.createdAt}
-                      </p>
-                    </td>
-
-                    <td className="px-4 py-4 text-center align-middle">
-                      <span
-                        className={`font-black ${
-                          comment.reportCount > 0 ? 'text-red-500' : 'text-gray-400'
-                        }`}
-                      >
-                        {comment.reportCount}
-                      </span>
-                    </td>
-
-                    <td className="px-4 py-4 text-center align-middle">
-                      <StatusBadge className={statusClass[comment.status]}>
-                        {comment.status}
-                      </StatusBadge>
-                    </td>
-
-                    <td className="px-4 py-4 text-center align-middle">
-                      <StatusBadge className={authorStatusClass[comment.authorStatus]}>
-                        {comment.authorStatus}
-                      </StatusBadge>
-                    </td>
-
-                    <td className="px-4 py-4 align-middle">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          type="button"
-                          title="신고 해제"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-emerald-600 transition hover:bg-emerald-50"
-                        >
-                          <CheckCircle2 size={15} />
-                        </button>
-
-                        <button
-                          type="button"
-                          title="숨김 처리"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"
-                        >
-                          <EyeOff size={15} />
-                        </button>
-
-                        <button
-                          type="button"
-                          title="완전 삭제"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-white text-red-500 transition hover:bg-red-50"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-
-                        <button
-                          type="button"
-                          title="더보기"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"
-                        >
-                          <MoreHorizontal size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          <button
+                            type="button"
+                            title="완전 삭제"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteComment(comment.commentId);
+                            }}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-white text-red-500 transition hover:bg-red-50"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={10} className="px-5 py-16 text-center">
@@ -547,158 +850,89 @@ const CommentManagementPage = () => {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-gray-100 px-5 py-4 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm font-bold text-gray-500">
-            1-{filteredComments.length} / 총 {filteredComments.length}개
-          </p>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 transition hover:bg-gray-50"
-            >
-              <ChevronLeft size={17} />
-            </button>
-            <button
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#6d3df2] text-sm font-black text-white"
-            >
-              1
-            </button>
-            <button
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 transition hover:bg-gray-50"
-            >
-              <ChevronRight size={17} />
-            </button>
-          </div>
+        <div className="border-t border-gray-100 px-5 py-4">
+          <Pagination page={safeCommentPage} totalPages={commentTotalPages} onChange={setCommentPage} />
         </div>
-      </section>
-
-      {/* 하단 운영 영역 */}
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <article className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-black text-gray-900">축제로 구현 가능 기능</h2>
-              <p className="mt-1 text-sm font-medium text-gray-500">
-                댓글 관리자에서 우선 구현할 수 있는 운영 흐름입니다.
-              </p>
-            </div>
-            <FileText size={22} className="shrink-0 text-[#6d3df2]" />
-          </div>
-
-          <div className="space-y-3">
-            <FeatureItem
-              icon={Search}
-              title="댓글 검색/필터"
-              desc="댓글 내용, 작성자, 게시글 제목, 신고 사유, 처리 상태 기준으로 조회합니다."
-            />
-            <FeatureItem
-              icon={EyeOff}
-              title="댓글 숨김 처리"
-              desc="삭제 전 관리자가 댓글을 비노출 상태로 전환합니다."
-            />
-            <FeatureItem
-              icon={Trash2}
-              title="댓글 삭제"
-              desc="댓글은 완전 삭제보다 is_deleted 처리로 원글 흐름을 유지하는 방식이 안정적입니다."
-            />
-            <FeatureItem
-              icon={Ban}
-              title="작성자 제재"
-              desc="경고, 댓글 작성 제한, 계정 정지 상태를 관리합니다."
-            />
-          </div>
-        </article>
-
-        <article className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-black text-gray-900">최근 제재 사용자</h2>
-              <p className="mt-1 text-sm font-medium text-gray-500">
-                신고 처리 후 제재된 사용자를 최근순으로 확인합니다.
-              </p>
-            </div>
-            <button
-              type="button"
-              className="shrink-0 rounded-xl border border-gray-200 px-3 py-2 text-xs font-black text-gray-600 transition hover:bg-gray-50"
-            >
-              더보기
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] table-fixed">
-              <colgroup>
-                <col className="w-[150px]" />
-                <col className="w-[150px]" />
-                <col className="w-[80px]" />
-                <col className="w-[160px]" />
-                <col className="w-[140px]" />
-              </colgroup>
-
-              <thead>
-                <tr className="border-y border-gray-100 bg-gray-50 text-xs font-black text-gray-500">
-                  <th className="px-4 py-3 text-left">작성자</th>
-                  <th className="px-4 py-3 text-left">제재 유형</th>
-                  <th className="px-4 py-3 text-left">기간</th>
-                  <th className="px-4 py-3 text-left">사유</th>
-                  <th className="px-4 py-3 text-left">일시</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {recentRestrictions.map((user) => (
-                  <tr key={user.id} className="border-b border-gray-100 text-sm transition hover:bg-gray-50">
-                    <td className="px-4 py-4">
-                      <p className="truncate font-black text-gray-700">{user.author}</p>
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="truncate font-bold text-gray-600">{user.type}</p>
-                    </td>
-                    <td className="px-4 py-4 font-bold text-gray-600">
-                      {user.period}
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="truncate font-bold text-gray-600">{user.reason}</p>
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="text-xs font-bold leading-5 text-gray-600">
-                        {user.date}
-                      </p>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </article>
       </section>
     </div>
   );
 };
 
-const SummaryCard = ({ icon: Icon, title, value, unit, change, iconClass }) => {
+
+const Pagination = ({ page, totalPages, onChange }) => {
+  const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const handlePrev = () => {
+    if (page <= 1) return;
+    onChange(page - 1);
+  };
+
+  const handleNext = () => {
+    if (page >= totalPages) return;
+    onChange(page + 1);
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <button
+        type="button"
+        onClick={handlePrev}
+        disabled={page <= 1}
+        className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+          page <= 1
+            ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
+            : 'border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
+        }`}
+      >
+        <ChevronLeft size={17} />
+      </button>
+
+      {pages.map((pageNumber) => (
+        <button
+          key={pageNumber}
+          type="button"
+          onClick={() => onChange(pageNumber)}
+          className={`flex h-9 min-w-9 items-center justify-center rounded-xl px-3 text-sm font-black transition ${
+            pageNumber === page
+              ? 'bg-[#6d3df2] text-white shadow-sm'
+              : 'border border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
+          }`}
+        >
+          {pageNumber}
+        </button>
+      ))}
+
+      <button
+        type="button"
+        onClick={handleNext}
+        disabled={page >= totalPages}
+        className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+          page >= totalPages
+            ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
+            : 'border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
+        }`}
+      >
+        <ChevronRight size={17} />
+      </button>
+    </div>
+  );
+};
+
+const SummaryCard = ({ icon: Icon, title, value, unit, description, iconClass }) => {
   return (
     <article className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-center gap-4">
-        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ${iconClass}`}>
-          <Icon size={24} />
+      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconClass}`}>
+        <Icon size={24} />
+      </div>
+      <div className="mt-5">
+        <p className="text-sm font-black text-gray-500">{title}</p>
+        <div className="mt-2 flex items-end gap-1">
+          <strong className="text-2xl font-black tracking-tight text-gray-950">
+            {formatNumber(value)}
+          </strong>
+          <span className="pb-0.5 text-sm font-black text-gray-700">{unit}</span>
         </div>
-
-        <div className="min-w-0">
-          <p className="text-sm font-black text-gray-500">{title}</p>
-          <div className="mt-1 flex items-end gap-1">
-            <strong className="text-2xl font-black tracking-tight text-gray-950">
-              {typeof value === 'number' ? formatNumber(value) : value}
-            </strong>
-            <span className="pb-0.5 text-sm font-black text-gray-700">{unit}</span>
-          </div>
-          <p className="mt-2 truncate text-xs font-bold text-gray-400">
-            {change}
-          </p>
-        </div>
+        <p className="mt-2 truncate text-xs font-bold text-gray-400">{description}</p>
       </div>
     </article>
   );
@@ -707,9 +941,7 @@ const SummaryCard = ({ icon: Icon, title, value, unit, change, iconClass }) => {
 const FilterSelect = ({ label, value, onChange, options }) => {
   return (
     <div>
-      <label className="mb-2 block text-xs font-black text-gray-500">
-        {label}
-      </label>
+      <label className="mb-2 block text-xs font-black text-gray-500">{label}</label>
       <div className="relative">
         <select
           value={value}
@@ -717,15 +949,12 @@ const FilterSelect = ({ label, value, onChange, options }) => {
           className="h-12 w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 pr-10 text-sm font-bold text-gray-700 outline-none transition focus:border-[#6d3df2]/40 focus:ring-4 focus:ring-purple-50"
         >
           {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
           ))}
         </select>
-        <ChevronDown
-          size={17}
-          className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
-        />
+        <ChevronDown size={17} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" />
       </div>
     </div>
   );
@@ -733,28 +962,11 @@ const FilterSelect = ({ label, value, onChange, options }) => {
 
 const StatusBadge = ({ children, className }) => {
   return (
-    <span
-      className={`inline-flex h-7 max-w-full items-center justify-center rounded-full px-3 text-xs font-black ${className}`}
-    >
+    <span className={`inline-flex h-7 max-w-full items-center justify-center rounded-full px-3 text-xs font-black ${className}`}>
       <span className="truncate">{children}</span>
     </span>
   );
 };
 
-const FeatureItem = ({ icon: Icon, title, desc }) => {
-  return (
-    <div className="flex gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#6d3df2] shadow-sm">
-        <Icon size={18} />
-      </div>
-      <div className="min-w-0">
-        <p className="font-black text-gray-800">{title}</p>
-        <p className="mt-1 break-keep text-sm font-medium leading-6 text-gray-500">
-          {desc}
-        </p>
-      </div>
-    </div>
-  );
-};
-
 export default CommentManagementPage;
+

@@ -190,6 +190,8 @@ const SignupPage = () => {
       const emailCheck = await checkEmailDuplicate(formData.email);
       const emailData = emailCheck?.data ?? emailCheck;
 
+      console.log(formData.email);
+
       if (!isAvailableResponse(emailData)) {
         setVerificationMessage(
           emailData?.message || '이미 사용 중인 이메일입니다.'

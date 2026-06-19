@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Search,
   RotateCcw,
@@ -9,149 +9,46 @@ import {
   ShieldAlert,
   Eye,
   Trash2,
-  MoreHorizontal,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  AlertTriangle,
   CheckCircle2,
-  RefreshCw,
-  Megaphone,
+  ClipboardCheck,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
+import PostDetailView from '../components/PostDetailView';
+import {
+  getAdminPostSummary,
+  getWaitingPostReports,
+  getAdminPosts,
+  getAdminPostDetail,
+  processAdminPostReport,
+  deleteAdminPost,
+  deleteAdminPosts,
+} from '../../../api/adminApi';
 
 const CATEGORY_LABELS = {
   all: '전체',
   free: '자유',
   review: '후기',
   tip: '꿀팁',
-  notice: '공지',
 };
 
-const dummyPosts = [
-  {
-    id: 'POST-001',
-    title: '남산 봄축제에서 찍은 야경 사진 공유해요 🌸',
-    category: 'review',
-    author: 'user_2048',
-    createdAt: '2026.06.16 14:32',
-    views: 1262,
-    comments: 12,
-    reports: 2,
-    imageCount: 3,
-    fileCount: 1,
-    status: '정상',
-  },
-  {
-    id: 'POST-002',
-    title: '비 오는 날 먹거리 축제 추천 부탁드려요!',
-    category: 'free',
-    author: 'user_5531',
-    createdAt: '2026.06.16 13:15',
-    views: 845,
-    comments: 8,
-    reports: 0,
-    imageCount: 0,
-    fileCount: 0,
-    status: '정상',
-  },
-  {
-    id: 'POST-003',
-    title: '퍼레이드 시간 변경됐나요?',
-    category: 'free',
-    author: 'user_3539',
-    createdAt: '2026.06.16 10:47',
-    views: 312,
-    comments: 3,
-    reports: 1,
-    imageCount: 1,
-    fileCount: 0,
-    status: '검토 중',
-  },
-  {
-    id: 'POST-004',
-    title: '음식 바가지 요금 너무 심하네요. 사진 첨부합니다.',
-    category: 'review',
-    author: 'user_9182',
-    createdAt: '2026.06.16 09:22',
-    views: 2104,
-    comments: 33,
-    reports: 5,
-    imageCount: 4,
-    fileCount: 0,
-    status: '신고 접수',
-  },
-  {
-    id: 'POST-005',
-    title: '아이와 함께 즐길 수 있는 체험 추천해요',
-    category: 'tip',
-    author: 'user_7841',
-    createdAt: '2026.06.15 21:03',
-    views: 689,
-    comments: 7,
-    reports: 0,
-    imageCount: 2,
-    fileCount: 1,
-    status: '정상',
-  },
-  {
-    id: 'POST-006',
-    title: '운영진 답변 좀 부탁드립니다',
-    category: 'free',
-    author: 'user_4472',
-    createdAt: '2026.06.15 20:33',
-    views: 421,
-    comments: 18,
-    reports: 2,
-    imageCount: 0,
-    fileCount: 1,
-    status: '검토 중',
-  },
-  {
-    id: 'POST-007',
-    title: '축제로 서비스 점검 안내',
-    category: 'notice',
-    author: '관리자',
-    createdAt: '2026.06.15 18:00',
-    views: 1804,
-    comments: 4,
-    reports: 0,
-    imageCount: 0,
-    fileCount: 0,
-    status: '정상',
-  },
+const SEARCH_TYPE_OPTIONS = [
+  { value: 'title', label: '제목' },
+  { value: 'author', label: '작성자' },
+  { value: 'id', label: '게시글 ID' },
 ];
 
-const reportedPosts = [
-  {
-    id: 'POST-004',
-    title: '음식 바가지 요금 너무 심하네요. 사진 첨부합니다.',
-    author: 'user_9182',
-    reports: 5,
-    reason: '욕설/비하',
-  },
-  {
-    id: 'POST-009',
-    title: '특정 가수 팬들 싸움 그만하자',
-    author: 'user_6621',
-    reports: 3,
-    reason: '분쟁 유도',
-  },
-  {
-    id: 'POST-001',
-    title: '남산 봄축제에서 찍은 야경 사진 공유해요 🌸',
-    author: 'user_2048',
-    reports: 2,
-    reason: '기타',
-  },
-];
-
-const statusClass = {
-  정상: 'bg-emerald-50 text-emerald-600',
-  '검토 중': 'bg-blue-50 text-blue-600',
-  '신고 접수': 'bg-orange-50 text-orange-600',
-  숨김: 'bg-gray-100 text-gray-500',
-  삭제: 'bg-red-50 text-red-500',
+const REPORT_RESULT_LABELS = {
+  WAITING: '접수',
+  ACCEPTED: '인정',
+  REJECTED: '반려',
 };
+
+const REPORT_PAGE_SIZE = 4;
+const POST_PAGE_SIZE = 5;
 
 const categoryClass = {
   free: 'bg-slate-100 text-slate-600',
@@ -160,178 +57,633 @@ const categoryClass = {
   notice: 'bg-blue-50 text-blue-600',
 };
 
+const INITIAL_STATS = {
+  total: 0,
+  today: 0,
+  reportedPostCount: 0,
+  pendingReportCount: 0,
+};
+
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 
+const normalizeCategory = (category) => String(category || '').toLowerCase();
+
+const getPostCode = (post) => {
+  if (post?.postCode) return post.postCode;
+  return `POST-${String(post?.postId || 0).padStart(3, '0')}`;
+};
+
+const getReportCode = (report) => {
+  if (report?.reportCode) return report.reportCode;
+  return `RPT-${String(report?.reportId || 0).padStart(5, '0')}`;
+};
+
+const getSearchPlaceholder = (searchType) => {
+  if (searchType === 'author') return '작성자 ID를 입력하세요';
+  if (searchType === 'id') return '게시글 ID를 입력하세요';
+  return '게시글 제목을 입력하세요';
+};
+
+const getErrorMessage = (error, fallback) => {
+  const responseData = error?.response?.data;
+
+  if (typeof responseData === 'string' && responseData.trim()) {
+    return responseData;
+  }
+
+  return responseData?.message || responseData?.error || fallback;
+};
+
 const PostManagementPage = () => {
-  const [posts, setPosts] = useState(dummyPosts);
-  const [keyword, setKeyword] = useState('');
+  const [stats, setStats] = useState(INITIAL_STATS);
+  const [waitingReportRows, setWaitingReportRows] = useState([]);
+  const [posts, setPosts] = useState([]);
+
+  const [keywordInput, setKeywordInput] = useState('');
+  const [searchType, setSearchType] = useState('title');
+  const [searchCondition, setSearchCondition] = useState({
+    searchType: 'title',
+    keyword: '',
+  });
   const [category, setCategory] = useState('all');
-  const [attachFilter, setAttachFilter] = useState('전체');
-  const [reportFilter, setReportFilter] = useState('전체');
 
-  const filteredPosts = useMemo(() => {
-    return posts.filter((post) => {
-      const attachCount = Number(post.imageCount || 0) + Number(post.fileCount || 0);
-      const lowerKeyword = keyword.trim().toLowerCase();
+  const [selectedPostIds, setSelectedPostIds] = useState([]);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [selectedReportId, setSelectedReportId] = useState(null);
 
-      const keywordMatch =
-        !lowerKeyword ||
-        post.title.toLowerCase().includes(lowerKeyword) ||
-        post.author.toLowerCase().includes(lowerKeyword) ||
-        post.id.toLowerCase().includes(lowerKeyword);
+  const [reportPage, setReportPage] = useState(1);
+  const [reportTotalPages, setReportTotalPages] = useState(1);
+  const [reportTotalCount, setReportTotalCount] = useState(0);
 
-      const categoryMatch = category === 'all' || post.category === category;
+  const [postPage, setPostPage] = useState(1);
+  const [postTotalPages, setPostTotalPages] = useState(1);
+  const [postTotalCount, setPostTotalCount] = useState(0);
 
-      const attachMatch =
-        attachFilter === '전체' ||
-        (attachFilter === '첨부 있음' && attachCount > 0) ||
-        (attachFilter === '첨부 없음' && attachCount === 0);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [openingPostId, setOpeningPostId] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
-      const reportMatch =
-        reportFilter === '전체' ||
-        (reportFilter === '신고 있음' && Number(post.reports || 0) > 0) ||
-        (reportFilter === '신고 없음' && Number(post.reports || 0) === 0);
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
 
-      return keywordMatch && categoryMatch && attachMatch && reportMatch;
-    });
-  }, [posts, keyword, category, attachFilter, reportFilter]);
+    try {
+      const response = await getAdminPostSummary();
+      const data = response.data || {};
 
-  const stats = useMemo(() => {
-    return {
-      total: posts.length,
-      today: posts.filter((post) => post.createdAt.startsWith('2026.06.16')).length,
-      attached: posts.filter(
-        (post) => Number(post.imageCount || 0) + Number(post.fileCount || 0) > 0
-      ).length,
-      reported: posts.filter((post) => Number(post.reports || 0) > 0).length,
-    };
-  }, [posts]);
+      setStats({
+        total: Number(data.total || 0),
+        today: Number(data.today || 0),
+        reportedPostCount: Number(data.reportedPostCount || 0),
+        pendingReportCount: Number(data.pendingReportCount || 0),
+      });
+    } catch (error) {
+      console.error('게시판 관리자 통계 조회 실패:', error);
+      setLoadError(
+        getErrorMessage(error, '게시판 관리자 통계를 불러오지 못했습니다.')
+      );
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
 
-  const handleReset = () => {
-    setKeyword('');
-    setCategory('all');
-    setAttachFilter('전체');
-    setReportFilter('전체');
+  const loadWaitingReports = useCallback(async (targetPage) => {
+    setReportsLoading(true);
+
+    try {
+      const response = await getWaitingPostReports({
+        page: targetPage,
+        size: REPORT_PAGE_SIZE,
+      });
+      const data = response.data || {};
+      const totalPages = Math.max(Number(data.totalPages || 1), 1);
+
+      setReportTotalPages(totalPages);
+      setReportTotalCount(Number(data.totalCount || 0));
+
+      if (targetPage > totalPages) {
+        setWaitingReportRows([]);
+        setReportPage(totalPages);
+        return;
+      }
+
+      setWaitingReportRows(Array.isArray(data.list) ? data.list : []);
+    } catch (error) {
+      console.error('처리 대기 신고 조회 실패:', error);
+      setWaitingReportRows([]);
+      setLoadError(
+        getErrorMessage(error, '처리 대기 신고 목록을 불러오지 못했습니다.')
+      );
+    } finally {
+      setReportsLoading(false);
+    }
+  }, []);
+
+  const loadPosts = useCallback(
+    async (targetPage) => {
+      setPostsLoading(true);
+
+      try {
+        const response = await getAdminPosts({
+          page: targetPage,
+          size: POST_PAGE_SIZE,
+          category,
+          searchType: searchCondition.searchType,
+          keyword: searchCondition.keyword,
+        });
+        const data = response.data || {};
+        const totalPages = Math.max(Number(data.totalPages || 1), 1);
+
+        setPostTotalPages(totalPages);
+        setPostTotalCount(Number(data.totalCount || 0));
+
+        if (targetPage > totalPages) {
+          setPosts([]);
+          setPostPage(totalPages);
+          return;
+        }
+
+        setPosts(Array.isArray(data.list) ? data.list : []);
+      } catch (error) {
+        console.error('전체 게시글 조회 실패:', error);
+        setPosts([]);
+        setLoadError(
+          getErrorMessage(error, '전체 게시글 목록을 불러오지 못했습니다.')
+        );
+      } finally {
+        setPostsLoading(false);
+      }
+    },
+    [category, searchCondition]
+  );
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
+
+  useEffect(() => {
+    loadWaitingReports(reportPage);
+  }, [loadWaitingReports, reportPage]);
+
+  useEffect(() => {
+    loadPosts(postPage);
+  }, [loadPosts, postPage]);
+
+  const isAllChecked = useMemo(() => {
+    return (
+      posts.length > 0 &&
+      posts.every((post) => selectedPostIds.includes(post.postId))
+    );
+  }, [posts, selectedPostIds]);
+
+  const refreshOverview = async () => {
+    await Promise.allSettled([
+      loadSummary(),
+      loadWaitingReports(reportPage),
+      loadPosts(postPage),
+    ]);
   };
 
-  const handleDeletePost = (postId) => {
-    const target = posts.find((post) => post.id === postId);
+  const handleRetry = async () => {
+    setLoadError('');
+    await refreshOverview();
+  };
 
-    if (!target) return;
+  const handleSearch = () => {
+    setSearchCondition({
+      searchType,
+      keyword: keywordInput.trim(),
+    });
+    setSelectedPostIds([]);
+    setPostPage(1);
+  };
 
+  const handleSearchKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const handleReset = () => {
+    setKeywordInput('');
+    setSearchType('title');
+    setSearchCondition({
+      searchType: 'title',
+      keyword: '',
+    });
+    setCategory('all');
+    setSelectedPostIds([]);
+    setPostPage(1);
+  };
+
+  const handleChangeCategory = (nextCategory) => {
+    setCategory(nextCategory);
+    setSelectedPostIds([]);
+    setPostPage(1);
+  };
+
+  const handleChangeSearchType = (nextSearchType) => {
+    setSearchType(nextSearchType);
+  };
+
+  const handleOpenDetail = async (postId, reportId = null) => {
+    if (openingPostId !== null) return;
+
+    setOpeningPostId(postId);
+    setSelectedReportId(reportId);
+
+    try {
+      const response = await getAdminPostDetail(postId);
+      setSelectedPost(response.data);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      console.error('게시글 상세 조회 실패:', error);
+      window.alert(
+        getErrorMessage(error, '게시글 상세 정보를 불러오지 못했습니다.')
+      );
+    } finally {
+      setOpeningPostId(null);
+    }
+  };
+
+  const handleBackToList = () => {
+    setSelectedPost(null);
+    setSelectedReportId(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleToggleAll = () => {
+    const currentPageIds = posts.map((post) => post.postId);
+
+    if (isAllChecked) {
+      setSelectedPostIds((prev) =>
+        prev.filter((id) => !currentPageIds.includes(id))
+      );
+      return;
+    }
+
+    setSelectedPostIds((prev) =>
+      Array.from(new Set([...prev, ...currentPageIds]))
+    );
+  };
+
+  const handleTogglePost = (postId) => {
+    setSelectedPostIds((prev) => {
+      if (prev.includes(postId)) {
+        return prev.filter((id) => id !== postId);
+      }
+
+      return [...prev, postId];
+    });
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (actionLoading) return;
+
+    const target =
+      selectedPost?.postId === postId
+        ? selectedPost
+        : posts.find((post) => post.postId === postId);
+
+    const titleText = target?.title ? `\n\n제목: ${target.title}` : '';
     const isConfirmed = window.confirm(
-      `게시글과 첨부 이미지/파일이 모두 삭제됩니다.\n\n제목: ${target.title}\n\n정말 완전 삭제할까요?`
+      `게시글과 댓글, 좋아요, 신고 기록, 첨부 이미지/파일이 함께 삭제됩니다.${titleText}\n\n정말 완전 삭제할까요?`
     );
 
     if (!isConfirmed) return;
 
-    setPosts((prev) => prev.filter((post) => post.id !== postId));
+    setActionLoading(true);
+
+    try {
+      await deleteAdminPost(postId);
+
+      setSelectedPostIds((prev) => prev.filter((id) => id !== postId));
+
+      if (selectedPost?.postId === postId) {
+        setSelectedPost(null);
+        setSelectedReportId(null);
+      }
+
+      await refreshOverview();
+      window.alert('게시글이 완전 삭제되었습니다.');
+    } catch (error) {
+      console.error('게시글 삭제 실패:', error);
+      window.alert(getErrorMessage(error, '게시글 삭제 중 오류가 발생했습니다.'));
+    } finally {
+      setActionLoading(false);
+    }
   };
+
+  const handleDeleteSelectedPosts = async () => {
+    if (actionLoading) return;
+
+    if (selectedPostIds.length === 0) {
+      window.alert('삭제할 게시글을 선택해주세요.');
+      return;
+    }
+
+    const isConfirmed = window.confirm(
+      `선택한 게시글 ${selectedPostIds.length}건을 완전 삭제할까요?\n\n게시글, 댓글, 좋아요, 신고 기록, 첨부 이미지/파일이 함께 삭제됩니다.`
+    );
+
+    if (!isConfirmed) return;
+
+    setActionLoading(true);
+
+    try {
+      await deleteAdminPosts(selectedPostIds);
+      setSelectedPostIds([]);
+      await refreshOverview();
+      window.alert('선택한 게시글이 완전 삭제되었습니다.');
+    } catch (error) {
+      console.error('선택 게시글 삭제 실패:', error);
+      window.alert(
+        getErrorMessage(error, '선택 게시글 삭제 중 오류가 발생했습니다.')
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleProcessReports = async ({
+    postId,
+    reportId,
+    resultStatus,
+    adminMemo,
+  }) => {
+    if (actionLoading) return;
+
+    const resultLabel = REPORT_RESULT_LABELS[resultStatus] || resultStatus;
+    const isConfirmed = window.confirm(
+      `신고 ${getReportCode({ reportId })}을(를) '${resultLabel}' 처리할까요?\n\n선택한 신고 내역만 처리됩니다.`
+    );
+
+    if (!isConfirmed) return;
+
+    setActionLoading(true);
+
+    try {
+      await processAdminPostReport({
+        postId,
+        reportId,
+        resultStatus,
+        adminMemo,
+      });
+
+      const detailResponse = await getAdminPostDetail(postId);
+      setSelectedPost(detailResponse.data);
+      setSelectedReportId(reportId);
+
+      await refreshOverview();
+
+      window.alert(
+        resultStatus === 'ACCEPTED'
+          ? '신고를 인정 처리했습니다.'
+          : '신고를 반려 처리했습니다.'
+      );
+    } catch (error) {
+      console.error('신고 처리 실패:', error);
+      window.alert(getErrorMessage(error, '신고 처리 중 오류가 발생했습니다.'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  if (selectedPost) {
+    return (
+      <PostDetailView
+        post={selectedPost}
+        initialReportId={selectedReportId}
+        onBack={handleBackToList}
+        onDelete={handleDeletePost}
+        onProcessReports={handleProcessReports}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* 상단 제목 영역 */}
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div>
+      <section>
+        <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
+          게시글 관리
+        </h1>
 
+        <p className="mt-2 text-sm font-medium text-gray-500">
+          게시글 원문과 첨부 자료를 확인하고, 접수된 신고는 신고 내역 단위로 인정 또는 반려 처리합니다.
+        </p>
+      </section>
 
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
-              게시글 관리
-            </h1>
+      {loadError && (
+        <section className="flex flex-col gap-3 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} className="mt-0.5 shrink-0 text-red-500" />
+            <p className="text-sm font-bold text-red-600">{loadError}</p>
           </div>
-          <p className="mt-2 text-sm font-medium text-gray-500">
-            커뮤니티 게시글, 신고 수, 댓글 수, 첨부 이미지와 파일을 확인하고 삭제 처리합니다.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-700 shadow-sm transition hover:border-[#6d3df2]/30 hover:text-[#6d3df2]"
-          >
-            <CalendarDays size={17} />
-            2026.06.16
-          </button>
 
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-2xl bg-[#6d3df2] px-4 py-3 text-sm font-black text-white shadow-lg shadow-purple-100 transition hover:-translate-y-0.5"
+            onClick={handleRetry}
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-red-100 bg-white px-4 text-xs font-black text-red-500 transition hover:bg-red-100"
           >
-            <RefreshCw size={17} />
-            새로고침
+            <RotateCcw size={14} />
+            다시 불러오기
           </button>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Notice Banner */}
-      <section className="mb-5 rounded-[28px] border border-purple-100 bg-gradient-to-r from-purple-50 via-white to-amber-50 p-5 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-purple-600 shadow-sm">
-              <FileText size={24} />
-            </div>
-
-            <div>
-              <h2 className="text-base font-black text-purple-700">
-                게시글 삭제 시 첨부 이미지와 파일까지 함께 정리해주세요.
-              </h2>
-              <p className="mt-1 text-sm font-semibold text-slate-500">
-                축제로는 게시글에 이미지와 첨부파일이 있으므로 단순 상태 변경보다 완전 삭제 흐름이 적합합니다.
-              </p>
-            </div>
-          </div>
-
-          <button className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-purple-600 px-5 text-sm font-black text-white shadow-lg shadow-purple-200 transition hover:bg-purple-700">
-            <Megaphone size={17} />
-            공지 작성하기
-          </button>
-        </div>
-      </section>
-
-      {/* 요약 카드 */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           icon={FileText}
           title="전체 게시글"
           value={stats.total}
           unit="건"
-          change="전체 커뮤니티 게시글"
+          description="커뮤니티 전체 게시글"
           iconClass="bg-purple-50 text-[#6d3df2]"
+          loading={summaryLoading}
         />
+
         <SummaryCard
           icon={CalendarDays}
           title="오늘 작성"
           value={stats.today}
           unit="건"
-          change="오늘 새로 등록"
+          description="오늘 새로 등록된 게시글"
           iconClass="bg-blue-50 text-blue-600"
+          loading={summaryLoading}
         />
-        <SummaryCard
-          icon={Paperclip}
-          title="첨부 포함"
-          value={stats.attached}
-          unit="건"
-          change="이미지 또는 파일 포함"
-          iconClass="bg-yellow-50 text-yellow-600"
-        />
+
         <SummaryCard
           icon={ShieldAlert}
-          title="신고 접수"
-          value={stats.reported}
+          title="신고 게시글"
+          value={stats.reportedPostCount}
           unit="건"
-          change="신고 1회 이상"
+          description="신고가 1회 이상 접수된 게시글"
           iconClass="bg-red-50 text-red-500"
+          loading={summaryLoading}
+        />
+
+        <SummaryCard
+          icon={ClipboardCheck}
+          title="처리 대기 신고"
+          value={stats.pendingReportCount}
+          unit="건"
+          description="인정 또는 반려 처리 대기"
+          iconClass="bg-yellow-50 text-yellow-600"
+          loading={summaryLoading}
         />
       </section>
 
-      {/* 검색 및 필터 */}
+      <section className="overflow-hidden rounded-3xl border border-red-100 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-red-50 px-5 py-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-black text-gray-900">
+                신고 접수 게시글
+              </h2>
+              <span className="inline-flex h-7 items-center rounded-full bg-red-50 px-3 text-xs font-black text-red-500">
+                {formatNumber(reportTotalCount)}건
+              </span>
+              <span className="inline-flex h-7 items-center rounded-full bg-red-50/70 px-3 text-xs font-black text-red-500">
+                우선 확인
+              </span>
+            </div>
+            <p className="mt-1 text-xs font-bold text-gray-400">
+              처리 대기 신고 단위로 원문 확인과 처리 화면으로 이동합니다.
+            </p>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] table-fixed text-left">
+            <colgroup>
+              <col className="w-[120px]" />
+              <col className="w-[145px]" />
+              <col className="w-[155px]" />
+              <col className="w-[360px]" />
+              <col className="w-[130px]" />
+              <col className="w-[90px]" />
+              <col className="w-[100px]" />
+            </colgroup>
+
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50 text-center text-xs font-black text-gray-500">
+                <th className="px-4 py-4">접수 번호</th>
+                <th className="px-4 py-4">접수 일자</th>
+                <th className="px-4 py-4">신고 사유</th>
+                <th className="px-4 py-4">제목</th>
+                <th className="px-4 py-4">신고자</th>
+                <th className="px-4 py-4">누적</th>
+                <th className="px-4 py-4">관리</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {reportsLoading ? (
+                <LoadingTableRow colSpan={7} text="처리 대기 신고를 불러오는 중입니다." />
+              ) : waitingReportRows.length > 0 ? (
+                waitingReportRows.map((report) => {
+                  const reportCategory = normalizeCategory(report.category);
+                  const isOpening = openingPostId === report.postId;
+
+                  return (
+                    <tr
+                      key={report.reportId}
+                      className="border-b border-gray-50 text-sm transition hover:bg-red-50/30"
+                    >
+                      <td className="px-4 py-4 text-center align-middle font-black text-gray-700">
+                        {getReportCode(report)}
+                      </td>
+                      <td className="px-4 py-4 text-center align-middle text-xs font-bold leading-5 text-gray-500">
+                        {report.createdAt || '-'}
+                      </td>
+                      <td className="px-4 py-4 text-center align-middle">
+                        <span className="inline-flex max-w-full items-center justify-center rounded-full bg-red-50 px-3 py-1.5 text-xs font-black text-red-500">
+                          <span className="truncate">{report.reason}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 align-middle">
+                        <button
+                          type="button"
+                          disabled={isOpening}
+                          onClick={() =>
+                            handleOpenDetail(report.postId, report.reportId)
+                          }
+                          className="block w-full text-left disabled:cursor-wait"
+                        >
+                          <p className="line-clamp-1 break-keep text-sm font-black text-gray-800">
+                            {report.title}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-gray-400">
+                            {report.postCode ||
+                              getPostCode({ postId: report.postId })}{' '}
+                            ·{' '}
+                            {CATEGORY_LABELS[reportCategory] ||
+                              report.category ||
+                              '-'}
+                          </p>
+                        </button>
+                      </td>
+                      <td className="px-4 py-4 text-center align-middle font-bold text-gray-600">
+                        {report.reporterMemberId}
+                      </td>
+                      <td className="px-4 py-4 text-center align-middle font-black text-red-500">
+                        {formatNumber(report.postReportCount)}
+                      </td>
+                      <td className="px-4 py-4 text-center align-middle">
+                        <button
+                          type="button"
+                          disabled={isOpening}
+                          onClick={() =>
+                            handleOpenDetail(report.postId, report.reportId)
+                          }
+                          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#6d3df2] transition hover:border-[#6d3df2]/30 hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
+                        >
+                          {isOpening ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Eye size={14} />
+                          )}
+                          확인
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={7} className="px-5 py-12 text-center">
+                    <CheckCircle2 size={28} className="mx-auto text-emerald-500" />
+                    <p className="mt-3 text-sm font-black text-gray-700">
+                      처리 대기 중인 신고가 없습니다.
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-gray-400">
+                      신규 신고가 접수되면 이 영역에 표시됩니다.
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="border-t border-gray-100 px-5 py-4">
+          <Pagination
+            page={reportPage}
+            totalPages={reportTotalPages}
+            onChange={setReportPage}
+            disabled={reportsLoading}
+          />
+        </div>
+      </section>
+
       <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-black text-gray-900">게시글 검색</h2>
+            <h2 className="text-lg font-black text-gray-900">전체 게시글 조회</h2>
             <p className="mt-1 text-xs font-bold text-gray-400">
-              제목, 작성자, 게시글 ID와 운영 조건으로 목록을 좁혀 확인합니다.
+              카테고리를 먼저 좁힌 뒤 제목, 작성자, 게시글 ID 기준으로 검색합니다.
             </p>
           </div>
 
@@ -345,29 +697,11 @@ const PostManagementPage = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
-          <div>
-            <label className="mb-2 block text-xs font-black text-gray-500">
-              검색어
-            </label>
-            <div className="relative">
-              <Search
-                size={17}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder="게시글 제목, 작성자, 게시글 ID 검색"
-                className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm font-semibold text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-[#6d3df2]/40 focus:bg-white focus:ring-4 focus:ring-purple-50"
-              />
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[0.9fr_0.9fr_2.2fr]">
           <FilterSelect
             label="카테고리"
             value={category}
-            onChange={setCategory}
+            onChange={handleChangeCategory}
             options={Object.entries(CATEGORY_LABELS).map(([value, label]) => ({
               value,
               label,
@@ -375,123 +709,178 @@ const PostManagementPage = () => {
           />
 
           <FilterSelect
-            label="첨부 여부"
-            value={attachFilter}
-            onChange={setAttachFilter}
-            options={[
-              { value: '전체', label: '전체' },
-              { value: '첨부 있음', label: '첨부 있음' },
-              { value: '첨부 없음', label: '첨부 없음' },
-            ]}
+            label="검색 기준"
+            value={searchType}
+            onChange={handleChangeSearchType}
+            options={SEARCH_TYPE_OPTIONS}
           />
 
-          <FilterSelect
-            label="신고 여부"
-            value={reportFilter}
-            onChange={setReportFilter}
-            options={[
-              { value: '전체', label: '전체' },
-              { value: '신고 있음', label: '신고 있음' },
-              { value: '신고 없음', label: '신고 없음' },
-            ]}
-          />
+          <div>
+            <label className="mb-2 block text-xs font-black text-gray-500">
+              검색어
+            </label>
+            <div className="flex gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  size={17}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  value={keywordInput}
+                  onChange={(event) => setKeywordInput(event.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder={getSearchPlaceholder(searchType)}
+                  className="h-12 w-full rounded-2xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm font-semibold text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-[#6d3df2]/40 focus:bg-white focus:ring-4 focus:ring-purple-50"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSearch}
+                disabled={postsLoading}
+                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#6d3df2] px-5 text-sm font-black text-white shadow-sm transition hover:bg-[#5b2ed8] disabled:cursor-wait disabled:bg-purple-300"
+              >
+                {postsLoading ? (
+                  <Loader2 size={17} className="animate-spin" />
+                ) : (
+                  <Search size={17} />
+                )}
+                검색
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* 게시글 목록 */}
       <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-lg font-black text-gray-900">게시글 목록</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-black text-gray-900">게시글 목록</h2>
+              <span className="inline-flex h-7 items-center rounded-full bg-purple-50 px-3 text-xs font-black text-[#6d3df2]">
+                {formatNumber(postTotalCount)}개
+              </span>
+            </div>
             <p className="mt-1 text-xs font-bold text-gray-400">
-              총 <span className="text-[#6d3df2]">{filteredPosts.length}</span>개 게시글이 조회되었습니다.
+              검색 조건에 맞는 게시글을 페이지 단위로 확인합니다.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-sm font-black text-gray-600 transition hover:border-[#6d3df2]/30 hover:text-[#6d3df2]"
-            >
-              <Eye size={16} />
-              선택 보기
-            </button>
-            <button
-              type="button"
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 text-sm font-black text-red-500 transition hover:bg-red-100"
-            >
+          <button
+            type="button"
+            onClick={handleDeleteSelectedPosts}
+            disabled={selectedPostIds.length === 0 || actionLoading}
+            className={`inline-flex h-10 w-fit items-center gap-2 rounded-xl px-4 text-sm font-black transition ${
+              selectedPostIds.length === 0 || actionLoading
+                ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
+                : 'border border-red-100 bg-red-50 text-red-500 hover:bg-red-100'
+            }`}
+          >
+            {actionLoading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
               <Trash2 size={16} />
-              선택 삭제
-            </button>
-          </div>
+            )}
+            선택 삭제
+            {selectedPostIds.length > 0 && ` ${selectedPostIds.length}`}
+          </button>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1120px] table-fixed text-left">
+          <table className="w-full min-w-[1180px] table-fixed text-left">
             <colgroup>
               <col className="w-[52px]" />
-              <col className="w-[340px]" />
+              <col className="w-[105px]" />
+              <col className="w-[360px]" />
               <col className="w-[105px]" />
               <col className="w-[130px]" />
               <col className="w-[145px]" />
               <col className="w-[80px]" />
               <col className="w-[80px]" />
               <col className="w-[115px]" />
-              <col className="w-[80px]" />
-              <col className="w-[105px]" />
-              <col className="w-[135px]" />
+              <col className="w-[90px]" />
+              <col className="w-[118px]" />
             </colgroup>
 
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs font-black text-gray-500">
-                <th className="px-4 py-4">
-                  <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
+                <th className="px-4 py-4 text-center">
+                  <input
+                    type="checkbox"
+                    checked={isAllChecked}
+                    onChange={handleToggleAll}
+                    disabled={postsLoading || posts.length === 0}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
                 </th>
+                <th className="px-4 py-4 text-center">게시글 ID</th>
                 <th className="px-4 py-4">게시글 제목</th>
                 <th className="px-4 py-4 text-center">카테고리</th>
-                <th className="px-4 py-4">작성자</th>
+                <th className="px-4 py-4 text-center">작성자</th>
                 <th className="px-4 py-4 text-center">작성일</th>
                 <th className="px-4 py-4 text-right">조회</th>
                 <th className="px-4 py-4 text-right">댓글</th>
                 <th className="px-4 py-4 text-center">첨부</th>
                 <th className="px-4 py-4 text-right">신고</th>
-                <th className="px-4 py-4 text-center">상태</th>
                 <th className="px-4 py-4 text-center">관리</th>
               </tr>
             </thead>
 
             <tbody>
-              {filteredPosts.length > 0 ? (
-                filteredPosts.map((post) => {
-                  const hasAttach =
-                    Number(post.imageCount || 0) + Number(post.fileCount || 0) > 0;
+              {postsLoading ? (
+                <LoadingTableRow colSpan={11} text="게시글 목록을 불러오는 중입니다." />
+              ) : posts.length > 0 ? (
+                posts.map((post) => {
+                  const postCategory = normalizeCategory(post.category);
+                  const imageCount = Number(post.imageCount || 0);
+                  const fileCount = Number(post.fileCount || 0);
+                  const hasAttach = imageCount + fileCount > 0;
+                  const reportCount = Number(post.reportCount || 0);
+                  const pendingCount = Number(post.pendingReportCount || 0);
+                  const isChecked = selectedPostIds.includes(post.postId);
+                  const isOpening = openingPostId === post.postId;
 
                   return (
                     <tr
-                      key={post.id}
-                      className="border-b border-gray-50 text-sm transition hover:bg-purple-50/40"
+                      key={post.postId}
+                      onClick={() => handleOpenDetail(post.postId)}
+                      className="cursor-pointer border-b border-gray-50 text-sm transition hover:bg-purple-50/40"
                     >
-                      <td className="px-4 py-4 align-middle">
-                        <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
+                      <td className="px-4 py-4 text-center align-middle">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={() => handleTogglePost(post.postId)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                      </td>
+
+                      <td className="px-4 py-4 text-center align-middle text-xs font-black text-gray-500">
+                        {getPostCode(post)}
                       </td>
 
                       <td className="px-4 py-4 align-middle">
                         <p className="line-clamp-2 break-keep text-sm font-black leading-5 text-gray-800">
                           {post.title}
                         </p>
-                        <p className="mt-1 truncate text-xs font-semibold text-gray-400">
-                          {post.id}
-                        </p>
                       </td>
 
                       <td className="px-4 py-4 text-center align-middle">
-                        <StatusBadge className={categoryClass[post.category] || 'bg-gray-100 text-gray-500'}>
-                          {CATEGORY_LABELS[post.category] || post.category}
+                        <StatusBadge
+                          className={
+                            categoryClass[postCategory] ||
+                            'bg-gray-100 text-gray-500'
+                          }
+                        >
+                          {CATEGORY_LABELS[postCategory] || post.category}
                         </StatusBadge>
                       </td>
 
-                      <td className="px-4 py-4 align-middle">
-                        <p className="truncate font-black text-gray-700">{post.author}</p>
+                      <td className="px-4 py-4 text-center align-middle">
+                        <p className="truncate font-black text-gray-700">
+                          {post.author}
+                        </p>
                       </td>
 
                       <td className="px-4 py-4 text-center align-middle">
@@ -511,38 +900,38 @@ const PostManagementPage = () => {
                       <td className="px-4 py-4 text-center align-middle">
                         {hasAttach ? (
                           <div className="flex items-center justify-center gap-1">
-                            {Number(post.imageCount || 0) > 0 && (
+                            {imageCount > 0 && (
                               <span className="inline-flex h-7 items-center gap-1 rounded-full bg-purple-50 px-2 text-xs font-black text-[#6d3df2]">
                                 <ImageIcon size={13} />
-                                {post.imageCount}
+                                {imageCount}
                               </span>
                             )}
-                            {Number(post.fileCount || 0) > 0 && (
+                            {fileCount > 0 && (
                               <span className="inline-flex h-7 items-center gap-1 rounded-full bg-yellow-50 px-2 text-xs font-black text-yellow-600">
                                 <Paperclip size={13} />
-                                {post.fileCount}
+                                {fileCount}
                               </span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-xs font-bold text-gray-300">없음</span>
+                          <span className="text-xs font-bold text-gray-300">
+                            없음
+                          </span>
                         )}
                       </td>
 
                       <td className="px-4 py-4 text-right align-middle">
-                        <span
-                          className={`font-black ${
-                            post.reports > 0 ? 'text-red-500' : 'text-gray-400'
-                          }`}
-                        >
-                          {post.reports}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-4 text-center align-middle">
-                        <StatusBadge className={statusClass[post.status] || 'bg-gray-100 text-gray-500'}>
-                          {post.status}
-                        </StatusBadge>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span
+                            className={
+                              reportCount > 0
+                                ? 'font-black text-red-500'
+                                : 'font-bold text-gray-300'
+                            }
+                          >
+                            {formatNumber(reportCount)}
+                          </span>
+                        </div>
                       </td>
 
                       <td className="px-4 py-4 align-middle">
@@ -550,26 +939,31 @@ const PostManagementPage = () => {
                           <button
                             type="button"
                             title="게시글 보기"
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-[#6d3df2] transition hover:bg-purple-50"
+                            disabled={isOpening}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleOpenDetail(post.postId);
+                            }}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-[#6d3df2] transition hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
                           >
-                            <Eye size={15} />
+                            {isOpening ? (
+                              <Loader2 size={15} className="animate-spin" />
+                            ) : (
+                              <Eye size={15} />
+                            )}
                           </button>
 
                           <button
                             type="button"
                             title="완전 삭제"
-                            onClick={() => handleDeletePost(post.id)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-white text-red-500 transition hover:bg-red-50"
+                            disabled={actionLoading}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleDeletePost(post.postId);
+                            }}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-white text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-gray-300"
                           >
                             <Trash2 size={15} />
-                          </button>
-
-                          <button
-                            type="button"
-                            title="더보기"
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"
-                          >
-                            <MoreHorizontal size={15} />
                           </button>
                         </div>
                       </td>
@@ -595,128 +989,134 @@ const PostManagementPage = () => {
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-gray-100 px-5 py-4 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm font-bold text-gray-500">
-            1-{filteredPosts.length} / 총 {filteredPosts.length}개
-          </p>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 transition hover:bg-gray-50"
-            >
-              <ChevronLeft size={17} />
-            </button>
-            <button
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#6d3df2] text-sm font-black text-white"
-            >
-              1
-            </button>
-            <button
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 transition hover:bg-gray-50"
-            >
-              <ChevronRight size={17} />
-            </button>
-          </div>
+        <div className="border-t border-gray-100 px-5 py-4">
+          <Pagination
+            page={postPage}
+            totalPages={postTotalPages}
+            onChange={setPostPage}
+            disabled={postsLoading}
+          />
         </div>
-      </section>
-
-      {/* 하단 운영 정보 */}
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <article className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-          <SectionHeader
-            icon={ShieldAlert}
-            iconClass="text-red-500"
-            title="신고 접수 게시글"
-            description="신고 수가 높은 게시글부터 확인하세요."
-          />
-
-          <div className="mt-5 space-y-3">
-            {reportedPosts.map((post) => (
-              <div
-                key={post.id}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-gray-800">
-                    {post.title}
-                  </p>
-                  <p className="mt-1 text-xs font-bold text-gray-400">
-                    {post.author} · {post.reason}
-                  </p>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <p className="text-sm font-black text-red-500">
-                    신고 {post.reports}건
-                  </p>
-                  <button type="button" className="mt-1 text-xs font-black text-[#6d3df2]">
-                    확인
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-          <SectionHeader
-            icon={AlertTriangle}
-            iconClass="text-yellow-500"
-            title="게시글 운영 기준"
-            description="축제로에서 실제 구현 가능한 관리 흐름입니다."
-          />
-
-          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <FeatureItem
-              icon={Search}
-              title="게시글 검색/필터"
-              desc="제목, 작성자, 카테고리, 첨부 여부, 신고 여부 기준으로 조회합니다."
-            />
-            <FeatureItem
-              icon={Paperclip}
-              title="첨부파일 확인"
-              desc="이미지 개수와 파일 개수를 표시하고, 삭제 시 함께 정리합니다."
-            />
-            <FeatureItem
-              icon={Trash2}
-              title="완전 삭제"
-              desc="게시글, 댓글, 좋아요, 신고 기록, 첨부 이미지와 파일을 함께 삭제합니다."
-            />
-            <FeatureItem
-              icon={CheckCircle2}
-              title="신고 확인"
-              desc="신고 수가 있는 게시글을 우선 검토하고 필요 시 삭제합니다."
-            />
-          </div>
-        </article>
       </section>
     </div>
   );
 };
 
-const SummaryCard = ({ icon: Icon, title, value, unit, change, iconClass }) => {
+const Pagination = ({ page, totalPages, onChange, disabled = false }) => {
+  const visiblePages = useMemo(() => {
+    const pageCount = Math.max(Number(totalPages || 1), 1);
+    const maxVisible = 5;
+
+    let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+    let endPage = Math.min(pageCount, startPage + maxVisible - 1);
+
+    startPage = Math.max(1, endPage - maxVisible + 1);
+
+    return Array.from(
+      { length: endPage - startPage + 1 },
+      (_, index) => startPage + index
+    );
+  }, [page, totalPages]);
+
+  const handlePrev = () => {
+    if (disabled || page <= 1) return;
+    onChange(page - 1);
+  };
+
+  const handleNext = () => {
+    if (disabled || page >= totalPages) return;
+    onChange(page + 1);
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <button
+        type="button"
+        onClick={handlePrev}
+        disabled={disabled || page <= 1}
+        className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+          disabled || page <= 1
+            ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
+            : 'border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
+        }`}
+      >
+        <ChevronLeft size={17} />
+      </button>
+
+      {visiblePages.map((pageNumber) => (
+        <button
+          key={pageNumber}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(pageNumber)}
+          className={`flex h-9 min-w-9 items-center justify-center rounded-xl px-3 text-sm font-black transition ${
+            pageNumber === page
+              ? 'bg-[#6d3df2] text-white shadow-sm'
+              : disabled
+                ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
+                : 'border border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
+          }`}
+        >
+          {pageNumber}
+        </button>
+      ))}
+
+      <button
+        type="button"
+        onClick={handleNext}
+        disabled={disabled || page >= totalPages}
+        className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+          disabled || page >= totalPages
+            ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
+            : 'border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
+        }`}
+      >
+        <ChevronRight size={17} />
+      </button>
+    </div>
+  );
+};
+
+const SummaryCard = ({
+  icon: Icon,
+  title,
+  value,
+  unit,
+  description,
+  iconClass,
+  loading = false,
+}) => {
   return (
     <article className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start justify-between gap-4">
-        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconClass}`}>
-          <Icon size={24} />
-        </div>
+      <div
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconClass}`}
+      >
+        {loading ? <Loader2 size={22} className="animate-spin" /> : <Icon size={24} />}
       </div>
-
       <div className="mt-5">
         <p className="text-sm font-black text-gray-500">{title}</p>
         <div className="mt-2 flex items-end gap-1">
           <strong className="text-2xl font-black tracking-tight text-gray-950">
-            {formatNumber(value)}
+            {loading ? '-' : formatNumber(value)}
           </strong>
           <span className="pb-0.5 text-sm font-black text-gray-700">{unit}</span>
         </div>
-        <p className="mt-2 truncate text-xs font-bold text-gray-400">{change}</p>
+        <p className="mt-2 truncate text-xs font-bold text-gray-400">
+          {description}
+        </p>
       </div>
     </article>
+  );
+};
+
+const LoadingTableRow = ({ colSpan, text }) => {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="px-5 py-14 text-center">
+        <Loader2 size={26} className="mx-auto animate-spin text-[#6d3df2]" />
+        <p className="mt-3 text-sm font-black text-gray-600">{text}</p>
+      </td>
+    </tr>
   );
 };
 
@@ -729,7 +1129,7 @@ const FilterSelect = ({ label, value, onChange, options }) => {
       <div className="relative">
         <select
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(event) => onChange(event.target.value)}
           className="h-12 w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 pr-10 text-sm font-bold text-gray-700 outline-none transition focus:border-[#6d3df2]/40 focus:ring-4 focus:ring-purple-50"
         >
           {options.map((option) => (
@@ -754,34 +1154,6 @@ const StatusBadge = ({ children, className }) => {
     >
       <span className="truncate">{children}</span>
     </span>
-  );
-};
-
-const SectionHeader = ({ icon: Icon, iconClass, title, description }) => {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <h2 className="text-lg font-black text-gray-900">{title}</h2>
-        <p className="mt-1 text-xs font-bold text-gray-400">{description}</p>
-      </div>
-      <Icon size={22} className={iconClass} />
-    </div>
-  );
-};
-
-const FeatureItem = ({ icon: Icon, title, desc }) => {
-  return (
-    <div className="flex gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#6d3df2] shadow-sm">
-        <Icon size={18} />
-      </div>
-      <div className="min-w-0">
-        <p className="font-black text-gray-800">{title}</p>
-        <p className="mt-1 break-keep text-sm font-semibold leading-6 text-gray-500">
-          {desc}
-        </p>
-      </div>
-    </div>
   );
 };
 
