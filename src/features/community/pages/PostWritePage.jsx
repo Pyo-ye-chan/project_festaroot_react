@@ -167,7 +167,7 @@ const PostWritePage = () => {
       console.log('Post added successfully');
       alert('등록 완료');
 
-      navigate('/community/board/free');
+      navigate('/community/board/'+formData.category);
     } catch (error) {
       console.error(error);
       alert('등록 실패');
