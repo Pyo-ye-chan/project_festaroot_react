@@ -13,9 +13,9 @@ import {
   Lock,
   Unlock,
   Clock,
-} from 'lucide-react';
-import adminApi from '../../../api/adminApiHN';
+} from 'lucide-react'
 import useLoadingStore from '../../../store/useLoadingStore';
+import adminMemberApi from '../../../api/adminApiHN';
 
 const ROLE_LABELS = {
   all: '전체 권한',
@@ -86,7 +86,7 @@ const MemberManagementPage = () => {
   // 1. 대시보드 고정 통계 수집 호출 (필터와 무관)
   const fetchStats = async () => {
     try {
-      const data = await adminApi.getMainStats();
+      const data = await adminMemberApi.getMainStats();
       setMainStats(data);
     } catch (error) {
       console.error("통계 정보를 가져오는 중 오류 발생 : ", error);
@@ -112,7 +112,7 @@ const MemberManagementPage = () => {
         Object.entries(rawParam).filter(([_, value]) => value !== null && value !== undefined)
       );
 
-      const response = await adminApi.getMembers(cleanParam);
+      const response = await adminMemberApi.getMembers(cleanParam);
 
       setMembers(response.memberList || []);
       setTotalPages(response.totalPages || 1);
@@ -161,7 +161,7 @@ const MemberManagementPage = () => {
   const confirmSuspension = async () => {
     if (!targetMember) return;
     try {
-      await adminApi.suspendMember(targetMember.id, parseInt(suspensionDays));
+      await adminMemberApi.suspendMember(targetMember.id, parseInt(suspensionDays));
       alert(`${targetMember.nickname} 회원의 정지 처리가 완료되었습니다.`);
       setIsModalOpen(false);
       setTargetMember(null);
@@ -175,7 +175,7 @@ const MemberManagementPage = () => {
   const handleBlacklist = async (member) => {
     if (window.confirm(`${member.nickname} 회원을 블랙리스트로 등록하시겠습니까?\n등록 시 영구적으로 서비스 이용이 제한됩니다.`)) {
       try {
-        await adminApi.blacklistMember(member.id);
+        await adminMemberApi.blacklistMember(member.id);
         alert("블랙리스트로 등록되었습니다.");
         fetchMembers();
         fetchStats(); // 상태 변경 처리에 맞춰 고정 통계 리프레시
@@ -190,7 +190,7 @@ const MemberManagementPage = () => {
     if (!target) return;
     if (window.confirm(`${target.nickname} 회원의 제재를 해제하고 정상 상태로 변경하시겠습니까?`)) {
       try {
-        await adminApi.restoreMember(memberId);
+        await adminMemberApi.restoreMember(memberId);
         alert("제재가 해제되었습니다.");
         fetchMembers();
         fetchStats(); // 상태 변경 처리에 맞춰 고정 통계 리프레시
@@ -353,8 +353,8 @@ const MemberManagementPage = () => {
                           onClick={() => member.status === 'SUSPENDED' ? handleStatusRestore(member.id) : openSuspensionModal(member)}
                           title={member.status === 'SUSPENDED' ? "제재 해제 복원" : "활동 정지 조치"}
                           className={`p-1.5 rounded-lg border transition ${member.status === 'SUSPENDED'
-                              ? 'bg-orange-500 border-orange-500 text-white hover:bg-orange-600'
-                              : 'border-gray-100 hover:bg-white text-orange-500'
+                            ? 'bg-orange-500 border-orange-500 text-white hover:bg-orange-600'
+                            : 'border-gray-100 hover:bg-white text-orange-500'
                             }`}
                         >
                           {member.status === 'SUSPENDED' ? <Unlock size={13} /> : <Lock size={13} />}
@@ -365,8 +365,8 @@ const MemberManagementPage = () => {
                           onClick={() => member.status === 'BLACKLISTED' ? handleStatusRestore(member.id) : handleBlacklist(member)}
                           title={member.status === 'BLACKLISTED' ? "제재 해제 복원" : "블랙리스트 등록"}
                           className={`p-1.5 rounded-lg border transition ${member.status === 'BLACKLISTED'
-                              ? 'bg-red-500 border-red-500 text-white hover:bg-red-600'
-                              : 'border-gray-100 hover:bg-white text-red-500'
+                            ? 'bg-red-500 border-red-500 text-white hover:bg-red-600'
+                            : 'border-gray-100 hover:bg-white text-red-500'
                             }`}
                         >
                           <Ban size={13} />

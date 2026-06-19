@@ -3,7 +3,7 @@ import { maxios } from "./axiosApi";
 // 기본 API 경로 설정 (경로 시작 시 '/' 기호 확인)
 const BASE_URL = '/admin/members';
 
-const adminApi = {
+const adminMemberApi = {
     // 1. 회원 목록 조회 (검색 키워드, 권한, 상태, 정렬, 기간 등 파라미터 전달)
     getMembers: async (searchParams) => {
         const response = await maxios.get(`${BASE_URL}`, { params: searchParams });
@@ -35,4 +35,4 @@ const adminApi = {
     }
 };
 
-export default adminApi;
+export default adminMemberApi;
