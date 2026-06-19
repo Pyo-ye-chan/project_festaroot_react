@@ -3,7 +3,7 @@ import { maxios } from "./axiosApi";
 // 기본 API 경로 설정 (경로 시작 시 '/' 기호 확인)
 const BASE_URL = '/admin/members';
 
-const adminApi = {
+const adminMemberApi = {
     // 1. 회원 목록 조회 (검색 키워드, 권한, 상태, 정렬, 기간 등 파라미터 전달)
     getMembers: async (searchParams) => {
         const response = await maxios.get(`${BASE_URL}`, { params: searchParams });
@@ -26,7 +26,25 @@ const adminApi = {
     restoreMember: async (id) => {
         const response = await maxios.put(`${BASE_URL}/${id}/restore`);
         return response.data;
+    },
+
+    // 5. 상단 요약 통계 데이터 조회 (검색 필터 독립)
+    getMainStats: async () => {
+        const response = await maxios.get(`${BASE_URL}/stats`);
+        return response.data;
+    },
+
+    // 기존 adminApi 객체 내부에 추가
+    getMemberDetail: async (id) => {
+        const response = await maxios.get(`${BASE_URL}/${id}/detail`);
+        return response.data;
+    },
+
+    // 3회 이상 신고받은 주의 대상 회원 목록 통합 조회
+    getCautionMembers: async () => {
+        const response = await maxios.get(`${BASE_URL}/caution`);
+        return response.data;
     }
 };
 
-export default adminApi;
+export default adminMemberApi;

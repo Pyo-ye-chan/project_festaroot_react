@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, ArrowRight } from 'lucide-react';
+import { Users, ArrowRight, Info } from 'lucide-react';
 import FreeGridCard from './FreeGridCard';
 import GatheringListItem from './GatheringListItem';
 
@@ -29,7 +29,12 @@ const FreeGatheringSection = ({ activeTab, freeGatherings, onTabChange }) => (
       )}
     </div>
 
-    {activeTab === '전체 모임' ? (
+    {freeGatherings.length === 0 ? (
+      <div className="py-20 text-center">
+        <Info className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+        <p className="text-gray-400 font-black">현재 개설된 모임이 없습니다.</p>
+      </div>
+    ) : activeTab === '전체 모임' ? (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-8 pt-4">
         {freeGatherings.slice(0, 4).map(gathering => (
           <FreeGridCard key={gathering.room_id} item={gathering} />
