@@ -13,11 +13,10 @@ import {
   Bell,
   ChevronDown,
   CircleUser,
-  UsersRound,
+  UsersRound, // 주석 처리된 메뉴를 위해 유지
   LogOut,
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
-
 
 const MainAdminLayout = () => {
   const navigate = useNavigate();
@@ -39,7 +38,7 @@ const MainAdminLayout = () => {
     { name: '축제 관리', path: '/admin/festivals', icon: CalendarDays },
     { name: '게시글 관리', path: '/admin/posts', icon: Newspaper },
     { name: '댓글 관리', path: '/admin/comments', icon: MessageSquare },
-    { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound },
+    // { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound }, // 추후 기능 추가 가능성 대비 주석함
     { name: '공지 및 알림', path: '/admin/notices', icon: Megaphone },
     { name: '신고 및 문의', path: '/admin/inquiries', icon: ShieldAlert, badge: '12' },
   ];
@@ -61,10 +60,10 @@ const MainAdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-gray-900">
-      {/* 왼쪽 사이드바 */}
+      {/* 왼쪽 사이드바 (h-screen, flex-col 설계) */}
       <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[260px] flex-col border-r border-gray-100 bg-white shadow-[4px_0_24px_rgba(15,23,42,0.04)] lg:flex">
-        {/* 로고 영역 */}
-        <div className="flex h-[78px] items-center gap-3 border-b border-gray-100 px-7">
+        {/* 1. 로고 영역 */}
+        <div className="flex h-[78px] items-center gap-3 border-b border-gray-100 px-7 flex-shrink-0">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#6d3df2] to-[#4f46e5] text-white shadow-lg shadow-purple-200">
             <LayoutGrid size={22} />
           </div>
@@ -74,7 +73,7 @@ const MainAdminLayout = () => {
           </p>
         </div>
 
-        {/* 메뉴 영역 */}
+        {/* 2. 메뉴 영역 (flex-1과 overflow-y-auto 덕분에 메뉴가 늘어나도 이 부분만 스크롤 됩니다) */}
         <nav className="flex-1 overflow-y-auto px-5 py-5">
           <ul className="space-y-1.5">
             {menus.map((menu) => {
@@ -90,18 +89,15 @@ const MainAdminLayout = () => {
                   <button
                     type="button"
                     onClick={() => navigate(menu.path)}
-                    className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all ${isActive
+                    className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all ${
+                      isActive
                         ? 'bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] text-white shadow-lg shadow-purple-100'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-[#6d3df2]'
-                      }`}
+                    }`}
                   >
                     <Icon
                       size={18}
-                      className={
-                        isActive
-                          ? 'text-white'
-                          : 'text-gray-500 group-hover:text-[#6d3df2]'
-                      }
+                      className={isActive ? 'text-white' : 'text-gray-500 group-hover:text-[#6d3df2]'}
                     />
 
                     <span className="flex-1 text-left">{menu.name}</span>
@@ -116,23 +112,19 @@ const MainAdminLayout = () => {
               );
             })}
           </ul>
-
-          <div className="mt-6 border-t border-gray-100 pt-6">
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-gray-500 transition-all hover:bg-red-50 hover:text-red-600"
-            >
-              <LogOut
-                size={18}
-                className="text-gray-400 group-hover:text-red-600"
-              />
-              <span className="flex-1 text-left">로그아웃</span>
-            </button>
-          </div>
         </nav>
 
-
+        {/* 3. 하단 고정 로그아웃 영역 (사이드바 최하단에 무조건 고정) */}
+        <div className="p-5 border-t border-gray-100 bg-white flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-gray-500 transition-all hover:bg-red-50 hover:text-red-600"
+          >
+            <LogOut size={18} className="text-gray-400 group-hover:text-red-600" />
+            <span className="flex-1 text-left">로그아웃</span>
+          </button>
+        </div>
       </aside>
 
       {/* 모바일 헤더 */}
@@ -169,14 +161,12 @@ const MainAdminLayout = () => {
       <div className="lg:pl-[260px]">
         {/* 데스크톱 상단 헤더 */}
         <header className="sticky top-0 z-10 hidden h-[78px] items-center justify-between border-b border-gray-100 bg-white/90 px-10 backdrop-blur lg:flex">
-          {/* 현재 위치 */}
           <div className="text-sm font-bold text-gray-400">
             관리자 홈
             <span className="mx-2 text-gray-300">›</span>
             <span className="text-gray-800">{currentMenuName}</span>
           </div>
 
-          {/* 알림 + 관리자 프로필 */}
           <div className="flex items-center gap-5">
             <button
               type="button"
@@ -188,19 +178,18 @@ const MainAdminLayout = () => {
               </span>
             </button>
      
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                title="로그아웃"
-              >
-                <LogOut size={22} />
-              </button>
-         
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+              title="로그아웃"
+            >
+              <LogOut size={22} />
+            </button>
           </div>
         </header>
 
-        {/* 하위 라우트 페이지가 렌더링되는 위치 */}
+        {/* 하위 라우트 페이지 렌더링 위치 */}
         <main className="min-h-[calc(100vh-78px)] px-5 py-6 sm:px-7 lg:px-10">
           <Outlet />
         </main>
