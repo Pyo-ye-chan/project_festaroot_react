@@ -89,6 +89,12 @@ const providerClass = {
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 
+// 날짜 문자열에서 시간 정보는 자르고 날짜(YYYY-MM-DD)만 반환하는 헬퍼 함수
+const formatDateOnly = (value) => {
+  if (!value) return '-';
+  return value.length >= 10 ? value.substring(0, 10) : value;
+};
+
 const MemberManagementPage = () => {
   const [members, setMembers] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -106,13 +112,13 @@ const MemberManagementPage = () => {
   const [totalPages, setTotalPages] = useState(1);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBlacklistModalOpen, setIsBlacklistModalOpen] = useState(false);
   const [targetMember, setTargetMember] = useState(null);
   const [suspensionDays, setSuspensionDays] = useState('7');
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [detailData, setDetailData] = useState(null);
 
-  // [신설] 글로벌 주의 대상 회원 목록 상태 구조 정의
   const [cautionMembers, setCautionMembers] = useState([]);
 
   const { isLoading, startLoading, stopLoading } = useLoadingStore();
@@ -155,7 +161,6 @@ const MemberManagementPage = () => {
     }
   };
 
-  // [신설] 백엔드로부터 승인 신고 3회 이상 회원들 호출 함수
   const fetchCautionMembers = async () => {
     try {
       const data = await adminMemberApi.getCautionMembers();
@@ -167,7 +172,7 @@ const MemberManagementPage = () => {
 
   useEffect(() => {
     fetchStats();
-    fetchCautionMembers(); // 마운트 시 최초 로드
+    fetchCautionMembers();
   }, []);
 
   useEffect(() => {
@@ -215,7 +220,7 @@ const MemberManagementPage = () => {
       setTargetMember(null);
       fetchMembers();
       fetchStats();
-      fetchCautionMembers(); // 조치 완료 후 집중 모니터링 수치 동기화 리프레시
+      fetchCautionMembers();
       if (isDetailModalOpen && detailData?.memberInfo?.id == targetMember.id) {
         handleOpenDetail(targetMember.id);
       }
@@ -224,20 +229,26 @@ const MemberManagementPage = () => {
     }
   };
 
-  const handleBlacklist = async (member) => {
-    if (window.confirm(`${member.nickname} 회원을 블랙리스트로 등록하시겠습니까?\n등록 시 영구적으로 서비스 이용이 제한됩니다.`)) {
-      try {
-        await adminMemberApi.blacklistMember(member.id);
-        alert("블랙리스트로 등록되었습니다.");
-        fetchMembers();
-        fetchStats();
-        fetchCautionMembers(); // 조치 완료 후 집중 모니터링 수치 동기화 리프레시
-        if (isDetailModalOpen && detailData?.memberInfo?.id == member.id) {
-          handleOpenDetail(member.id);
-        }
-      } catch (error) {
-        alert("블랙리스트 등록 중 오류가 발생했습니다.");
+  const openBlacklistModal = (member) => {
+    setTargetMember(member);
+    setIsBlacklistModalOpen(true);
+  };
+
+  const confirmBlacklist = async () => {
+    if (!targetMember) return;
+    try {
+      await adminMemberApi.blacklistMember(targetMember.id);
+      alert("블랙리스트로 등록되었습니다.");
+      setIsBlacklistModalOpen(false);
+      setTargetMember(null);
+      fetchMembers();
+      fetchStats();
+      fetchCautionMembers();
+      if (isDetailModalOpen && detailData?.memberInfo?.id == targetMember.id) {
+        handleOpenDetail(targetMember.id);
       }
+    } catch (error) {
+      alert("블랙리스트 등록 중 오류가 발생했습니다.");
     }
   };
 
@@ -250,7 +261,7 @@ const MemberManagementPage = () => {
         alert("제재가 해제되었습니다.");
         fetchMembers();
         fetchStats();
-        fetchCautionMembers(); // 조치 완료 후 집중 모니터링 수치 동기화 리프레시
+        fetchCautionMembers();
         if (isDetailModalOpen && detailData?.memberInfo?.id == memberId) {
           handleOpenDetail(memberId);
         }
@@ -332,19 +343,7 @@ const MemberManagementPage = () => {
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1150px] table-fixed text-left">
-            <colgroup>
-              <col className="w-[60px]" />
-              <col className="w-[200px]" />
-              <col className="w-[100px]" />
-              <col className="w-[200px]" />
-              <col className="w-[90px]" />
-              <col className="w-[90px]" />
-              <col className="w-[110px]" />
-              <col className="w-[110px]" />
-              <col className="w-[100px]" />
-              <col className="w-[60px]" />
-              <col className="w-[120px]" />
-            </colgroup>
+            <colgroup><col className="w-[60px]" /><col className="w-[200px]" /><col className="w-[100px]" /><col className="w-[200px]" /><col className="w-[90px]" /><col className="w-[90px]" /><col className="w-[110px]" /><col className="w-[110px]" /><col className="w-[100px]" /><col className="w-[60px]" /><col className="w-[120px]" /></colgroup>
             <thead>
               <tr className="bg-gray-50/50 text-[11px] font-black text-gray-400 uppercase tracking-wider">
                 <th className="px-5 py-4 text-center">No.</th>
@@ -366,7 +365,7 @@ const MemberManagementPage = () => {
                   <td colSpan={11} className="px-4 py-16 text-center font-bold text-gray-400">
                     <div className="flex items-center justify-center gap-2">
                       <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#6d3df2] border-t-transparent" />
-                      데이터를 불러오는 중입니다...
+                      데이터 불러오는 중입니다...
                     </div>
                   </td>
                 </tr>
@@ -398,9 +397,9 @@ const MemberManagementPage = () => {
                     <td className="px-4 py-4 text-center">
                       <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black ${statusClass[member.status]}`}>{STATUS_LABELS[member.status]}</span>
                     </td>
-                    <td className="px-4 py-4 text-center text-xs font-bold text-gray-400">{member.joinedAt}</td>
-                    <td className="px-4 py-4 text-center text-xs font-bold text-gray-400">{member.lastLogin}</td>
-                    <td className="px-4 py-4 text-center text-xs font-black text-orange-600 bg-orange-50/30">{member.suspensionEndDate || '-'}</td>
+                    <td className="px-4 py-4 text-center text-xs font-bold text-gray-400">{formatDateOnly(member.joinedAt)}</td>
+                    <td className="px-4 py-4 text-center text-xs font-bold text-gray-400">{formatDateOnly(member.lastLogin)}</td>
+                    <td className="px-4 py-4 text-center text-xs font-black text-orange-600 bg-orange-50/30">{formatDateOnly(member.suspensionEndDate)}</td>
                     <td className="px-4 py-4 text-right font-black text-gray-400">
                       <span>{member.reports}</span>
                     </td>
@@ -420,7 +419,7 @@ const MemberManagementPage = () => {
                         </button>
 
                         <button
-                          onClick={() => member.status === 'BLACKLISTED' ? handleStatusRestore(member.id) : handleBlacklist(member)}
+                          onClick={() => member.status === 'BLACKLISTED' ? handleStatusRestore(member.id) : openBlacklistModal(member)}
                           title={member.status === 'BLACKLISTED' ? "제재 해제 복원" : "블랙리스트 등록"}
                           className={`p-1.5 rounded-lg border transition ${member.status === 'BLACKLISTED'
                             ? 'bg-red-500 border-red-500 text-white hover:bg-red-600'
@@ -450,7 +449,7 @@ const MemberManagementPage = () => {
         </div>
       </section>
 
-      {/* [UI 고도화] 하단 모니터링 영역 (글로벌 3회 이상 승인 대상 연동 및 주의 등급 비주얼 배지 탑재) */}
+      {/* 하단 모니터링 영역 */}
       <section>
         <article className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
@@ -463,14 +462,7 @@ const MemberManagementPage = () => {
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] table-fixed text-left">
-              <colgroup>
-                <col className="w-[180px]" />
-                <col className="w-[100px]" />
-                <col className="w-[110px]" /> {/* 등급 구분을 위한 너비 확보 */}
-                <col className="w-[270px]" />
-                <col className="w-[120px]" />
-                <col className="w-[100px]" />
-              </colgroup>
+              <colgroup><col className="w-[180px]" /><col className="w-[100px]" /><col className="w-[110px]" /><col className="w-[270px]" /><col className="w-[120px]" /><col className="w-[100px]" /></colgroup>
               <thead>
                 <tr className="text-xs font-black text-gray-400 uppercase tracking-wider border-b border-gray-50 bg-gray-50/30">
                   <th className="px-4 py-3">회원 정보</th>
@@ -498,7 +490,6 @@ const MemberManagementPage = () => {
                       <td className="px-4 py-4 text-center">
                         <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black ${statusClass[m.status]}`}>{STATUS_LABELS[m.status]}</span>
                       </td>
-                      {/* 누적 승인 횟수에 따라 주의/위험 배지 부여 */}
                       <td className="px-4 py-4 text-center">
                         <div className="flex flex-col items-center gap-1">
                           <span className="font-black text-red-600 text-xs">{m.reports}건 승인</span>
@@ -512,7 +503,7 @@ const MemberManagementPage = () => {
                       <td className="px-4 py-4 font-semibold text-gray-600 truncate" title={m.reportReason}>
                         {REASON_LABELS[m.reportReason] || m.reportReason || '사유 없음'}
                       </td>
-                      <td className="px-4 py-4 text-center text-xs font-bold text-gray-400">{m.lastReportDate}</td>
+                      <td className="px-4 py-4 text-center text-xs font-bold text-gray-400">{formatDateOnly(m.lastReportDate)}</td>
                       <td className="px-4 py-4 text-center">
                         <button onClick={() => handleOpenDetail(m.id)} className="text-xs font-black text-[#6d3df2] hover:underline underline-offset-4">상세 조치</button>
                       </td>
@@ -525,7 +516,7 @@ const MemberManagementPage = () => {
         </article>
       </section>
 
-      {/* 정지 설정 모달 */}
+      {/* 활동 정지 설정 모달 */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -540,8 +531,28 @@ const MemberManagementPage = () => {
               ))}
             </div>
             <div className="mt-8 flex gap-3">
-              <button onClick={() => setIsModalOpen(false)} className="h-13 flex-1 rounded-2xl bg-gray-100 text-sm font-black text-gray-500 hover:bg-gray-200 transition">취소</button>
+              <button onClick={() => { setIsModalOpen(false); setTargetMember(null); }} className="h-13 flex-1 rounded-2xl bg-gray-100 text-sm font-black text-gray-500 hover:bg-gray-200 transition">취소</button>
               <button onClick={confirmSuspension} className="h-13 flex-1 rounded-2xl bg-[#6d3df2] text-sm font-black text-white shadow-lg shadow-purple-100 hover:-translate-y-0.5 transition">정지 적용</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 블랙리스트 영구 등록 확인 모달 */}
+      {isBlacklistModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500"><Ban size={28} /></div>
+              <h3 className="text-xl font-black text-gray-900">블랙리스트 영구 등록</h3>
+              <p className="mt-2 text-sm font-medium text-gray-500">
+                <span className="font-black text-gray-900">{targetMember?.nickname}</span> 회원을 블랙리스트로 등록하시겠습니까?<br />
+                <span className="text-red-500 font-bold mt-1 block">등록 시 영구적으로 서비스 이용이 제한됩니다.</span>
+              </p>
+            </div>
+            <div className="mt-8 flex gap-3">
+              <button onClick={() => { setIsBlacklistModalOpen(false); setTargetMember(null); }} className="h-13 flex-1 rounded-2xl bg-gray-100 text-sm font-black text-gray-500 hover:bg-gray-200 transition">취소</button>
+              <button onClick={confirmBlacklist} className="h-13 flex-1 rounded-2xl bg-red-500 text-sm font-black text-white shadow-lg shadow-red-100 hover:-translate-y-0.5 transition">영구 등록</button>
             </div>
           </div>
         </div>
@@ -580,9 +591,9 @@ const MemberManagementPage = () => {
                     <div className="flex justify-between"><span>가입 경로</span><span className={`px-1.5 py-0.5 rounded font-black ${providerClass[detailData.memberInfo.provider]}`}>{PROVIDER_LABELS[detailData.memberInfo.provider]}</span></div>
                     <div className="flex justify-between"><span>현재 레벨</span><span className="text-gray-900 font-black">LV. {detailData.memberInfo.currentLv || 1}</span></div>
                     <div className="flex justify-between"><span>누적 신고 횟수</span><span className="text-red-500 font-black">{detailData.memberInfo.reports} 건</span></div>
-                    <div className="flex justify-between"><span>가입 일시</span><span className="text-gray-700">{detailData.memberInfo.joinedAt}</span></div>
-                    <div className="flex justify-between"><span>최근 로그인</span><span className="text-gray-700">{detailData.memberInfo.lastLogin || '-'}</span></div>
-                    <div className="flex justify-between"><span>제재 해제 기한</span><span className="text-orange-600 font-black bg-orange-50 px-1.5 rounded">{detailData.memberInfo.suspensionEndDate || '-'}</span></div>
+                    <div className="flex justify-between"><span>가입 일시</span><span className="text-gray-700">{formatDateOnly(detailData.memberInfo.joinedAt)}</span></div>
+                    <div className="flex justify-between"><span>최근 로그인</span><span className="text-gray-700">{formatDateOnly(detailData.memberInfo.lastLogin)}</span></div>
+                    <div className="flex justify-between"><span>제재 해제 기한</span><span className="text-orange-600 font-black bg-orange-50 px-1.5 rounded">{formatDateOnly(detailData.memberInfo.suspensionEndDate)}</span></div>
                   </div>
                 </div>
                 <div className="rounded-2xl border border-gray-100 p-5 space-y-3 bg-white">
@@ -593,7 +604,7 @@ const MemberManagementPage = () => {
                     ) : (
                       <button onClick={() => handleStatusRestore(detailData.memberInfo.id)} className="h-11 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 font-black text-xs hover:bg-emerald-100 transition flex items-center justify-center gap-1"><Unlock size={12} /> 제재 해제</button>
                     )}
-                    <button onClick={() => handleBlacklist(detailData.memberInfo)} className="h-11 rounded-xl bg-red-50 border border-red-100 text-red-500 font-black text-xs hover:bg-red-100 transition flex items-center justify-center gap-1"><Ban size={12} /> 블랙리스트</button>
+                    <button onClick={() => openBlacklistModal(detailData.memberInfo)} className="h-11 rounded-xl bg-red-50 border border-red-100 text-red-500 font-black text-xs hover:bg-red-100 transition flex items-center justify-center gap-1"><Ban size={12} /> 블랙리스트</button>
                   </div>
                 </div>
               </div>
@@ -635,7 +646,7 @@ const MemberManagementPage = () => {
                               <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black ${reportStatusClass[item.resultStatus]}`}>{REPORT_STATUS_LABELS[item.resultStatus]}</span>
                             </td>
                             <td className="px-4 py-3.5 font-medium text-gray-500 break-words whitespace-normal" title={item.adminMemo}>{item.adminMemo || '-'}</td>
-                            <td className="px-4 py-3.5 text-center text-[11px] font-bold text-gray-400">{item.createdAt}</td>
+                            <td className="px-4 py-3.5 text-center text-[11px] font-bold text-gray-400">{formatDateOnly(item.createdAt)}</td>
                           </tr>
                         ))
                       )}
