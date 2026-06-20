@@ -76,4 +76,7 @@ export const toggleCommentLike = async (commentId) =>
 export const reportComment = async (commentId, reason) =>
   await maxios.post(`/board/comments/${commentId}/report`, {
     reason,
-  });  
+  });
+
+// 홈 > 인기 게시글 top5
+export const getPopularPosts = async () => await maxios.get('/board/posts/popular');
