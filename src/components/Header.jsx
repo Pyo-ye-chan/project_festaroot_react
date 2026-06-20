@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // 💡 [수정] Link를 react-router-dom 패키지로 올바르게 이동 및 결합했습니다.
+import { Link, useNavigate } from 'react-router-dom';
 import { User } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
 import NotificationDropdown from './notifications/NotificationDropdown';
