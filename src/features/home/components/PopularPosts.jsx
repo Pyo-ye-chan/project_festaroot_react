@@ -14,7 +14,6 @@ const PopularPosts = () => {
         setIsLoading(true);
         const response = await getPopularPosts();
         setPosts(response.data || []);
-        console.log("서버에서 온 진짜 데이터:", response.data);
       } catch (error) {
         console.error("인기 게시글 로드 중 오류 발생:", error);
       } finally {

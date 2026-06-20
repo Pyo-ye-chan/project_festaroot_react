@@ -16,6 +16,7 @@ import { getPosts } from '../../../api/boardApi';
 const Home = () => {
   const { isLoggedIn, user } = useAuthStore();
   const [latestNotice, setLatestNotice] = useState(null);
+  const [activeRegion, setActiveRegion] = useState('서울');
 
   // 최신 공지사항 조회
   useEffect(() => {
@@ -67,7 +68,7 @@ const Home = () => {
         // 3. 백엔드 출석 API 호출 (엔드포인트는 설계하신 대로 /member/attendance 가정)
         // 응답에 업적이 있다면 인터셉터가 자동으로 알림을 띄워줍니다.
         await maxios.post(`/member/attendance/${memberId}`);
-        
+
         // 4. 호출 성공 시 로컬 스토리지 업데이트
         localStorage.setItem(`attendance_${memberId}`, today);
       } catch (error) {
@@ -97,7 +98,7 @@ const Home = () => {
 
       {latestNotice && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10 animate-in fade-in slide-in-from-top-4 duration-500">
-          <Link 
+          <Link
             to={`/community/post/${latestNotice.post_id || latestNotice.id}`}
             className="flex items-center justify-between bg-white border border-purple-100 rounded-3xl px-6 py-4 shadow-sm hover:shadow-md hover:border-purple-200 transition-all duration-300 group cursor-pointer"
           >
@@ -122,13 +123,13 @@ const Home = () => {
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <WeatherDetail />
+          <WeatherDetail activeRegion={activeRegion} />
           <ClosingSoon />
           <RandomFestival />
         </div>
       </section>
       <section className="bg-white py-12 border-y border-gray-100 transition-colors duration-500 hover:bg-gray-50/30">
-        <TopFestivalsByRegion />
+        <TopFestivalsByRegion activeRegion={activeRegion} setActiveRegion={setActiveRegion} />
       </section>
       <section>
         <FestivalList />
