@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
+import { // 모임 신고 기능 없어서, 현재는 쓰지 않으나, 나중에 고도화 때 넣을 수도 있으니 남겨둠.
   Search,
   RotateCcw,
   Users,

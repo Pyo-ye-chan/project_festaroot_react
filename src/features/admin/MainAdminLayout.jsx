@@ -38,12 +38,10 @@ const MainAdminLayout = () => {
     { name: '축제 관리', path: '/admin/festivals', icon: CalendarDays },
     { name: '게시글 관리', path: '/admin/posts', icon: Newspaper },
     { name: '댓글 관리', path: '/admin/comments', icon: MessageSquare },
-
-    { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound },
+    // { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound }, // 추후 기능 추가 가능성 대비 주석함
     { name: '공지사항 관리', path: '/admin/notices', icon: Megaphone },
     { name: '문의 관리', path: '/admin/inquiries', icon: ShieldAlert },
 
-    // { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound }, // 추후 기능 추가 가능성 대비 주석함
 
   ];
 
@@ -94,8 +92,8 @@ const MainAdminLayout = () => {
                     type="button"
                     onClick={() => navigate(menu.path)}
                     className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all ${isActive
-                        ? 'bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] text-white shadow-lg shadow-purple-100'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-[#6d3df2]'
+                      ? 'bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] text-white shadow-lg shadow-purple-100'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-[#6d3df2]'
                       }`}
                   >
                     <Icon
