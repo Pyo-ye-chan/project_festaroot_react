@@ -6,24 +6,6 @@ import useLoadingStore from '../../../store/useLoadingStore';
 const Hero = () => {
   const { startLoading, stopLoading } = useLoadingStore();
 
-  const handleUpdateDB = async () => {
-    if (confirm("축제API 데이터가 DB에 업데이트 됩니다. 진행하시겠습니까?")) {
-      try {
-        startLoading();
-        const result = await festivalService.upsertFestivals();
-        console.log(result)
-        alert(result)
-      } catch (error) {
-        console.error("메인에서 잡은 에러 : ", error)
-        alert("서버 연결에 실패했거나 업데이트 중 오류가 발생했습니다.")
-      } finally {
-        stopLoading();
-      }
-    } else {
-      alert("업데이트가 취소되었습니다.")
-    }
-  }
-
   return (
     <section className="relative h-[550px] flex items-center justify-center overflow-hidden bg-slate-900">
       <div className="absolute inset-0">
@@ -62,9 +44,6 @@ const Hero = () => {
             지도에서 찾기
           </Link>
 
-          <button onClick={handleUpdateDB} className="px-8 py-4 bg-green-500/10 backdrop-blur-md border border-green-500/20 hover:bg-green-500/20 text-white font-bold rounded-2xl transition-all duration-300 flex items-center gap-2 text-lg active:scale-95">
-            축제 데이터 DB 업데이트 하기
-          </button>
         </div>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           {['#인기축제', '#가족과함께', '#서울야경', '#먹거리축제'].map(tag => (
