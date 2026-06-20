@@ -171,15 +171,6 @@ const MainAdminLayout = () => {
           </div>
 
           <div className="flex items-center gap-5">
-            <button
-              type="button"
-              className="relative rounded-2xl p-2 transition hover:bg-gray-50"
-            >
-              <Bell size={22} className="text-gray-500" />
-              <span className="absolute right-0 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-yellow-400 text-[11px] font-black text-yellow-900">
-                8
-              </span>
-            </button>
 
             <button
               type="button"
