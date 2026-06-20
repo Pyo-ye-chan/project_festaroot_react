@@ -56,7 +56,7 @@ const RandomFestival = () => {
               className="bg-white p-6 rounded-[2rem] shadow-sm border-2 border-purple-100/70 animate-in zoom-in duration-500 block w-full max-w-[90%] hover:bg-gray-50 hover:border-purple-400 hover:scale-[1.01] active:scale-[0.97] active:bg-gray-100 transition-all duration-150 ease-in-out cursor-pointer"
             >
               <span className="text-purple-700 font-black text-lg block mb-1">✨ {result.title}</span>
-              <span className="text-[11px] text-purple-400 font-bold block">당신에게 딱 맞는 축제를 찾았어요!</span>
+              <span className="text-[11px] text-purple-400 font-bold block">오늘의 랜덤 축제를 추천해드립니다!</span>
             </Link>
           ) : (
             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center border border-purple-100 shadow-inner group-hover:scale-110 transition-transform duration-500">
