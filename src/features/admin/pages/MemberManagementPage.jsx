@@ -30,8 +30,7 @@ const STATUS_LABELS = {
   ACTIVE: '정상',
   DELETED: '탈퇴',
   SUSPENDED: '정지',
-  BLACKLISTED: '블랙리스트',
-  INACTIVE: '휴면',
+  BLACKLISTED: '블랙리스트'
 };
 
 const PROVIDER_LABELS = {
@@ -89,7 +88,6 @@ const providerClass = {
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 
-// 날짜 문자열에서 시간 정보는 자르고 날짜(YYYY-MM-DD)만 반환하는 헬퍼 함수
 const formatDateOnly = (value) => {
   if (!value) return '-';
   return value.length >= 10 ? value.substring(0, 10) : value;
@@ -98,9 +96,7 @@ const formatDateOnly = (value) => {
 const MemberManagementPage = () => {
   const [members, setMembers] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
-
   const [mainStats, setMainStats] = useState({ total: 0, newToday: 0, suspended: 0, blacklisted: 0 });
-
   const [keyword, setKeyword] = useState('');
   const [role, setRole] = useState('all');
   const [status, setStatus] = useState('all');
@@ -182,6 +178,22 @@ const MemberManagementPage = () => {
   const displayedMembers = useMemo(() => {
     return members.filter((m) => m.role !== 'ADMIN');
   }, [members]);
+
+  const visiblePages = useMemo(() => {
+    const maxButtons = 5;
+    let start = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+    let end = Math.min(totalPages, start + maxButtons - 1);
+
+    if (end - start + 1 < maxButtons) {
+      start = Math.max(1, end - maxButtons + 1);
+    }
+
+    const pages = [];
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  }, [currentPage, totalPages]);
 
   const handleReset = () => {
     setKeyword('');
@@ -321,7 +333,14 @@ const MemberManagementPage = () => {
           </div>
 
           <div className="md:col-span-3 space-y-5">
-            <FilterSelect label="활동 상태" value={status} onChange={(v) => { setStatus(v); setCurrentPage(1); }} options={Object.entries(STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))} />
+            <FilterSelect
+              label="활동 상태"
+              value={status}
+              onChange={(v) => { setStatus(v); setCurrentPage(1); }}
+              options={Object.entries(STATUS_LABELS)
+                .filter(([key]) => key !== 'INACTIVE')
+                .map(([v, l]) => ({ value: v, label: l }))}
+            />
             <FilterSelect label="정렬 기준" value={sortBy} onChange={(v) => { setSortBy(v); setCurrentPage(1); }} options={[
               { value: 'latest', label: '최근 가입순' },
               { value: 'oldest', label: '오래된 가입순' },
@@ -441,9 +460,17 @@ const MemberManagementPage = () => {
         <div className="py-8 border-t border-gray-50">
           <div className="flex items-center justify-center gap-2">
             <button onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1} className="p-2 rounded-xl border border-gray-100 text-gray-400 hover:bg-gray-50 disabled:opacity-30 transition-all"><ChevronDown size={18} className="rotate-90" /></button>
-            {[...Array(totalPages)].map((_, i) => (
-              <button key={i + 1} onClick={() => setCurrentPage(i + 1)} className={`h-10 w-10 rounded-xl text-sm font-black transition-all ${currentPage === i + 1 ? 'bg-[#6d3df2] text-white shadow-lg shadow-purple-100' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}>{i + 1}</button>
+
+            {visiblePages.map((pageNum) => (
+              <button
+                key={pageNum}
+                onClick={() => setCurrentPage(pageNum)}
+                className={`h-10 w-10 rounded-xl text-sm font-black transition-all ${currentPage === pageNum ? 'bg-[#6d3df2] text-white shadow-lg shadow-purple-100' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}
+              >
+                {pageNum}
+              </button>
             ))}
+
             <button onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="p-2 rounded-xl border border-gray-100 text-gray-400 hover:bg-gray-50 disabled:opacity-30 transition-all"><ChevronDown size={18} className="-rotate-90" /></button>
           </div>
         </div>
