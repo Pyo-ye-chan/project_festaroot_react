@@ -1,28 +1,6 @@
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
 
-const MOCK_REPORTS = [
-  {
-    id: 1,
-    festivalTitle: "진해군항제",
-    author: "홍길동",
-    content: "축제장 음식이 너무 비싸고 위생이 불량합니다.",
-    reporter: "이영희",
-    reason: "욕설 및 비방",
-    createdAt: "2026-04-01",
-    status: "PENDING"
-  },
-  {
-    id: 2,
-    festivalTitle: "보령머드축제",
-    author: "김철수",
-    content: "이 축제 정말 재미없어요. 절대 가지 마세요.",
-    reporter: "박민수",
-    reason: "부적절한 홍보/스팸",
-    createdAt: "2026-07-18",
-    status: "RESOLVED"
-  }
-];
 
 const FestivalReportSection = () => {
   const getReportStatusBadge = (status) => {

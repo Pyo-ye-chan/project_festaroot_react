@@ -1,11 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Search,
   RotateCcw,
   CalendarDays,
   FileText,
-  Image as ImageIcon,
-  Paperclip,
   ShieldAlert,
   Eye,
   Trash2,
@@ -33,6 +31,25 @@ const CATEGORY_LABELS = {
   free: '자유',
   review: '후기',
   tip: '꿀팁',
+
+  전체: '전체',
+  자유: '자유',
+  후기: '후기',
+  꿀팁: '꿀팁',
+};
+
+const CATEGORY_OPTIONS = [
+  { value: 'all', label: '전체' },
+  { value: 'free', label: '자유' },
+  { value: 'review', label: '후기' },
+  { value: 'tip', label: '꿀팁' },
+];
+
+const getCategoryLabel = (category) => {
+  const raw = String(category || '').trim();
+  const key = raw.toLowerCase();
+
+  return CATEGORY_LABELS[key] || CATEGORY_LABELS[raw] || '-';
 };
 
 const SEARCH_TYPE_OPTIONS = [
@@ -47,8 +64,11 @@ const REPORT_RESULT_LABELS = {
   REJECTED: '반려',
 };
 
-const REPORT_PAGE_SIZE = 4;
-const POST_PAGE_SIZE = 5;
+const REPORT_RESULT_CLASSES = {
+  WAITING: 'bg-yellow-50 text-yellow-600',
+  ACCEPTED: 'bg-red-50 text-red-500',
+  REJECTED: 'bg-gray-100 text-gray-500',
+};
 
 const categoryClass = {
   free: 'bg-slate-100 text-slate-600',
@@ -56,6 +76,15 @@ const categoryClass = {
   tip: 'bg-amber-50 text-amber-600',
   notice: 'bg-blue-50 text-blue-600',
 };
+
+const VISIBLE_STATUS_OPTIONS = [
+  { value: 'all', label: '전체' },
+  { value: 'Y', label: '공개' },
+  { value: 'N', label: '비공개' },
+];
+
+const REPORT_PAGE_SIZE = 4;
+const POST_PAGE_SIZE = 5;
 
 const INITIAL_STATS = {
   total: 0,
@@ -68,6 +97,14 @@ const formatNumber = (value) => Number(value || 0).toLocaleString();
 
 const normalizeCategory = (category) => String(category || '').toLowerCase();
 
+const normalizeVisibleStatus = (visibleStatus) => {
+  if (visibleStatus === 'Y' || visibleStatus === 'N') {
+    return visibleStatus;
+  }
+
+  return 'all';
+};
+
 const getPostCode = (post) => {
   if (post?.postCode) return post.postCode;
   return `POST-${String(post?.postId || 0).padStart(3, '0')}`;
@@ -79,9 +116,36 @@ const getReportCode = (report) => {
 };
 
 const getSearchPlaceholder = (searchType) => {
-  if (searchType === 'author') return '작성자 ID를 입력하세요';
-  if (searchType === 'id') return '게시글 ID를 입력하세요';
-  return '게시글 제목을 입력하세요';
+  if (searchType === 'author') return '작성자 ID를 입력해 주세요.';
+  if (searchType === 'id') return '게시글 ID를 입력해 주세요.';
+  return '게시글 제목을 입력해 주세요.';
+};
+
+const formatShortDate = (value) => {
+  const text = String(value || '').trim();
+  if (!text) return '-';
+  return text.split(' ')[0].replace(/\./g, '-');
+};
+
+const getVisibleBadge = (isVisible) => {
+  const isPublic = String(isVisible || '').toUpperCase() === 'Y';
+
+
+
+  if (isPublic) {
+    return (
+      <span className="inline-flex h-7 max-w-full items-center justify-center rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-600">
+        <span className="truncate">공개</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex h-7 max-w-full items-center justify-center rounded-full bg-rose-50 px-3 py-1.5 text-xs font-black text-rose-600">
+      <span className="truncate">비공개</span>
+    </span>
+  );
+
 };
 
 const getErrorMessage = (error, fallback) => {
@@ -101,9 +165,11 @@ const PostManagementPage = () => {
 
   const [keywordInput, setKeywordInput] = useState('');
   const [searchType, setSearchType] = useState('title');
+  const [visibleStatus, setVisibleStatus] = useState('all');
   const [searchCondition, setSearchCondition] = useState({
     searchType: 'title',
     keyword: '',
+    visibleStatus: 'all',
   });
   const [category, setCategory] = useState('all');
 
@@ -140,9 +206,9 @@ const PostManagementPage = () => {
         pendingReportCount: Number(data.pendingReportCount || 0),
       });
     } catch (error) {
-      console.error('게시판 관리자 통계 조회 실패:', error);
+      console.error('게시글 관리자 통계 조회 실패:', error);
       setLoadError(
-        getErrorMessage(error, '게시판 관리자 통계를 불러오지 못했습니다.')
+        getErrorMessage(error, '게시글 관리자 통계를 불러오지 못했습니다.')
       );
     } finally {
       setSummaryLoading(false);
@@ -158,23 +224,33 @@ const PostManagementPage = () => {
         size: REPORT_PAGE_SIZE,
       });
       const data = response.data || {};
-      const totalPages = Math.max(Number(data.totalPages || 1), 1);
+      const totalCount = Math.max(Number(data.totalCount || 0), 0);
+      const calculatedTotalPages = Math.max(
+        1,
+        Math.ceil(totalCount / REPORT_PAGE_SIZE)
+      );
+      const totalPages = Math.max(
+        Number(data.totalPages || calculatedTotalPages),
+        1
+      );
+      const safeTargetPage = Math.min(Math.max(targetPage, 1), totalPages);
+
+      console.log(data);
 
       setReportTotalPages(totalPages);
-      setReportTotalCount(Number(data.totalCount || 0));
+      setReportTotalCount(totalCount);
 
-      if (targetPage > totalPages) {
-        setWaitingReportRows([]);
-        setReportPage(totalPages);
+      if (safeTargetPage !== targetPage) {
+        setReportPage(safeTargetPage);
         return;
       }
 
       setWaitingReportRows(Array.isArray(data.list) ? data.list : []);
     } catch (error) {
-      console.error('처리 대기 신고 조회 실패:', error);
+      console.error('처리 대기 게시글 신고 조회 실패:', error);
       setWaitingReportRows([]);
       setLoadError(
-        getErrorMessage(error, '처리 대기 신고 목록을 불러오지 못했습니다.')
+        getErrorMessage(error, '처리 대기 게시글 신고 목록을 불러오지 못했습니다.')
       );
     } finally {
       setReportsLoading(false);
@@ -192,16 +268,27 @@ const PostManagementPage = () => {
           category,
           searchType: searchCondition.searchType,
           keyword: searchCondition.keyword,
+          visibleStatus: normalizeVisibleStatus(searchCondition.visibleStatus),
         });
         const data = response.data || {};
-        const totalPages = Math.max(Number(data.totalPages || 1), 1);
+        const totalCount = Math.max(Number(data.totalCount || 0), 0);
+        const calculatedTotalPages = Math.max(
+          1,
+          Math.ceil(totalCount / POST_PAGE_SIZE)
+        );
+        const totalPages = Math.max(
+          Number(data.totalPages || calculatedTotalPages),
+          1
+        );
+        const safeTargetPage = Math.min(Math.max(targetPage, 1), totalPages);
+
+        console.log(data);
 
         setPostTotalPages(totalPages);
-        setPostTotalCount(Number(data.totalCount || 0));
+        setPostTotalCount(totalCount);
 
-        if (targetPage > totalPages) {
-          setPosts([]);
-          setPostPage(totalPages);
+        if (safeTargetPage !== targetPage) {
+          setPostPage(safeTargetPage);
           return;
         }
 
@@ -255,10 +342,32 @@ const PostManagementPage = () => {
     setSearchCondition({
       searchType,
       keyword: keywordInput.trim(),
+      visibleStatus,
     });
     setSelectedPostIds([]);
     setPostPage(1);
   };
+
+  useEffect(() => {
+    const handleBrowserBack = () => {
+      setSelectedPost((prev) => {
+        if (prev) {
+          setSelectedReportId(null);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return null;
+        }
+
+        return prev;
+      });
+    };
+
+    window.addEventListener('popstate', handleBrowserBack);
+
+    return () => {
+      window.removeEventListener('popstate', handleBrowserBack);
+    };
+  })
+
 
   const handleSearchKeyDown = (event) => {
     if (event.key === 'Enter') {
@@ -269,9 +378,11 @@ const PostManagementPage = () => {
   const handleReset = () => {
     setKeywordInput('');
     setSearchType('title');
+    setVisibleStatus('all');
     setSearchCondition({
       searchType: 'title',
       keyword: '',
+      visibleStatus: 'all',
     });
     setCategory('all');
     setSelectedPostIds([]);
@@ -280,6 +391,16 @@ const PostManagementPage = () => {
 
   const handleChangeCategory = (nextCategory) => {
     setCategory(nextCategory);
+    setSelectedPostIds([]);
+    setPostPage(1);
+  };
+
+  const handleChangeVisibleStatus = (nextVisibleStatus) => {
+    setVisibleStatus(nextVisibleStatus);
+    setSearchCondition((prev) => ({
+      ...prev,
+      visibleStatus: nextVisibleStatus,
+    }));
     setSelectedPostIds([]);
     setPostPage(1);
   };
@@ -297,6 +418,16 @@ const PostManagementPage = () => {
     try {
       const response = await getAdminPostDetail(postId);
       setSelectedPost(response.data);
+
+      window.history.pushState(
+        {
+          adminPostDetail: true,
+          postId,
+          reportId,
+        },
+        '',
+        window.location.pathname
+      );
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error('게시글 상세 조회 실패:', error);
@@ -349,7 +480,9 @@ const PostManagementPage = () => {
 
     const titleText = target?.title ? `\n\n제목: ${target.title}` : '';
     const isConfirmed = window.confirm(
-      `게시글과 댓글, 좋아요, 신고 기록, 첨부 이미지/파일이 함께 삭제됩니다.${titleText}\n\n정말 완전 삭제할까요?`
+      `선택한 게시글을 완전 삭제할까요?\n\n게시글 ID: ${getPostCode(
+        target || { postId }
+      )}${titleText}\n\n게시글과 연결된 신고 및 댓글 데이터가 함께 삭제됩니다.`
     );
 
     if (!isConfirmed) return;
@@ -370,7 +503,9 @@ const PostManagementPage = () => {
       window.alert('게시글이 완전 삭제되었습니다.');
     } catch (error) {
       console.error('게시글 삭제 실패:', error);
-      window.alert(getErrorMessage(error, '게시글 삭제 중 오류가 발생했습니다.'));
+      window.alert(
+        getErrorMessage(error, '게시글 삭제 중 오류가 발생했습니다.')
+      );
     } finally {
       setActionLoading(false);
     }
@@ -380,12 +515,12 @@ const PostManagementPage = () => {
     if (actionLoading) return;
 
     if (selectedPostIds.length === 0) {
-      window.alert('삭제할 게시글을 선택해주세요.');
+      window.alert('삭제할 게시글을 선택해 주세요.');
       return;
     }
 
     const isConfirmed = window.confirm(
-      `선택한 게시글 ${selectedPostIds.length}건을 완전 삭제할까요?\n\n게시글, 댓글, 좋아요, 신고 기록, 첨부 이미지/파일이 함께 삭제됩니다.`
+      `선택한 게시글 ${selectedPostIds.length}건을 완전 삭제할까요?\n\n게시글과 연결된 신고 및 댓글 데이터가 함께 삭제되며, 삭제한 원본 데이터는 복구할 수 없습니다.`
     );
 
     if (!isConfirmed) return;
@@ -417,7 +552,7 @@ const PostManagementPage = () => {
 
     const resultLabel = REPORT_RESULT_LABELS[resultStatus] || resultStatus;
     const isConfirmed = window.confirm(
-      `신고 ${getReportCode({ reportId })}을(를) '${resultLabel}' 처리할까요?\n\n선택한 신고 내역만 처리됩니다.`
+      `신고 ${getReportCode({ reportId })}을(를) '${resultLabel}' 처리할까요?\n\n해당 신고 내역 한 건만 처리합니다.`
     );
 
     if (!isConfirmed) return;
@@ -440,15 +575,46 @@ const PostManagementPage = () => {
 
       window.alert(
         resultStatus === 'ACCEPTED'
-          ? '신고를 인정 처리했습니다.'
-          : '신고를 반려 처리했습니다.'
+          ? '게시글 신고를 인정 처리했습니다.'
+          : '게시글 신고를 반려 처리했습니다.'
       );
     } catch (error) {
-      console.error('신고 처리 실패:', error);
-      window.alert(getErrorMessage(error, '신고 처리 중 오류가 발생했습니다.'));
+      console.error('게시글 신고 처리 실패:', error);
+      window.alert(
+        getErrorMessage(error, '게시글 신고 처리 중 오류가 발생했습니다.')
+      );
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleReportPageChange = (nextPage) => {
+    if (reportsLoading) return;
+
+    const safeNextPage = Math.min(
+      Math.max(Number(nextPage) || 1, 1),
+      Math.max(reportTotalPages, 1)
+    );
+
+    if (safeNextPage === reportPage) return;
+
+    setLoadError('');
+    setReportPage(safeNextPage);
+  };
+
+  const handlePostPageChange = (nextPage) => {
+    if (postsLoading) return;
+
+    const safeNextPage = Math.min(
+      Math.max(Number(nextPage) || 1, 1),
+      Math.max(postTotalPages, 1)
+    );
+
+    if (safeNextPage === postPage) return;
+
+    setLoadError('');
+    setSelectedPostIds([]);
+    setPostPage(safeNextPage);
   };
 
   if (selectedPost) {
@@ -469,9 +635,8 @@ const PostManagementPage = () => {
         <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
           게시글 관리
         </h1>
-
         <p className="mt-2 text-sm font-medium text-gray-500">
-          게시글 원문과 첨부 자료를 확인하고, 접수된 신고는 신고 내역 단위로 인정 또는 반려 처리합니다.
+          게시글 본문과 첨부 자료를 확인하고, 접수된 신고를 신고 내역 단위로 인정 또는 반려 처리합니다.
         </p>
       </section>
 
@@ -498,32 +663,29 @@ const PostManagementPage = () => {
           icon={FileText}
           title="전체 게시글"
           value={stats.total}
-          unit="건"
-          description="커뮤니티 전체 게시글"
+          unit="개"
+          description="게시판 전체 게시글"
           iconClass="bg-purple-50 text-[#6d3df2]"
           loading={summaryLoading}
         />
-
         <SummaryCard
           icon={CalendarDays}
           title="오늘 작성"
           value={stats.today}
-          unit="건"
-          description="오늘 새로 등록된 게시글"
+          unit="개"
+          description="오늘 새로 작성된 게시글"
           iconClass="bg-blue-50 text-blue-600"
           loading={summaryLoading}
         />
-
         <SummaryCard
           icon={ShieldAlert}
           title="신고 게시글"
           value={stats.reportedPostCount}
-          unit="건"
+          unit="개"
           description="신고가 1회 이상 접수된 게시글"
           iconClass="bg-red-50 text-red-500"
           loading={summaryLoading}
         />
-
         <SummaryCard
           icon={ClipboardCheck}
           title="처리 대기 신고"
@@ -550,21 +712,22 @@ const PostManagementPage = () => {
               </span>
             </div>
             <p className="mt-1 text-xs font-bold text-gray-400">
-              처리 대기 신고 단위로 원문 확인과 처리 화면으로 이동합니다.
+              처리 대기 중인 게시글 신고 단위로 상세 화면으로 이동합니다.
             </p>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] table-fixed text-left">
+          <table className="w-full table-fixed text-left">
             <colgroup>
+              <col className="w-[105px]" />
+              <col className="w-[110px]" />
+              <col className="w-[150px]" />
+              <col className="w-[260px]" />
               <col className="w-[120px]" />
-              <col className="w-[145px]" />
-              <col className="w-[155px]" />
-              <col className="w-[360px]" />
-              <col className="w-[130px]" />
-              <col className="w-[90px]" />
-              <col className="w-[100px]" />
+              <col className="w-[120px]" />
+              <col className="w-[95px]" />
+              <col className="w-[85px]" />
             </colgroup>
 
             <thead>
@@ -572,20 +735,37 @@ const PostManagementPage = () => {
                 <th className="px-4 py-4">접수 번호</th>
                 <th className="px-4 py-4">접수 일자</th>
                 <th className="px-4 py-4">신고 사유</th>
-                <th className="px-4 py-4">제목</th>
+                <th className="px-4 py-4">게시글 제목</th>
                 <th className="px-4 py-4">신고자</th>
-                <th className="px-4 py-4">누적</th>
+                <th className="px-4 py-4">작성자</th>
+                <th className="px-4 py-4">상태</th>
                 <th className="px-4 py-4">관리</th>
               </tr>
             </thead>
 
             <tbody>
               {reportsLoading ? (
-                <LoadingTableRow colSpan={7} text="처리 대기 신고를 불러오는 중입니다." />
+                <LoadingTableRow
+                  colSpan={8}
+                  text="처리 대기 게시글 신고를 불러오는 중입니다."
+                />
               ) : waitingReportRows.length > 0 ? (
-                waitingReportRows.map((report) => {
-                  const reportCategory = normalizeCategory(report.category);
-                  const isOpening = openingPostId === report.postId;
+                waitingReportRows.map((row) => {
+                  const report = row?.report || row;
+                  const post = row?.post || row || {};
+                  const isOpening = openingPostId === (post.postId || report.postId);
+
+                  const categoryName =
+                    CATEGORY_LABELS[
+                    normalizeCategory(
+                      report.postCategory || post.postCategory || post.category
+                    )
+                    ] ||
+                    report.postCategory ||
+                    post.postCategory ||
+                    post.category ||
+                    '-';
+
 
                   return (
                     <tr
@@ -596,11 +776,11 @@ const PostManagementPage = () => {
                         {getReportCode(report)}
                       </td>
                       <td className="px-4 py-4 text-center align-middle text-xs font-bold leading-5 text-gray-500">
-                        {report.createdAt || '-'}
+                        {formatShortDate(report.createdAt)}
                       </td>
                       <td className="px-4 py-4 text-center align-middle">
                         <span className="inline-flex max-w-full items-center justify-center rounded-full bg-red-50 px-3 py-1.5 text-xs font-black text-red-500">
-                          <span className="truncate">{report.reason}</span>
+                          <span className="truncate">{report.reason || '-'}</span>
                         </span>
                       </td>
                       <td className="px-4 py-4 align-middle">
@@ -608,44 +788,55 @@ const PostManagementPage = () => {
                           type="button"
                           disabled={isOpening}
                           onClick={() =>
-                            handleOpenDetail(report.postId, report.reportId)
+                            handleOpenDetail(
+                              post.postId || report.postId,
+                              report.reportId
+                            )
                           }
                           className="block w-full text-left disabled:cursor-wait"
                         >
                           <p className="line-clamp-1 break-keep text-sm font-black text-gray-800">
-                            {report.title}
+                            {report.title || post.title || '-'}
                           </p>
-                          <p className="mt-1 text-xs font-semibold text-gray-400">
-                            {report.postCode ||
-                              getPostCode({ postId: report.postId })}{' '}
-                            ·{' '}
-                            {CATEGORY_LABELS[reportCategory] ||
-                              report.category ||
-                              '-'}
+                          <p className="mt-1 truncate text-xs font-semibold text-gray-400">
+                            {post.postCode || getPostCode(post)} · {categoryName}
                           </p>
                         </button>
                       </td>
                       <td className="px-4 py-4 text-center align-middle font-bold text-gray-600">
-                        {report.reporterMemberId}
+                        {report.reporter || report.reporterMemberId || '-'}
                       </td>
-                      <td className="px-4 py-4 text-center align-middle font-black text-red-500">
-                        {formatNumber(report.postReportCount)}
+                      <td className="px-4 py-4 text-center align-middle font-bold text-gray-600">
+                        {post.author || report.author || '-'}
+                      </td>
+                      <td className="px-4 py-4 text-center align-middle">
+                        <StatusBadge
+                          className={
+                            REPORT_RESULT_CLASSES[report.status] ||
+                            'bg-gray-100 text-gray-500'
+                          }
+                        >
+                          {REPORT_RESULT_LABELS[report.status] || report.status || '-'}
+                        </StatusBadge>
                       </td>
                       <td className="px-4 py-4 text-center align-middle">
                         <button
                           type="button"
                           disabled={isOpening}
                           onClick={() =>
-                            handleOpenDetail(report.postId, report.reportId)
+                            handleOpenDetail(
+                              post.postId || report.postId,
+                              report.reportId
+                            )
                           }
-                          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#6d3df2] transition hover:border-[#6d3df2]/30 hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
+                          title="게시글 확인"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-[#6d3df2] transition hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
                         >
                           {isOpening ? (
-                            <Loader2 size={14} className="animate-spin" />
+                            <Loader2 size={15} className="animate-spin" />
                           ) : (
-                            <Eye size={14} />
+                            <Eye size={15} />
                           )}
-                          확인
                         </button>
                       </td>
                     </tr>
@@ -653,10 +844,10 @@ const PostManagementPage = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center">
+                  <td colSpan={8} className="px-5 py-12 text-center">
                     <CheckCircle2 size={28} className="mx-auto text-emerald-500" />
                     <p className="mt-3 text-sm font-black text-gray-700">
-                      처리 대기 중인 신고가 없습니다.
+                      처리 대기 중인 게시글 신고가 없습니다.
                     </p>
                     <p className="mt-1 text-xs font-bold text-gray-400">
                       신규 신고가 접수되면 이 영역에 표시됩니다.
@@ -672,7 +863,7 @@ const PostManagementPage = () => {
           <Pagination
             page={reportPage}
             totalPages={reportTotalPages}
-            onChange={setReportPage}
+            onChange={handleReportPageChange}
             disabled={reportsLoading}
           />
         </div>
@@ -683,7 +874,7 @@ const PostManagementPage = () => {
           <div>
             <h2 className="text-lg font-black text-gray-900">전체 게시글 조회</h2>
             <p className="mt-1 text-xs font-bold text-gray-400">
-              카테고리를 먼저 좁힌 뒤 제목, 작성자, 게시글 ID 기준으로 검색합니다.
+              게시글 카테고리와 공개 상태를 선택한 뒤 제목, 작성자, ID를 검색합니다.
             </p>
           </div>
 
@@ -697,15 +888,19 @@ const PostManagementPage = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[0.9fr_0.9fr_2.2fr]">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[0.9fr_0.9fr_0.9fr_2.1fr]">
           <FilterSelect
-            label="카테고리"
+            label="게시글 카테고리"
             value={category}
             onChange={handleChangeCategory}
-            options={Object.entries(CATEGORY_LABELS).map(([value, label]) => ({
-              value,
-              label,
-            }))}
+            options={CATEGORY_OPTIONS}  
+          />
+
+          <FilterSelect
+            label="공개 상태"
+            value={visibleStatus}
+            onChange={handleChangeVisibleStatus}
+            options={VISIBLE_STATUS_OPTIONS}
           />
 
           <FilterSelect
@@ -753,15 +948,15 @@ const PostManagementPage = () => {
       </section>
 
       <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-black text-gray-900">게시글 목록</h2>
-              <span className="inline-flex h-7 items-center rounded-full bg-purple-50 px-3 text-xs font-black text-[#6d3df2]">
+              <h2 className="text-base font-black text-gray-900">게시글 목록</h2>
+              <span className="inline-flex h-6 items-center rounded-full bg-purple-50 px-2.5 text-[11px] font-black text-[#6d3df2]">
                 {formatNumber(postTotalCount)}개
               </span>
             </div>
-            <p className="mt-1 text-xs font-bold text-gray-400">
+            <p className="mt-0.5 text-[11px] font-bold text-gray-400">
               검색 조건에 맞는 게시글을 페이지 단위로 확인합니다.
             </p>
           </div>
@@ -770,16 +965,15 @@ const PostManagementPage = () => {
             type="button"
             onClick={handleDeleteSelectedPosts}
             disabled={selectedPostIds.length === 0 || actionLoading}
-            className={`inline-flex h-10 w-fit items-center gap-2 rounded-xl px-4 text-sm font-black transition ${
-              selectedPostIds.length === 0 || actionLoading
-                ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
-                : 'border border-red-100 bg-red-50 text-red-500 hover:bg-red-100'
-            }`}
+            className={`inline-flex h-8 w-fit items-center gap-1.5 rounded-lg px-3 text-xs font-black transition ${selectedPostIds.length === 0 || actionLoading
+              ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
+              : 'border border-red-100 bg-red-50 text-red-500 hover:bg-red-100'
+              }`}
           >
             {actionLoading ? (
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" />
             ) : (
-              <Trash2 size={16} />
+              <Trash2 size={14} />
             )}
             선택 삭제
             {selectedPostIds.length > 0 && ` ${selectedPostIds.length}`}
@@ -787,66 +981,59 @@ const PostManagementPage = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1180px] table-fixed text-left">
+          <table className="w-full table-fixed text-left">
             <colgroup>
               <col className="w-[52px]" />
+              <col className="w-[120px]" />
+              <col className="w-[260px]" />
+              <col className="w-[95px]" />
               <col className="w-[105px]" />
-              <col className="w-[360px]" />
-              <col className="w-[105px]" />
-              <col className="w-[130px]" />
+              <col className="w-[125px]" />
               <col className="w-[145px]" />
-              <col className="w-[80px]" />
-              <col className="w-[80px]" />
-              <col className="w-[115px]" />
-              <col className="w-[90px]" />
+              <col className="w-[75px]" />
+              <col className="w-[85px]" />
               <col className="w-[118px]" />
             </colgroup>
 
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-xs font-black text-gray-500">
-                <th className="px-4 py-4 text-center">
-                  <input
-                    type="checkbox"
-                    checked={isAllChecked}
-                    onChange={handleToggleAll}
-                    disabled={postsLoading || posts.length === 0}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                </th>
-                <th className="px-4 py-4 text-center">게시글 ID</th>
-                <th className="px-4 py-4">게시글 제목</th>
-                <th className="px-4 py-4 text-center">카테고리</th>
-                <th className="px-4 py-4 text-center">작성자</th>
-                <th className="px-4 py-4 text-center">작성일</th>
-                <th className="px-4 py-4 text-right">조회</th>
-                <th className="px-4 py-4 text-right">댓글</th>
-                <th className="px-4 py-4 text-center">첨부</th>
-                <th className="px-4 py-4 text-right">신고</th>
-                <th className="px-4 py-4 text-center">관리</th>
+              <tr className="border-b border-gray-100 bg-gray-50 text-[11px] font-black text-gray-500">
+                <th className="px-3 py-2.5 text-center"> </th>
+                <th className="px-3 py-2.5 text-center">게시글 ID</th>
+                <th className="px-3 py-2.5">제목</th>
+                <th className="px-3 py-2.5 text-center">카테고리</th>
+                <th className="px-3 py-2.5 text-center">공개상태</th>
+                <th className="px-3 py-2.5 text-center">작성자</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">작성일</th>
+                <th className="px-3 py-2.5 text-right">조회</th>
+                <th className="px-3 py-2.5 text-right">신고</th>
+                <th className="px-3 py-2.5 text-center">관리</th>
               </tr>
             </thead>
 
             <tbody>
               {postsLoading ? (
-                <LoadingTableRow colSpan={11} text="게시글 목록을 불러오는 중입니다." />
+                <LoadingTableRow
+                  colSpan={10}
+                  text="게시글 목록을 불러오는 중입니다."
+                  compact
+                />
               ) : posts.length > 0 ? (
                 posts.map((post) => {
-                  const postCategory = normalizeCategory(post.category);
-                  const imageCount = Number(post.imageCount || 0);
-                  const fileCount = Number(post.fileCount || 0);
-                  const hasAttach = imageCount + fileCount > 0;
+                  const postCategory = normalizeCategory(
+                    post.postCategory || post.category
+                  );
                   const reportCount = Number(post.reportCount || 0);
-                  const pendingCount = Number(post.pendingReportCount || 0);
                   const isChecked = selectedPostIds.includes(post.postId);
                   const isOpening = openingPostId === post.postId;
+                  const categoryLabel = getCategoryLabel(post.postCategory || post.category);
 
                   return (
                     <tr
                       key={post.postId}
                       onClick={() => handleOpenDetail(post.postId)}
-                      className="cursor-pointer border-b border-gray-50 text-sm transition hover:bg-purple-50/40"
+                      className="h-10 cursor-pointer border-b border-gray-50 text-[13px] transition hover:bg-purple-50/40"
                     >
-                      <td className="px-4 py-4 text-center align-middle">
+                      <td className="px-3 py-1.5 text-center align-middle">
                         <input
                           type="checkbox"
                           checked={isChecked}
@@ -856,85 +1043,52 @@ const PostManagementPage = () => {
                         />
                       </td>
 
-                      <td className="px-4 py-4 text-center align-middle text-xs font-black text-gray-500">
+                      <td className="px-3 py-1.5 text-center align-middle text-xs font-black text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">
                         {getPostCode(post)}
                       </td>
 
-                      <td className="px-4 py-4 align-middle">
-                        <p className="line-clamp-2 break-keep text-sm font-black leading-5 text-gray-800">
-                          {post.title}
+                      <td className="px-3 py-1.5 align-middle">
+                        <p className="truncate text-[13px] font-black leading-4 text-gray-800">
+                          {post.title || '-'}
                         </p>
                       </td>
-
-                      <td className="px-4 py-4 text-center align-middle">
+                      <td className="px-3 py-1.5 text-center align-middle">
                         <StatusBadge
                           className={
-                            categoryClass[postCategory] ||
-                            'bg-gray-100 text-gray-500'
+                            categoryClass[postCategory] || 'bg-gray-100 text-gray-500'
                           }
                         >
-                          {CATEGORY_LABELS[postCategory] || post.category}
+                          {getCategoryLabel(post.postCategory || post.category)}
                         </StatusBadge>
                       </td>
 
-                      <td className="px-4 py-4 text-center align-middle">
-                        <p className="truncate font-black text-gray-700">
-                          {post.author}
+                      <td className="px-3 py-1.5 text-center align-middle">
+                        {getVisibleBadge(post.isVisible || post.is_visible)}
+                      </td>
+
+                      <td className="px-3 py-1.5 text-center align-middle">
+                        <p className="truncate text-[13px] font-black leading-4 text-gray-700">
+                          {post.author || '-'}
                         </p>
                       </td>
 
-                      <td className="px-4 py-4 text-center align-middle">
-                        <p className="text-xs font-bold leading-5 text-gray-600">
-                          {post.createdAt}
+                      <td className="px-3 py-1.5 text-center align-middle whitespace-nowrap overflow-hidden text-ellipsis">
+                        <p className="whitespace-nowrap text-[11px] font-bold leading-4 text-gray-600">
+                          {formatShortDate(post.createdAt)}
                         </p>
                       </td>
 
-                      <td className="px-4 py-4 text-right align-middle font-bold text-gray-600">
+                      <td className="px-3 py-1.5 text-right align-middle font-bold text-gray-600">
                         {formatNumber(post.views)}
                       </td>
 
-                      <td className="px-4 py-4 text-right align-middle font-bold text-gray-600">
-                        {formatNumber(post.comments)}
+                      <td className="px-3 py-1.5 text-right align-middle">
+                        <span className="font-black text-red-500">
+                          {formatNumber(reportCount)}
+                        </span>
                       </td>
 
-                      <td className="px-4 py-4 text-center align-middle">
-                        {hasAttach ? (
-                          <div className="flex items-center justify-center gap-1">
-                            {imageCount > 0 && (
-                              <span className="inline-flex h-7 items-center gap-1 rounded-full bg-purple-50 px-2 text-xs font-black text-[#6d3df2]">
-                                <ImageIcon size={13} />
-                                {imageCount}
-                              </span>
-                            )}
-                            {fileCount > 0 && (
-                              <span className="inline-flex h-7 items-center gap-1 rounded-full bg-yellow-50 px-2 text-xs font-black text-yellow-600">
-                                <Paperclip size={13} />
-                                {fileCount}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs font-bold text-gray-300">
-                            없음
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-4 text-right align-middle">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <span
-                            className={
-                              reportCount > 0
-                                ? 'font-black text-red-500'
-                                : 'font-bold text-gray-300'
-                            }
-                          >
-                            {formatNumber(reportCount)}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-4 align-middle">
+                      <td className="px-3 py-1.5 align-middle">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
@@ -944,12 +1098,12 @@ const PostManagementPage = () => {
                               event.stopPropagation();
                               handleOpenDetail(post.postId);
                             }}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-[#6d3df2] transition hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-[#6d3df2] transition hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
                           >
                             {isOpening ? (
-                              <Loader2 size={15} className="animate-spin" />
+                              <Loader2 size={14} className="animate-spin" />
                             ) : (
-                              <Eye size={15} />
+                              <Eye size={14} />
                             )}
                           </button>
 
@@ -961,9 +1115,9 @@ const PostManagementPage = () => {
                               event.stopPropagation();
                               handleDeletePost(post.postId);
                             }}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-white text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-gray-300"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-red-100 bg-white text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-gray-300"
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -972,15 +1126,15 @@ const PostManagementPage = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={11} className="px-5 py-16 text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50 text-gray-400">
+                  <td colSpan={10} className="px-5 py-10 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-gray-400">
                       <FileText size={24} />
                     </div>
-                    <p className="mt-4 text-sm font-black text-gray-700">
+                    <p className="mt-3 text-sm font-black text-gray-700">
                       조회된 게시글이 없습니다.
                     </p>
                     <p className="mt-1 text-sm font-semibold text-gray-400">
-                      검색어나 필터 조건을 다시 확인해주세요.
+                      검색어나 필터 조건을 다시 확인해 주세요.
                     </p>
                   </td>
                 </tr>
@@ -989,12 +1143,13 @@ const PostManagementPage = () => {
           </table>
         </div>
 
-        <div className="border-t border-gray-100 px-5 py-4">
+        <div className="border-t border-gray-100 px-4 py-2.5">
           <Pagination
             page={postPage}
             totalPages={postTotalPages}
-            onChange={setPostPage}
+            onChange={handlePostPageChange}
             disabled={postsLoading}
+            compact
           />
         </div>
       </section>
@@ -1002,12 +1157,22 @@ const PostManagementPage = () => {
   );
 };
 
-const Pagination = ({ page, totalPages, onChange, disabled = false }) => {
+const Pagination = ({
+  page,
+  totalPages,
+  onChange,
+  disabled = false,
+  compact = false,
+}) => {
   const visiblePages = useMemo(() => {
     const pageCount = Math.max(Number(totalPages || 1), 1);
+    const currentPage = Math.min(Math.max(Number(page || 1), 1), pageCount);
     const maxVisible = 5;
 
-    let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+    let startPage = Math.max(
+      1,
+      currentPage - Math.floor(maxVisible / 2)
+    );
     let endPage = Math.min(pageCount, startPage + maxVisible - 1);
 
     startPage = Math.max(1, endPage - maxVisible + 1);
@@ -1018,27 +1183,35 @@ const Pagination = ({ page, totalPages, onChange, disabled = false }) => {
     );
   }, [page, totalPages]);
 
+  const safeTotalPages = Math.max(Number(totalPages || 1), 1);
+  const safePage = Math.min(
+    Math.max(Number(page || 1), 1),
+    safeTotalPages
+  );
+
   const handlePrev = () => {
-    if (disabled || page <= 1) return;
-    onChange(page - 1);
+    if (disabled || safePage <= 1) return;
+    onChange(safePage - 1);
   };
 
   const handleNext = () => {
-    if (disabled || page >= totalPages) return;
-    onChange(page + 1);
+    if (disabled || safePage >= safeTotalPages) return;
+    onChange(safePage + 1);
   };
 
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div
+      className={`flex items-center justify-center ${compact ? 'gap-1.5' : 'gap-2'}`}
+    >
       <button
         type="button"
         onClick={handlePrev}
-        disabled={disabled || page <= 1}
-        className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
-          disabled || page <= 1
+        disabled={disabled || safePage <= 1}
+        className={`flex items-center justify-center border transition ${compact ? 'h-8 w-8 rounded-lg' : 'h-9 w-9 rounded-xl'
+          } ${disabled || safePage <= 1
             ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
             : 'border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
-        }`}
+          }`}
       >
         <ChevronLeft size={17} />
       </button>
@@ -1049,13 +1222,15 @@ const Pagination = ({ page, totalPages, onChange, disabled = false }) => {
           type="button"
           disabled={disabled}
           onClick={() => onChange(pageNumber)}
-          className={`flex h-9 min-w-9 items-center justify-center rounded-xl px-3 text-sm font-black transition ${
-            pageNumber === page
+          className={`flex items-center justify-center font-black transition ${compact
+            ? 'h-8 min-w-8 rounded-lg px-2.5 text-xs'
+            : 'h-9 min-w-9 rounded-xl px-3 text-sm'
+            } ${pageNumber === safePage
               ? 'bg-[#6d3df2] text-white shadow-sm'
               : disabled
                 ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
                 : 'border border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
-          }`}
+            }`}
         >
           {pageNumber}
         </button>
@@ -1064,12 +1239,12 @@ const Pagination = ({ page, totalPages, onChange, disabled = false }) => {
       <button
         type="button"
         onClick={handleNext}
-        disabled={disabled || page >= totalPages}
-        className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
-          disabled || page >= totalPages
+        disabled={disabled || safePage >= safeTotalPages}
+        className={`flex items-center justify-center border transition ${compact ? 'h-8 w-8 rounded-lg' : 'h-9 w-9 rounded-xl'
+          } ${disabled || safePage >= safeTotalPages
             ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
             : 'border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
-        }`}
+          }`}
       >
         <ChevronRight size={17} />
       </button>
@@ -1091,7 +1266,7 @@ const SummaryCard = ({
       <div
         className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconClass}`}
       >
-        {loading ? <Loader2 size={22} className="animate-spin" /> : <Icon size={24} />}
+        {loading ? <Loader2 size={24} className="animate-spin" /> : <Icon size={24} />}
       </div>
       <div className="mt-5">
         <p className="text-sm font-black text-gray-500">{title}</p>
@@ -1106,17 +1281,6 @@ const SummaryCard = ({
         </p>
       </div>
     </article>
-  );
-};
-
-const LoadingTableRow = ({ colSpan, text }) => {
-  return (
-    <tr>
-      <td colSpan={colSpan} className="px-5 py-14 text-center">
-        <Loader2 size={26} className="mx-auto animate-spin text-[#6d3df2]" />
-        <p className="mt-3 text-sm font-black text-gray-600">{text}</p>
-      </td>
-    </tr>
   );
 };
 
@@ -1147,13 +1311,30 @@ const FilterSelect = ({ label, value, onChange, options }) => {
   );
 };
 
-const StatusBadge = ({ children, className }) => {
+const StatusBadge = ({ children, className = '' }) => {
   return (
     <span
       className={`inline-flex h-7 max-w-full items-center justify-center rounded-full px-3 text-xs font-black ${className}`}
     >
       <span className="truncate">{children}</span>
     </span>
+  );
+};
+
+const LoadingTableRow = ({ colSpan, text, compact = false }) => {
+  return (
+    <tr>
+      <td
+        colSpan={colSpan}
+        className={`px-5 text-center ${compact ? 'py-8' : 'py-14'}`}
+      >
+        <Loader2
+          size={compact ? 22 : 26}
+          className="mx-auto animate-spin text-[#6d3df2]"
+        />
+        <p className="mt-3 text-sm font-black text-gray-600">{text}</p>
+      </td>
+    </tr>
   );
 };
 

@@ -65,6 +65,33 @@ const getTodayValue = () => {
   return `${year}-${month}-${day}`;
 };
 
+
+
+const reportReasons = [
+  { id: 'inappropriate', label: '부적절한 내용' },
+  { id: 'ad_spam', label: '광고/홍보' },
+  { id: 'abuse_slander', label: '욕설/비방' },
+  { id: 'privacy_violation', label: '개인정보 침해' },
+  { id: 'false_information', label: '허위 사실' },
+  { id: 'etc', label: '기타' },
+];
+
+const REPORT_REASON_LABELS = Object.fromEntries(
+  reportReasons.map(({ id, label }) => [id, label])
+);
+
+const REPORT_RESULT_LABELS = {
+  WAITING: '접수',
+  ACCEPTED: '인정',
+  REJECTED: '반려',
+};
+
+const getReportReasonLabel = (reason) =>
+  REPORT_REASON_LABELS[reason] ?? reason ?? '-';
+
+const getReportResultLabel = (status) =>
+  REPORT_RESULT_LABELS[String(status || '').toUpperCase()] ?? status ?? '-';
+
 const AdminDashboardPage = () => {
   const navigate = useNavigate();
 
@@ -303,6 +330,8 @@ const AdminDashboardPage = () => {
     },
   ];
 
+
+
   const getToneClass = (tone) => {
     switch (tone) {
       case 'red':
@@ -352,20 +381,28 @@ const AdminDashboardPage = () => {
   };
 
   const getReportStatusClass = (status) => {
-    switch (status) {
+    const value = String(status || '').toUpperCase();
+
+    switch (value) {
+      case 'WAITING':
+      case '접수':
+      case '대기':
+      case 'PENDING':
+        return 'bg-purple-50 text-[#6d3df2]';
+
+      case 'ACCEPTED':
+      case '인정':
       case '완료':
+      case '처리완료':
+      case 'COMPLETED':
         return 'bg-green-50 text-green-600';
 
-      case '검토중':
-      case '처리중':
-        return 'bg-blue-50 text-blue-600';
-
+      case 'REJECTED':
       case '반려':
         return 'bg-gray-100 text-gray-500';
 
-      case '접수':
       default:
-        return 'bg-purple-50 text-[#6d3df2]';
+        return 'bg-gray-100 text-gray-600';
     }
   };
 
@@ -772,7 +809,7 @@ const AdminDashboardPage = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/admin/inquiries')}
+              onClick={() => navigate('/admin/posts')}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-black text-gray-600 transition hover:border-[#6d3df2]/30 hover:text-[#6d3df2]"
             >
               신고 관리
@@ -831,7 +868,7 @@ const AdminDashboardPage = () => {
                       <td className="px-3 py-4 align-middle">
                         <span className="mx-auto inline-flex max-w-full items-center justify-center rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-black text-red-500">
                           <span className="truncate">
-                            {report.type || '기타'}
+                            {getReportReasonLabel(report.type)}
                           </span>
                         </span>
                       </td>
@@ -860,7 +897,7 @@ const AdminDashboardPage = () => {
                             report.status
                           )}`}
                         >
-                          {report.status || '접수'}
+                          {getReportResultLabel(report.status)}
                         </span>
                       </td>
                     </tr>
@@ -928,33 +965,6 @@ const AdminDashboardPage = () => {
                 })}
               </ul>
             )}
-          </div>
-
-          <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h3 className="text-lg font-black text-gray-900">빠른 작업</h3>
-              <p className="mt-1 text-xs font-bold text-gray-400">
-                통계 확인 후 자주 이동하는 관리 메뉴입니다.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {quickActions.map((action) => {
-                const Icon = action.icon;
-
-                return (
-                  <button
-                    key={action.name}
-                    type="button"
-                    onClick={() => navigate(action.path)}
-                    className="flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 p-3 text-center text-sm font-black text-gray-700 transition hover:-translate-y-0.5 hover:border-[#6d3df2]/30 hover:bg-purple-50 hover:text-[#6d3df2]"
-                  >
-                    <Icon size={24} className="text-[#6d3df2]" />
-                    {action.name}
-                  </button>
-                );
-              })}
-            </div>
           </div>
         </article>
       </section>

@@ -152,6 +152,19 @@ const SocialSignupPage = () => {
     }
   };
 
+  const getYesterdayDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() - 1);
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const maxBirthdate = getYesterdayDate();
+
   const validate = () => {
     const newErrors = {};
 
@@ -470,9 +483,8 @@ const SocialSignupPage = () => {
                   value={formData.nickname || ''}
                   onChange={handleChange}
                   placeholder="닉네임"
-                  className={`${inputClass} px-5 flex-1 ${
-                    isNicknameConfirmedNow ? 'border-green-500 bg-green-50' : ''
-                  }`}
+                  className={`${inputClass} px-5 flex-1 ${isNicknameConfirmedNow ? 'border-green-500 bg-green-50' : ''
+                    }`}
                   disabled={isCheckingNickname}
                 />
 
@@ -480,11 +492,10 @@ const SocialSignupPage = () => {
                   type="button"
                   onClick={handleCheckNicknameDuplicate}
                   disabled={isCheckingNickname || !formData.nickname}
-                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${
-                    isCheckingNickname || !formData.nickname
+                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${isCheckingNickname || !formData.nickname
                       ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                       : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
-                  }`}
+                    }`}
                 >
                   {isCheckingNickname
                     ? '확인 중...'
@@ -500,9 +511,8 @@ const SocialSignupPage = () => {
 
               {nicknameMessage && (
                 <p
-                  className={`text-sm mt-2 ml-2 ${
-                    isNicknameConfirmedNow ? 'text-green-600' : 'text-red-500'
-                  }`}
+                  className={`text-sm mt-2 ml-2 ${isNicknameConfirmedNow ? 'text-green-600' : 'text-red-500'
+                    }`}
                 >
                   {nicknameMessage}
                 </p>
@@ -566,11 +576,10 @@ const SocialSignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('M')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
-                      formData.gender === 'M'
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'M'
                         ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
                         : 'text-gray-400'
-                    }`}
+                      }`}
                   >
                     남성
                   </button>
@@ -578,11 +587,10 @@ const SocialSignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('F')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
-                      formData.gender === 'F'
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'F'
                         ? 'bg-white text-festival-purple shadow-md shadow-purple-50'
                         : 'text-gray-400'
-                    }`}
+                      }`}
                   >
                     여성
                   </button>
@@ -606,6 +614,7 @@ const SocialSignupPage = () => {
                     name="birthdate"
                     value={formData.birthdate || ''}
                     onChange={handleChange}
+                    max={maxBirthdate}
                     className={`${inputClass} pl-11 pr-4`}
                   />
                 </div>
@@ -648,11 +657,10 @@ const SocialSignupPage = () => {
                   name="reside_sigungu_code"
                   value={formData.reside_sigungu_code || ''}
                   onChange={handleSigunguChange}
-                  className={`${inputClass} px-5 bg-white appearance-none ${
-                    !formData.reside_area_code
+                  className={`${inputClass} px-5 bg-white appearance-none ${!formData.reside_area_code
                       ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
                       : ''
-                  }`}
+                    }`}
                   disabled={!formData.reside_area_code || isSigunguLoading}
                 >
                   <option value="">
@@ -676,11 +684,10 @@ const SocialSignupPage = () => {
         </section>
 
         <section
-          className={`rounded-[32px] p-7 border ${
-            errors.terms
+          className={`rounded-[32px] p-7 border ${errors.terms
               ? 'bg-red-50 border-red-300'
               : 'bg-gray-50 border-[#eee]'
-          }`}
+            }`}
         >
           <label className="flex items-center gap-3 cursor-pointer mb-6">
             <input
@@ -691,11 +698,10 @@ const SocialSignupPage = () => {
             />
 
             <div
-              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                allChecked
+              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${allChecked
                   ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-100'
                   : 'bg-white border-gray-300'
-              }`}
+                }`}
             >
               <Check size={16} className="text-white" />
             </div>
@@ -722,11 +728,10 @@ const SocialSignupPage = () => {
                   />
 
                   <div
-                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-                      formData[item.id]
+                    className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData[item.id]
                         ? 'bg-festival-purple border-festival-purple'
                         : 'bg-white border-gray-300 group-hover:border-festival-purple'
-                    }`}
+                      }`}
                   >
                     <Check size={14} className="text-white" />
                   </div>
