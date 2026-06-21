@@ -202,10 +202,9 @@ const PostDetailPage = () => {
   }, [id]);
 
   // 게시글 좋아요 상태 조회
-  // 게시글 좋아요 상태 조회
   // 비회원은 좋아요 상태 API를 호출하지 않습니다.
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isMemberLoggedIn) {
       setIsLiked(false);
       return;
     }
@@ -222,7 +221,7 @@ const PostDetailPage = () => {
     };
 
     fetchLikeStatus();
-  }, [id, isLoggedIn]);
+  }, [id, isMemberLoggedIn]);
 
   // 댓글 목록 조회
   const fetchComments = async () => {
@@ -250,6 +249,12 @@ const PostDetailPage = () => {
     return String(dateValue).replace('T', ' ').slice(0, 16);
   };
 
+  // 프로필 이미지 로딩 실패 시 기본 이미지로 대체합니다.
+  const handleProfileImageError = (event) => {
+    event.currentTarget.onerror = null;
+    event.currentTarget.src = DEFAULT_IMAGES.PROFILE;
+  };
+
   // 게시글 삭제
   const handleDeletePost = async () => {
     if (!window.confirm('정말로 게시글을 삭제하시겠습니까?')) return;
@@ -266,10 +271,9 @@ const PostDetailPage = () => {
   };
 
   // 게시글 좋아요
-  // 게시글 좋아요
   // 비회원은 좋아요 요청을 보내지 않습니다.
   const handleTogglePostLike = async () => {
-    if (!isLoggedIn) return;
+    if (!isMemberLoggedIn) return;
 
     try {
       const response = await togglePostLike(id);
@@ -561,7 +565,9 @@ const PostDetailPage = () => {
                 <div className="w-11 h-11 rounded-full bg-gray-100 overflow-hidden border border-gray-200">
                   <img
                     src={post.profile_image_url || DEFAULT_IMAGES.PROFILE}
-                    alt={writerName}
+                    alt=""
+                    onError={handleProfileImageError}
+                    className="w-full h-full object-cover"
                   />
                 </div>
 
@@ -581,7 +587,7 @@ const PostDetailPage = () => {
                   {post.view_count || 0}
                 </span>
 
-                {post.category !== 'notice' && (
+                {normalizeCategory(post.category) !== 'notice' && (
                   <>
                     <span className="inline-flex items-center gap-1">
                       <Heart className="w-4 h-4" />
@@ -660,7 +666,7 @@ const PostDetailPage = () => {
             <div className="mt-12 pt-7 border-t border-gray-100">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  {isMemberLoggedIn && !isPostOwner && normalizeCategory(post.category) && (
+                  {isMemberLoggedIn && !isPostOwner && normalizeCategory(post.category) !== 'notice' && (
                     <button
                       type="button"
                       onClick={handleTogglePostLike}
@@ -713,7 +719,7 @@ const PostDetailPage = () => {
                       </button>
                     </>
                   ) : (
-                    isMemberLoggedIn && !isPostOwner && normalizeCategory(post.category) && (
+                    isMemberLoggedIn && !isPostOwner && normalizeCategory(post.category) !== 'notice' && (
                       <button
                         type="button"
                         onClick={() => {
@@ -735,7 +741,7 @@ const PostDetailPage = () => {
         </article>
 
         {/* 댓글 섹션 */}
-        {post.category !== 'notice' && (
+        {normalizeCategory(post.category) !== 'notice' && (
           <section className="mt-6 bg-white rounded-3xl border border-gray-200/70 shadow-sm overflow-hidden">
             <div className="px-6 sm:px-10 py-6 border-b border-gray-100">
               <div className="flex items-center gap-2">
@@ -758,6 +764,7 @@ const PostDetailPage = () => {
                       <img
                         src={profileImageUrl || DEFAULT_IMAGES.PROFILE}
                         alt=""
+                        onError={handleProfileImageError}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -806,6 +813,7 @@ const PostDetailPage = () => {
                             <img
                               src={comment.profile_image_url || DEFAULT_IMAGES.PROFILE}
                               alt=""
+                              onError={handleProfileImageError}
                               className="w-full h-full object-cover"
                             />
                           </div>
@@ -982,6 +990,7 @@ const PostDetailPage = () => {
                                         <img
                                           src={reply.profile_image_url || DEFAULT_IMAGES.PROFILE}
                                           alt=""
+                                          onError={handleProfileImageError}
                                           className="w-full h-full object-cover"
                                         />
                                       </div>

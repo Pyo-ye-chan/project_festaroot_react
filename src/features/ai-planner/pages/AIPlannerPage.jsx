@@ -1,13 +1,68 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { maxios } from '../../../api/axiosApi';
 import useAuthStore from '../../../store/useAuthStore';
 import { getMemberProfile } from '../../../api/memberApi';
 import { saveActivityLog } from '../../../api/activityApi';
 import { previewAIPlanner, saveAIPlanner } from '../../../api/aiApi';
 
-const AIPlannerPage = () => {
-  const { user, isLoggedIn } = useAuthStore();
+const LOGIN_PATH = '/login';
 
+const LoginRequiredModal = ({ onBack }) => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
+    <div className="relative w-full max-w-md overflow-hidden rounded-[32px] bg-white shadow-2xl shadow-purple-950/20 border border-purple-100">
+      <div className="absolute -top-16 -right-16 h-36 w-36 rounded-full bg-[var(--festival-yellow)]/50 blur-2xl" />
+      <div className="absolute -bottom-20 -left-20 h-44 w-44 rounded-full bg-[var(--festival-purple)]/15 blur-2xl" />
+
+      <div className="relative p-7 sm:p-8 text-center">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-purple-600 to-indigo-600 text-3xl shadow-lg shadow-purple-200">
+          🎪
+        </div>
+
+        <p className="mb-2 text-xs font-black tracking-[0.2em] text-purple-600">
+          FESTAROUTE MEMBER
+        </p>
+
+        <h2 className="text-2xl font-black leading-tight text-gray-900">
+          회원만 이용할 수 있어요
+        </h2>
+
+        <p className="mt-3 text-sm font-bold leading-6 text-gray-500">
+          AI 축제 추천과 하루 코스 저장 기능은 로그인 후 사용할 수 있습니다.
+          로그인하거나 회원가입 후 나만의 축제 코스를 만들어보세요.
+        </p>
+
+        <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex h-12 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 px-5 text-sm font-black text-gray-600 transition-all hover:bg-gray-100 active:scale-95"
+          >
+            돌아가기
+          </button>
+
+          <Link
+            to={LOGIN_PATH}
+            className="flex h-12 items-center justify-center rounded-2xl bg-[var(--festival-purple)] px-5 text-sm font-black text-white shadow-lg shadow-purple-100 transition-all hover:bg-[var(--festival-purple-soft)] active:scale-95"
+          >
+            로그인 / 회원가입
+          </Link>
+        </div>
+
+        <div className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-700 border border-amber-100">
+          💡 로그인하면 관심 지역, 찜한 축제, 최근 활동을 반영해 더 정확하게 추천해드려요.
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const AIPlannerPage = () => {
+  const navigate = useNavigate();
+  const { user, isLoggedIn } = useAuthStore();
+  const isMemberLoggedIn = Boolean(isLoggedIn && (user?.member_id || user?.id));
+
+  const [showLoginRequiredModal, setShowLoginRequiredModal] = useState(!isMemberLoggedIn);
   const [isRecommending, setIsRecommending] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -54,9 +109,33 @@ const AIPlannerPage = () => {
   const [isThemesOpen, setIsThemesOpen] = useState(true);
   const [isLikesOpen, setIsLikesOpen] = useState(true);
 
+  // 비로그인 접근 시 회원 전용 안내 모달 표시
+  useEffect(() => {
+    setShowLoginRequiredModal(!isMemberLoggedIn);
+  }, [isMemberLoggedIn]);
+
+  const handleLoginRequiredBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate('/');
+  };
+
+  // 로그인 여부 확인 공통 함수
+  const requireLogin = () => {
+    if (!isMemberLoggedIn) {
+      setShowLoginRequiredModal(true);
+      return false;
+    }
+
+    return true;
+  };
+
   // 데이터 로드 Effect
   useEffect(() => {
-    if (isLoggedIn && (user?.member_id || user?.id)) {
+    if (isMemberLoggedIn) {
       const fetchUserData = async () => {
         setIsLoadingContext(true);
 
@@ -74,7 +153,7 @@ const AIPlannerPage = () => {
 
       fetchUserData();
     }
-  }, [isLoggedIn, user?.member_id, user?.id]);
+  }, [isMemberLoggedIn, user?.member_id, user?.id]);
 
   // 유저의 생년월일을 바탕으로 연령대 계산
   const getAgeGroup = (birthdate) => {
@@ -347,6 +426,8 @@ const AIPlannerPage = () => {
   };
 
   const handleRecommend = async () => {
+    if (!requireLogin()) return;
+
     setIsRecommending(true);
     setShowRecommendations(false);
     setSelectedFestival(null);
@@ -375,6 +456,8 @@ const AIPlannerPage = () => {
 
   // 축제 카드 클릭 시 상세 모달 열기
   const handleOpenFestivalDetail = (festival) => {
+    if (!requireLogin()) return;
+
     setSelectedDetailFestival(festival);
     setShowFestivalDetailModal(true);
   };
@@ -387,6 +470,8 @@ const AIPlannerPage = () => {
 
   // 축제 하루 코스 설정 모달 열기
   const handleSelectFestival = (festival) => {
+    if (!requireLogin()) return;
+
     setSelectedFestival(festival);
 
     // 기존 결과 초기화
@@ -420,6 +505,8 @@ const AIPlannerPage = () => {
 
   // 축제 하루 코스 생성
   const handleCreatePlanner = async () => {
+    if (!requireLogin()) return;
+
     if (!selectedFestival) {
       alert('축제를 먼저 선택해주세요.');
       return;
@@ -527,6 +614,8 @@ const AIPlannerPage = () => {
 
   // 사용자가 마음에 든 경우에만 마이페이지에 저장
   const handleSavePlanner = async () => {
+    if (!requireLogin()) return;
+
     if (!previewPlannerData) {
       alert('저장할 코스 정보가 없습니다.');
       return;
@@ -591,6 +680,8 @@ const AIPlannerPage = () => {
   };
 
   const handleFeedback = async (contentId, type, reason = '') => {
+    if (!requireLogin()) return;
+
     try {
       const userId = user?.member_id || user?.id;
 
@@ -626,6 +717,8 @@ const AIPlannerPage = () => {
   const handlePlaceSearchClick = async (e, step, searchUrl) => {
     e.stopPropagation();
 
+    if (!requireLogin()) return;
+
     if (!searchUrl) {
       alert('장소 검색 URL을 만들 수 없습니다.');
       return;
@@ -654,6 +747,10 @@ const AIPlannerPage = () => {
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20 font-sans">
+      {showLoginRequiredModal && !isMemberLoggedIn && (
+        <LoginRequiredModal onBack={handleLoginRequiredBack} />
+      )}
+
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-purple-700 via-purple-600 to-indigo-700 text-white py-20 px-4">
         <div className="max-w-4xl mx-auto text-center space-y-8">
