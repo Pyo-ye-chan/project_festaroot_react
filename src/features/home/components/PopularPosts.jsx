@@ -63,8 +63,13 @@ const PopularPosts = () => {
                 <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden border-2 border-white shadow-sm group-hover:border-purple-100 transition-all duration-500">
                   <img
                     src={post.profile_image_url || DEFAULT_IMAGES.PROFILE}
-                    alt={post.nickname || '익명'} // 닉네임이 없을 시 탈퇴한 사용자 '익명' 바인딩
+                    alt={post.nickname || '익명'}
                     className="w-full h-full object-cover"
+                    // 이미지 로드 실패 시 기본 프로필 스터브로 대체
+                    onError={(e) => {
+                      e.target.onerror = null; // 무한 루프 방지
+                      e.target.src = DEFAULT_IMAGES.PROFILE;
+                    }}
                   />
                 </div>
               </div>
@@ -73,7 +78,7 @@ const PopularPosts = () => {
               <div className="flex-grow min-w-0">
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="text-xs font-bold text-purple-600/70 group-hover:text-purple-600 transition-colors duration-500">
-                    {post.nickname || '익명'} {/* 닉네임이 한 글자도 없거나 null이면 '익명' 출력 */}
+                    {post.nickname || '익명'}
                   </span>
                 </div>
                 <h4 className="text-lg font-bold text-gray-900 truncate group-hover:text-purple-600 transition-colors duration-500">
