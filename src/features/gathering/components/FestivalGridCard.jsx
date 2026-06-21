@@ -8,7 +8,7 @@ const FestivalGridCard = ({ item }) => {
   const { user } = useAuthStore();
   const loggedInUserId = user?.member_id || user?.id;
 
-  // 🌟 데이터 필드 추출 (대문자/소문자 대응 및 우선순위 설정)
+  // 데이터 필드 추출 (대문자/소문자 대응 및 우선순위 설정)
   const currentCount = item.current_count || 0;
   const maxCapacity = item.max_capacity || 500;
   const isFull = currentCount >= maxCapacity;
@@ -22,10 +22,10 @@ const FestivalGridCard = ({ item }) => {
   // 참여 여부 확인 (백엔드에서 넘겨주는 is_joined 필드 혹은 방장 여부)
   const isJoined = item.is_joined || (loggedInUserId && loggedInUserId === ownerId);
   
-  // 🌟 이미지 우선순위: 모임 대표 이미지 -> 기본 축제 이미지
+  // 이미지 우선순위: 모임 대표 이미지 -> 기본 축제 이미지
   const festivalImage = item.room_image || DEFAULT_IMAGES.ROOM_COVER;
   
-  // 🌟 상단 타이틀에서 ' 공식 모임' 제거한 순수 축제명 추출
+  // 상단 타이틀에서 ' 공식 모임' 제거한 순수 축제명 추출
   const festivalName = roomTitle ? roomTitle.replace(' 공식 모임', '') : '';
 
   const formattedDate = freeDate ? freeDate.replace(/-/g, '.') : '';

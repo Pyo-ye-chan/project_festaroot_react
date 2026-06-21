@@ -69,7 +69,6 @@ const CommunityMainPage = () => {
     return `${year}-${month}-${day}`;
   };
 
-  // 🔥 [수정] 주소창에 파라미터를 남기지 않고 history state로 깔끔하게 검색어 전달
   const handleSearchKeyDown = (e) => {
     if (e.key === 'Enter' && searchKeyword.trim()) {
       navigate('/community/board/all', { 
@@ -203,7 +202,6 @@ const CommunityMainPage = () => {
                             }}
                           />
                           
-                          {/* 🔥 [완료] 축제 모임(보라색)과 자유 모임(노란색) 뱃지 스타일 상호 스왑 */}
                           <span className={`absolute top-4 left-4 text-[10px] font-black px-3 py-1 rounded-full shadow-md backdrop-blur-sm ${
                             moim.roomType?.toUpperCase() === 'FESTIVAL' 
                               ? 'bg-purple-100/90 text-[var(--festival-purple)] border border-purple-200' 
