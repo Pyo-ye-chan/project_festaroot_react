@@ -20,6 +20,8 @@ const CommunityMainPage = () => {
   const [gatherings, setGatherings] = useState([]);
   const [isPostsLoading, setIsPostsLoading] = useState(true);
   const [isGatheringsLoading, setIsGatheringsLoading] = useState(true);
+  
+  const [searchKeyword, setSearchKeyword] = useState('');
 
   useEffect(() => {
     const fetchHomeData = async () => {
@@ -58,7 +60,6 @@ const CommunityMainPage = () => {
     }
   };
 
-  // 🔥 [수정] 날짜 포맷 정리 함수 고도화 (YYYY-MM-DD 형태로 변환)
   const formatMoimDate = (dateStr) => {
     if (!dateStr) return '-';
     const d = new Date(dateStr);
@@ -66,6 +67,15 @@ const CommunityMainPage = () => {
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  // 🔥 [수정] 주소창에 파라미터를 남기지 않고 history state로 깔끔하게 검색어 전달
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter' && searchKeyword.trim()) {
+      navigate('/community/board/all', { 
+        state: { keyword: searchKeyword.trim() } 
+      });
+    }
   };
 
   return (
@@ -110,10 +120,13 @@ const CommunityMainPage = () => {
             <div className="relative group">
               <input
                 type="text"
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 placeholder="궁금한 축제 소식을 검색해보세요!"
-                className="w-full bg-white border border-gray-100 rounded-[2rem] py-4 pl-14 pr-6 shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20 focus:border-[var(--festival-purple)] transition-all"
+                className="w-full bg-white border border-gray-100 rounded-[2rem] py-4 pl-14 pr-6 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 transition-all font-bold text-gray-700"
               />
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[var(--festival-purple)] transition-colors w-5 h-5" />
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-purple-600 transition-colors w-5 h-5" />
             </div>
 
             {/* Popular Posts Section */}
@@ -179,7 +192,6 @@ const CommunityMainPage = () => {
                   gatherings.map((moim) => (
                     <div key={moim.roomId} className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between overflow-hidden">
                       <div>
-                        {/* 🔥 [수정 2] 이미지가 꽉 차도록 대형 배너 형태로 레이아웃 변경 */}
                         <div className="relative w-full h-48 bg-gray-50 overflow-hidden border-b border-gray-50">
                           <img
                             src={moim.roomImage || DEFAULT_IMAGES.ROOM_COVER}
@@ -191,17 +203,16 @@ const CommunityMainPage = () => {
                             }}
                           />
                           
-                          {/* 모임 유형 뱃지를 이미지 위에 깔끔하게 얹음 (의미 없는 RECRUITING 텍스트는 전면 제거) */}
+                          {/* 🔥 [완료] 축제 모임(보라색)과 자유 모임(노란색) 뱃지 스타일 상호 스왑 */}
                           <span className={`absolute top-4 left-4 text-[10px] font-black px-3 py-1 rounded-full shadow-md backdrop-blur-sm ${
                             moim.roomType?.toUpperCase() === 'FESTIVAL' 
-                              ? 'bg-amber-100/90 text-amber-700 border border-amber-200' 
-                              : 'bg-purple-100/90 text-[var(--festival-purple)] border border-purple-200'
+                              ? 'bg-purple-100/90 text-[var(--festival-purple)] border border-purple-200' 
+                              : 'bg-amber-100/90 text-amber-700 border border-amber-200'
                           }`}>
                             {moim.roomType?.toUpperCase() === 'FESTIVAL' ? '축제 모임' : '자유 모임'}
                           </span>
                         </div>
                         
-                        {/* 텍스트 컨텐츠 패딩 분할 */}
                         <div className="p-6">
                           <h4 className="font-black text-xl text-gray-900 mb-3 group-hover:text-[var(--festival-purple)] transition-colors line-clamp-1">
                             {moim.roomTitle}
@@ -210,8 +221,6 @@ const CommunityMainPage = () => {
                             <p className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
                               <MapPin className="w-3.5 h-3.5" /> {moim.freeLocation || '온라인/미정'}
                             </p>
-                            
-                            {/* 🔥 [수정 3] 날짜 출력부 고도화: 축제 타입이고 endDate가 존재하면 종료일도 노출 */}
                             <p className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
                               <Calendar className="w-3.5 h-3.5" /> 
                               {moim.roomType?.toUpperCase() === 'FESTIVAL' && moim.endDate
@@ -226,7 +235,6 @@ const CommunityMainPage = () => {
                         </div>
                       </div>
 
-                      {/* 하단 단추 공간 마진 분리 */}
                       <div className="px-6 pb-6">
                         <button
                           onClick={() => navigate(`/community/gathering/${moim.roomId}`)}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import {
   Search,
   Plus,
@@ -13,9 +13,12 @@ import { getPosts } from '../../../api/boardApi';
 const BoardListPage = () => {
   const { category = 'all' } = useParams();
 
+  //  라우터 내장 location 객체 선언
+  const location = useLocation();
+
   const [sortBy, setSortBy] = useState('latest');
   const [searchType, setSearchType] = useState('title');
-  const [keyword, setKeyword] = useState('');
+  const [keyword, setKeyword] = useState(location.state?.keyword || ''); // 메인 화면에서 넘어온 암묵적 검색어가 있으면 초기값으로 셋팅
   const [posts, setPosts] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,6 +52,15 @@ const BoardListPage = () => {
     { label: '조회순', value: 'views' },
     { label: '좋아요순', value: 'likes' },
   ];
+
+  // 다른 페이지에서 메인 검색을 통해 들어왔을 때 state 변경 감지 및 동기화 처리
+  useEffect(() => {
+    if (location.state?.keyword) {
+      setKeyword(location.state.keyword);
+      setSearchType('title'); // 제목 검색으로 타겟 고정
+      setCurrentPage(1);
+    }
+  }, [location.state]);
 
   const loadPosts = async () => {
     try {
