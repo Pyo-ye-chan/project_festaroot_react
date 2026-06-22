@@ -72,7 +72,7 @@ const ChatDetails = ({
                 return (
                   <div key={memberId} className="flex flex-col border-b border-gray-50/50 pb-2 last:border-none">
                     <div className="flex items-center justify-between p-2">
-                      {/* ✨ [수정] 본인이거나, 1:1 방이 아닐 때만 유저 메뉴를 펼치도록 cursor 및 토글 이벤트 가드 적용 */}
+                      {/* 본인이거나, 1:1 방이 아닐 때만 유저 메뉴를 펼치도록 cursor 및 토글 이벤트 가드 적용 */}
                       <div
                         className={`flex items-center gap-3 group ${isMe || chatType !== 'DIRECT' ? 'cursor-pointer' : 'cursor-default'}`}
                         onClick={() => {

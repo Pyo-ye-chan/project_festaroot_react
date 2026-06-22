@@ -35,8 +35,13 @@ const GatheringDetailPage = () => {
     room_image: ''
   });
 
+  // 외부 클릭 시 드롭다운 닫기 (버블링 버그 방어막 구축)
   useEffect(() => {
-    const handleOutsideClick = () => setActiveMenuMemberId(null);
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.member-menu-container')) {
+        setActiveMenuMemberId(null);
+      }
+    };
     window.addEventListener('click', handleOutsideClick);
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
@@ -65,39 +70,67 @@ const GatheringDetailPage = () => {
     }
   };
 
-  // 컴포넌트 최초 로드 시 양수/음수 아이디 자동 추적 및 검증 로직 빌트인
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
       let targetId = id;
 
-      // 주소창의 파라미터가 음수(-축제아이디)인 경우 처리 규칙
+      // 1. 음수 코드로 넘어온 축제 연동 체크 단계
       if (Number(id) < 0) {
         try {
           const festivalId = Math.abs(Number(id));
-          // 축제별 모임 전체를 조회하여 이미 누군가에 의해 개설된 양수 방 ID가 존재하는지 체크
           const res = await gatheringApi.festivalGatheringList(loggedInUserId || '', 1, 1000);
           const existingRoom = res.list?.find(r => Number(r.festival_id) === festivalId && Number(r.room_id) > 0);
-          
+
           if (existingRoom) {
-            // 이미 생성된 방 번호(양수)가 있다면 타겟 번호를 전격 스위칭
             targetId = existingRoom.room_id;
-            // 뒤로가기 히스토리를 더럽히지 않도록 replace 옵션으로 주소창의 음수값을 양수방 ID로 세련되게 치환
-            navigate(`/community/gathering/${targetId}`, { replace: true });
           }
         } catch (error) {
           console.error("축제 연동 활성화 대화방 조회 실패:", error);
         }
       }
 
-      await fetchDetailAndParticipants(targetId);
-      setLoading(false);
+      // 2. 모임 정보 및 참여 멤버 통합 분석 단계
+      try {
+        const [roomData, participantData] = await Promise.all([
+          gatheringApi.gatheringDetail(targetId),
+          gatheringApi.selectGatheringParticipants(targetId)
+        ]);
+
+        // 유저가 이미 가입한 회원이거나 모임의 방장이라면 상세 페이지를 건너뛰고 채팅 페이지로 즉시 자동 이동 처리
+        const currentOwnerId = roomData.owner_id || roomData.OWNER_ID;
+        const userIsOwner = String(loggedInUserId) === String(currentOwnerId);
+        const userIsJoined = userIsOwner || (participantData || []).some(p => String(p.member_id || p.MEMBER_ID || p.id) === String(loggedInUserId));
+
+        if (userIsJoined && Number(targetId) > 0) {
+          navigate(`/community/chat/${targetId}`, { replace: true });
+          return; // 처리 즉시 얼리 리턴하여 렌더링 생략
+        }
+
+        setGathering(roomData);
+        setParticipants(participantData || []);
+
+        setEditForm({
+          room_title: roomData.room_title || '',
+          free_date: roomData.free_date || '',
+          free_location: roomData.free_location || '',
+          max_capacity: roomData.max_capacity || 0,
+          room_description: roomData.room_description || '',
+          room_image: roomData.room_image || ''
+        });
+        setSelectedFile(null);
+        setImagePreview(null);
+      } catch (error) {
+        console.error("모임 정보 연동 중 치명적 오류 발생:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     if (id) {
       initData();
     }
-  }, [id, loggedInUserId]);
+  }, [id, loggedInUserId, navigate]);
 
   if (loading) {
     return (
@@ -115,8 +148,9 @@ const GatheringDetailPage = () => {
     );
   }
 
-  const isOwner = loggedInUserId === gathering.owner_id;
-  const isJoined = isOwner || participants.some(p => p.member_id === loggedInUserId);
+  const ownerId = gathering.owner_id || gathering.OWNER_ID;
+  const isOwner = String(loggedInUserId) === String(ownerId);
+  const isJoined = isOwner || participants.some(p => String(p.member_id || p.MEMBER_ID || p.id) === String(loggedInUserId));
   const isFull = gathering.current_count >= gathering.max_capacity;
 
   const handleImageChange = (e) => {
@@ -131,7 +165,6 @@ const GatheringDetailPage = () => {
     }
   };
 
-  // 모임 참여 핸들러
   const handleJoinClick = async () => {
     if (!loggedInUserId) {
       alert("로그인 후 이용이 가능합니다.");
@@ -202,7 +235,8 @@ const GatheringDetailPage = () => {
   const handleAutoDelegateAndLeave = async () => {
     if (participants.length === 0) return;
     const oldestMember = participants[0];
-    await handleDelegateAndLeave(oldestMember.member_id);
+    const oldestMemberId = oldestMember.member_id || oldestMember.MEMBER_ID || oldestMember.id;
+    await handleDelegateAndLeave(oldestMemberId);
   };
 
   const handleKickMember = async (memberId, nickname) => {
@@ -230,12 +264,17 @@ const GatheringDetailPage = () => {
       navigate('/login');
       return;
     }
-    if (targetMemberId === loggedInUserId) {
+    if (String(targetMemberId) === String(loggedInUserId)) {
       alert("자기 자신에게는 1:1 채팅을 보낼 수 없습니다.");
       return;
     }
     if (window.confirm(`${nickname}님과 1:1 채팅을 시작하시겠습니까?`)) {
-      navigate(`/community/chat/dm/${targetMemberId}`);
+      navigate(`/community/chat`, {
+        state: {
+          targetMemberId: targetMemberId,
+          targetNickname: nickname
+        }
+      });
     }
   };
 
@@ -275,7 +314,7 @@ const GatheringDetailPage = () => {
       const finalPayload = {
         ...editForm,
         room_image: uploadedImageUrl,
-        owner_id: gathering.owner_id,
+        owner_id: ownerId,
         room_type: gathering.room_type || 'GROUP',
         festival_id: gathering.festival_id || null
       };
@@ -502,31 +541,37 @@ const GatheringDetailPage = () => {
                       </div>
                       <div className="space-y-2">
                         {participants
-                          .filter(participant => participant.member_id !== gathering.owner_id)
-                          .map(participant => (
-                            <div key={participant.member_id} className="relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group">
-                              <img
-                                src={participant.profile_image_url || DEFAULT_IMAGES.PROFILE}
-                                alt={participant.nickname}
-                                className="w-9 h-9 rounded-full object-cover border border-gray-200"
-                              />
-                              <div className="flex flex-col">
-                                <span className="text-[10px] text-gray-400 font-medium mb-0.5">멤버</span>
-                                <span className="text-sm font-bold text-gray-700 leading-tight">{participant.nickname}</span>
+                          .filter(participant => String(participant.member_id || participant.MEMBER_ID || participant.id) !== String(ownerId))
+                          .map(participant => {
+                            const pId = participant.member_id || participant.MEMBER_ID || participant.id;
+                            const pNickname = participant.nickname || participant.NICKNAME || '이름 없음';
+                            const pProfileImg = participant.profile_image_url || participant.PROFILE_IMAGE_URL || DEFAULT_IMAGES.PROFILE;
+
+                            return (
+                              <div key={pId} className="relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group">
+                                <img
+                                  src={pProfileImg}
+                                  alt={pNickname}
+                                  className="w-9 h-9 rounded-full object-cover border border-gray-200"
+                                />
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] text-gray-400 font-medium mb-0.5">멤버</span>
+                                  <span className="text-sm font-bold text-gray-700 leading-tight">{pNickname}</span>
+                                </div>
+                                {isOwner && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleKickMember(pId, pNickname);
+                                    }}
+                                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 scale-75"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                )}
                               </div>
-                              {isOwner && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleKickMember(participant.member_id, participant.nickname);
-                                  }}
-                                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 scale-75"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              )}
-                            </div>
-                          ))}
+                            );
+                          })}
                       </div>
                     </div>
                   )}
@@ -534,12 +579,12 @@ const GatheringDetailPage = () => {
                   <div className="mb-8">
                     <h3 className="text-xl font-bold text-gray-800 mb-4">참여자 ({gathering.current_count || 0}명)</h3>
                     <div className="flex flex-wrap gap-3">
-                      {gathering.owner_id && (
+                      {ownerId && (
                         <div
-                          className="relative flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm cursor-pointer select-none"
+                          className="member-menu-container relative flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm cursor-pointer select-none"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveMenuMemberId(activeMenuMemberId === gathering.owner_id ? null : gathering.owner_id);
+                            setActiveMenuMemberId(activeMenuMemberId === ownerId ? null : ownerId);
                           }}
                         >
                           <img
@@ -548,15 +593,15 @@ const GatheringDetailPage = () => {
                             className="w-9 h-9 rounded-full object-cover border-2 border-primary"
                           />
                           <div className="flex flex-col">
-                            <span className="text-[10px] text-[var(--festival-purple)] font-bold bg-purple-100 px-1.5 rounded w-max mb-0.5">방장 👑</span>
+                            <span className="text-[10px] text-gray-400 font-bold bg-purple-100 px-1.5 rounded w-max mb-0.5">방장 👑</span>
                             <span className="text-sm font-black text-gray-800 leading-tight">{gathering.nickname || '방장'}</span>
                           </div>
 
-                          {activeMenuMemberId === gathering.owner_id && (
+                          {activeMenuMemberId === ownerId && (
                             <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 text-sm text-gray-700">
-                              {gathering.owner_id === loggedInUserId ? (
+                              {String(ownerId) === String(loggedInUserId) ? (
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); handleEditProfileClick(); }}
+                                  onClick={(e) => { e.stopPropagation(); handleEditProfileClick(); setActiveMenuMemberId(null); }}
                                   className="w-full text-left px-4 py-2 hover:bg-gray-100 font-medium flex items-center gap-2"
                                 >
                                   <Settings className="w-4 h-4 text-gray-500" />
@@ -564,7 +609,7 @@ const GatheringDetailPage = () => {
                                 </button>
                               ) : (
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); handleDirectMessageClick(gathering.owner_id, gathering.nickname); }}
+                                  onClick={(e) => { e.stopPropagation(); handleDirectMessageClick(ownerId, gathering.nickname || '방장'); setActiveMenuMemberId(null); }}
                                   className="w-full text-left px-4 py-2 hover:bg-gray-100 font-medium flex items-center gap-2 text-[var(--festival-purple)]"
                                 >
                                   <MessageCircle className="w-4 h-4" />
@@ -577,31 +622,36 @@ const GatheringDetailPage = () => {
                       )}
 
                       {participants.map(participant => {
-                        const isMe = participant.member_id === loggedInUserId;
+                        const pId = participant.member_id || participant.MEMBER_ID || participant.id;
+                        const pNickname = participant.nickname || participant.NICKNAME || '이름 없음';
+                        const pProfileImg = participant.profile_image_url || participant.PROFILE_IMAGE_URL || DEFAULT_IMAGES.PROFILE;
+                        const isMe = String(pId) === String(loggedInUserId);
+
                         return (
                           <div
-                            key={participant.member_id}
-                            className="relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group cursor-pointer select-none"
+                            key={pId}
+                            className="member-menu-container relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group cursor-pointer select-none"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setActiveMenuMemberId(activeMenuMemberId === participant.member_id ? null : participant.member_id);
+                              setActiveMenuMemberId(activeMenuMemberId === pId ? null : pId);
                             }}
                           >
                             <img
-                              src={participant.profile_image_url || DEFAULT_IMAGES.PROFILE}
-                              alt={participant.nickname}
+                              src={pProfileImg}
+                              alt={pNickname}
                               className="w-9 h-9 rounded-full object-cover border border-gray-200"
                             />
                             <div className="flex flex-col">
                               <span className="text-[10px] text-gray-400 font-medium mb-0.5">멤버</span>
-                              <span className="text-sm font-bold text-gray-700 leading-tight">{participant.nickname}</span>
+                              <span className="text-sm font-bold text-gray-700 leading-tight">{pNickname}</span>
                             </div>
 
                             {isOwner && !isMe && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleKickMember(participant.member_id, participant.nickname);
+                                  handleKickMember(pId, pNickname);
+                                  setActiveMenuMemberId(null);
                                 }}
                                 className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 scale-75"
                               >
@@ -609,11 +659,11 @@ const GatheringDetailPage = () => {
                               </button>
                             )}
 
-                            {activeMenuMemberId === participant.member_id && (
+                            {activeMenuMemberId === pId && (
                               <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 text-sm text-gray-700">
                                 {isMe ? (
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); handleEditProfileClick(); }}
+                                    onClick={(e) => { e.stopPropagation(); handleEditProfileClick(); setActiveMenuMemberId(null); }}
                                     className="w-full text-left px-4 py-2 hover:bg-gray-100 font-medium flex items-center gap-2"
                                   >
                                     <Settings className="w-4 h-4 text-gray-500" />
@@ -621,7 +671,7 @@ const GatheringDetailPage = () => {
                                   </button>
                                 ) : (
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); handleDirectMessageClick(participant.member_id, participant.nickname); }}
+                                    onClick={(e) => { e.stopPropagation(); handleDirectMessageClick(pId, pNickname); setActiveMenuMemberId(null); }}
                                     className="w-full text-left px-4 py-2 hover:bg-gray-100 font-medium flex items-center gap-2 text-[var(--festival-purple)]"
                                   >
                                     <MessageCircle className="w-4 h-4" />
