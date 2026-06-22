@@ -27,7 +27,7 @@ const PostUpdatePage = () => {
   const [deleteFileIds, setDeleteFileIds] = useState([]); // 삭제할 기존 첨부파일 ID 목록
 
   const [formData, setFormData] = useState({
-    category: initialPost?.category || 'free',
+    category: initialPost?.category || 'FREE',
     title: initialPost?.title || '',
     content: initialPost?.content || '',
   });
@@ -241,10 +241,9 @@ const PostUpdatePage = () => {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { id: 'free', label: '자유게시판' },
-                  { id: 'review', label: '축제후기' },
-                  { id: 'tip', label: '꿀팁공유' },
-                  { id: 'notice', label: '공지사항' },
+                  { id: 'FREE', label: '자유게시판' },
+                  { id: 'REVIEW', label: '축제후기' },
+                  { id: 'TIP', label: '꿀팁공유' },
                 ].map((cat) => (
                   <button
                     key={cat.id}

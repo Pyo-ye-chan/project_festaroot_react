@@ -207,72 +207,90 @@ const FestivalReviewTab = ({ festival, sortType, setSortType }) => {
       ) : (
         <>
           <div className="space-y-6">
-            {currentReviews.map((review) => ( // Use currentReviews for mapping
-              <div key={review.review_id} className="p-5 border border-gray-200 rounded-lg shadow-sm bg-white">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <div className="font-semibold text-lg text-gray-800">{review.nickname}</div>
-                    <div className="flex items-center gap-1 mt-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          size={18}
-                          fill={review.rating > i ? '#FACC15' : 'none'}
-                          className={review.rating > i ? 'text-yellow-400' : 'text-gray-300'}
-                        />
-                      ))}
+            {currentReviews.map((review) => {
+              const isMyReview =
+                Boolean(currentMemberId) &&
+                String(review.member_id) === String(currentMemberId);
 
+              return (
+                <div key={review.review_id} className="p-5 border border-gray-200 rounded-lg shadow-sm bg-white">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <div className="font-semibold text-lg text-gray-800">
+                        {review.nickname}
+                      </div>
+
+                      <div className="flex items-center gap-1 mt-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            size={18}
+                            fill={review.rating > i ? '#FACC15' : 'none'}
+                            className={review.rating > i ? 'text-yellow-400' : 'text-gray-300'}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      {isMyReview && (
+                        <>
+                          <button
+                            onClick={() => handleOpenReviewModal(review)}
+                            className="flex items-center text-sm text-gray-600 hover:text-purple-700 transition-colors duration-200 p-1 rounded hover:bg-gray-100"
+                          >
+                            <Edit size={16} className="mr-1" />
+                            수정
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteReview(review.review_id)}
+                            className="flex items-center text-sm text-gray-600 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
+                          >
+                            <Trash2 size={16} className="mr-1" />
+                            삭제
+                          </button>
+                        </>
+                      )}
+
+                      {!isMyReview && (
+                        <button
+                          onClick={() => handleOpenReportModal(review.review_id)}
+                          className="flex items-center text-sm text-red-500 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
+                        >
+                          <Flag size={16} className="mr-1" />
+                          신고
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex gap-3">
-                    {review.member_id === currentMemberId && (
-                      <>
-                        <button
-                          onClick={() => handleOpenReviewModal(review)}
-                          className="flex items-center text-sm text-gray-600 hover:text-purple-700 transition-colors duration-200 p-1 rounded hover:bg-gray-100"
-                        >
-                          <Edit size={16} className="mr-1" />
-                          수정
-                        </button>
 
-                        <button
-                          onClick={() => handleDeleteReview(review.review_id)}
-                          className="flex items-center text-sm text-gray-600 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
-                        >
-                          <Trash2 size={16} className="mr-1" />
-                          삭제
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={() => handleOpenReportModal(review.review_id)}
-                      className="flex items-center text-sm text-red-500 hover:text-red-700 transition-colors duration-200 p-1 rounded hover:bg-red-50"
-                    >
-                      <Flag size={16} className="mr-1" />
-                      신고
-                    </button>
-                  </div>
+                  <p className="text-gray-700 text-base mb-3 leading-relaxed">
+                    {review.content}
+                  </p>
+
+                  {review.images && review.images.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {review.images.map((image) => (
+                        <img
+                          key={image.image_id}
+                          src={image.image_url}
+                          alt="Review image"
+                          className="w-28 h-28 object-cover rounded-md shadow-sm"
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-xs text-gray-500 mt-2">
+                    <span className="mr-2">방문일: {review.visit_date}</span>
+                    <span>작성일: {new Date(review.created_at).toLocaleDateString()}</span>
+                  </p>
                 </div>
-                <p className="text-gray-700 text-base mb-3 leading-relaxed">{review.content}</p>
-                {review.images && review.images.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {review.images.map((image) => (
-                      <img
-                        key={image.image_id}
-                        src={image.image_url}
-                        alt="Review image"
-                        className="w-28 h-28 object-cover rounded-md shadow-sm"
-                      />
-                    ))}
-                  </div>
-                )}
-                <p className="text-xs text-gray-500 mt-2">
-                  <span className="mr-2">방문일: {review.visit_date}</span>
-                  <span>작성일: {new Date(review.created_at).toLocaleDateString()}</span>
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
+
 
           {/* Pagination controls */}
           {totalPages > 1 && (
