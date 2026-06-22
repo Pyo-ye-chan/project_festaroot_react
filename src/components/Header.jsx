@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { User } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
 import NotificationDropdown from './notifications/NotificationDropdown';
@@ -14,6 +14,7 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { isLoggedIn, logout, user } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isWeatherDropdownOpen, setIsWeatherDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -42,7 +43,7 @@ const Header = () => {
       }
     };
     fetchHeaderWeather();
-  }, [region]); // 전역 지역(region)이 변경될 때마다 헤더 날씨도 실시간 동기화 호출
+  }, [region]);
 
   const formatTime = (dateString) => {
     if (!dateString) return '방금 전';
@@ -163,6 +164,13 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const isUrlActive = (href) => {
+    if (href === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(href);
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200 font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -234,18 +242,23 @@ const Header = () => {
 
       <nav className="hidden md:block border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-8 flex justify-between items-center">
-          <ul className="flex gap-10">
-            {navItems.map((item) => (
-              <li key={item.name}>
-                <Link
+          <ul className="flex gap-4">
+            {navItems.map((item) => {
+              const active = isUrlActive(item.href);
+              return (
+                <li key={item.name}> <Link
                   to={item.href}
-                  className="block py-4 text-[16px] font-bold text-gray-600 hover:text-purple-600 transition-colors border-b-2 border-transparent hover:border-purple-600"
+                  className={`block py-4 px-4 text-[16px] font-bold transition-all border-b-2 hover:text-purple-600 hover:border-purple-600 hover:bg-purple-50/50 rounded-t-xl ${active
+                    ? 'bg-purple-50 text-purple-600 border-purple-600'
+                    : 'text-gray-600 border-transparent'
+                    }`}
                   style={{ '--hover-color': primaryPurple }}
                 >
                   {item.name}
                 </Link>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
 
           <div className="flex items-center gap-3 py-3 relative" ref={dropdownRef}>
@@ -285,17 +298,23 @@ const Header = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 shadow-xl py-6 px-4 space-y-6 animate-in slide-in-from-top duration-300">
           <ul className="grid grid-cols-2 gap-3">
-            {navItems.map((item) => (
-              <li key={item.name}>
-                <a
-                  href={item.href}
-                  className="flex items-center justify-center p-4 bg-gray-50 rounded-xl text-sm font-bold text-gray-700 active:bg-purple-50 active:text-purple-600 transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.name}
-                </a>
-              </li>
-            ))}
+            {navItems.map((item) => {
+              const active = isUrlActive(item.href);
+              return (
+                <li key={item.name}>
+                  <Link
+                    to={item.href}
+                    className={`flex items-center justify-center p-4 rounded-xl text-sm font-bold transition-colors ${active
+                      ? 'bg-purple-50 text-purple-600 font-black'
+                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
 
           <div className="pt-4 border-t border-gray-100">
