@@ -25,22 +25,41 @@ const CommunityMainPage = () => {
 
   useEffect(() => {
     const fetchHomeData = async () => {
+      // 1. 실시간 인기글 로딩
       try {
         setIsPostsLoading(true);
         const postRes = await getPopularPosts();
-        setPopularPosts(postRes.data || []);
+        
+        // 데이터 구조가 배열인지 객체인지 안전하게 검사하는 방어 로직
+        let postsArray = [];
+        if (postRes) {
+          if (Array.isArray(postRes)) {
+            postsArray = postRes;
+          } else if (Array.isArray(postRes.data)) {
+            postsArray = postRes.data;
+          } else if (postRes.data && Array.isArray(postRes.data.list)) {
+            postsArray = postRes.data.list;
+          } else if (Array.isArray(postRes.list)) {
+            postsArray = postRes.list;
+          }
+        }
+        
+        setPopularPosts(postsArray);
       } catch (error) {
         console.error("실시간 인기글 로딩 실패:", error);
+        setPopularPosts([]);
       } finally {
         setIsPostsLoading(false);
       }
 
+      // 2. 인기 모임 로딩
       try {
         setIsGatheringsLoading(true);
         const gatheringData = await gatheringApi.getPopularGatherings();
         setGatherings(gatheringData || []);
       } catch (error) {
         console.error("인기 모임 로딩 실패:", error);
+        setGatherings([]);
       } finally {
         setIsGatheringsLoading(false);
       }

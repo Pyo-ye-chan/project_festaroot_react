@@ -23,7 +23,7 @@ const PostWritePage = () => {
   const [attachedFiles, setAttachedFiles] = useState([]);
 
   const [formData, setFormData] = useState({
-    category: 'free',
+    category:'FREE',
     title: '',
     content: '',
   });
@@ -212,9 +212,9 @@ const PostWritePage = () => {
 
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {[
-                  { id: 'free', label: '자유게시판' },
-                  { id: 'review', label: '축제후기' },
-                  { id: 'tip', label: '꿀팁공유' },
+                  { id: 'FREE', label: '자유게시판' },
+                  { id: 'REVIEW', label: '축제후기' },
+                  { id: 'TIP', label: '꿀팁공유' },
                 ].map((cat) => (
                   <button
                     key={cat.id}

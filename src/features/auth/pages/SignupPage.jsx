@@ -171,6 +171,20 @@ const SignupPage = () => {
     }));
   };
 
+  // 생년월일 입력
+  const getYesterdayDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() - 1);
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const maxBirthdate = getYesterdayDate();
+
   // 이메일 인증번호 발송
   const handleSendVerificationCode = async () => {
     if (!isValidEmail) {
@@ -716,9 +730,8 @@ const SignupPage = () => {
                     value={formData.member_id || ''}
                     onChange={handleChange}
                     placeholder="아이디 입력"
-                    className={`${inputClass} pl-11 ${
-                      isIdConfirmedNow ? 'border-green-500 bg-green-50' : ''
-                    }`}
+                    className={`${inputClass} pl-11 ${isIdConfirmedNow ? 'border-green-500 bg-green-50' : ''
+                      }`}
                     disabled={isCheckingId}
                   />
                 </div>
@@ -727,11 +740,10 @@ const SignupPage = () => {
                   type="button"
                   onClick={handleCheckIdDuplicate}
                   disabled={isCheckingId || !formData.member_id}
-                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${
-                    isCheckingId || !formData.member_id
+                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${isCheckingId || !formData.member_id
                       ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                       : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
-                  }`}
+                    }`}
                 >
                   {isCheckingId
                     ? '확인 중...'
@@ -747,9 +759,8 @@ const SignupPage = () => {
 
               {idMessage && (
                 <p
-                  className={`text-sm mt-2 ml-2 ${
-                    isIdConfirmedNow ? 'text-green-600' : 'text-red-500'
-                  }`}
+                  className={`text-sm mt-2 ml-2 ${isIdConfirmedNow ? 'text-green-600' : 'text-red-500'
+                    }`}
                 >
                   {idMessage}
                 </p>
@@ -797,11 +808,10 @@ const SignupPage = () => {
                   value={formData.confirmPassword || ''}
                   onChange={handleChange}
                   placeholder="비밀번호 다시 입력"
-                  className={`${inputClass} pl-11 ${
-                    !passwordMatch && formData.confirmPassword
+                  className={`${inputClass} pl-11 ${!passwordMatch && formData.confirmPassword
                       ? 'border-red-400 focus:ring-red-50'
                       : ''
-                  }`}
+                    }`}
                 />
               </div>
 
@@ -852,9 +862,8 @@ const SignupPage = () => {
                   value={formData.nickname || ''}
                   onChange={handleChange}
                   placeholder="닉네임"
-                  className={`${inputClass} px-5 flex-1 ${
-                    isNicknameConfirmedNow ? 'border-green-500 bg-green-50' : ''
-                  }`}
+                  className={`${inputClass} px-5 flex-1 ${isNicknameConfirmedNow ? 'border-green-500 bg-green-50' : ''
+                    }`}
                   disabled={isCheckingNickname}
                 />
 
@@ -862,11 +871,10 @@ const SignupPage = () => {
                   type="button"
                   onClick={handleCheckNicknameDuplicate}
                   disabled={isCheckingNickname || !formData.nickname}
-                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${
-                    isCheckingNickname || !formData.nickname
+                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${isCheckingNickname || !formData.nickname
                       ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                       : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
-                  }`}
+                    }`}
                 >
                   {isCheckingNickname
                     ? '확인 중...'
@@ -882,9 +890,8 @@ const SignupPage = () => {
 
               {nicknameMessage && (
                 <p
-                  className={`text-sm mt-2 ml-2 ${
-                    isNicknameConfirmedNow ? 'text-green-600' : 'text-red-500'
-                  }`}
+                  className={`text-sm mt-2 ml-2 ${isNicknameConfirmedNow ? 'text-green-600' : 'text-red-500'
+                    }`}
                 >
                   {nicknameMessage}
                 </p>
@@ -909,9 +916,8 @@ const SignupPage = () => {
                     value={formData.email || ''}
                     onChange={handleChange}
                     placeholder="example@email.com"
-                    className={`${inputClass} pl-11 ${
-                      emailVerified ? 'border-green-500 bg-green-50' : ''
-                    }`}
+                    className={`${inputClass} pl-11 ${emailVerified ? 'border-green-500 bg-green-50' : ''
+                      }`}
                     disabled={isSendingCode}
                   />
                 </div>
@@ -920,11 +926,10 @@ const SignupPage = () => {
                   type="button"
                   onClick={handleSendVerificationCode}
                   disabled={isSendingCode || emailVerified || !isValidEmail}
-                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${
-                    isSendingCode || emailVerified || !isValidEmail
+                  className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${isSendingCode || emailVerified || !isValidEmail
                       ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                       : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
-                  }`}
+                    }`}
                 >
                   {isSendingCode
                     ? '전송 중...'
@@ -938,9 +943,8 @@ const SignupPage = () => {
 
               {verificationMessage && (emailVerified || countdown === 0) && (
                 <p
-                  className={`text-sm mt-2 ml-2 ${
-                    emailVerified ? 'text-green-600' : 'text-red-500'
-                  }`}
+                  className={`text-sm mt-2 ml-2 ${emailVerified ? 'text-green-600' : 'text-red-500'
+                    }`}
                 >
                   {verificationMessage}
                 </p>
@@ -980,11 +984,10 @@ const SignupPage = () => {
                     type="button"
                     onClick={handleVerifyCode}
                     disabled={isVerifyingCode || !emailCode}
-                    className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${
-                      isVerifyingCode || !emailCode
+                    className={`w-[120px] h-[56px] rounded-2xl text-[14px] font-bold transition-all whitespace-nowrap ${isVerifyingCode || !emailCode
                         ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                         : 'bg-festival-purple text-white hover:bg-[#4c1d95] shadow-[0_10px_24px_rgba(91,33,182,0.18)]'
-                    }`}
+                      }`}
                   >
                     {isVerifyingCode ? '확인 중...' : '인증확인'}
                   </button>
@@ -992,9 +995,8 @@ const SignupPage = () => {
 
                 {verificationMessage && (
                   <p
-                    className={`text-sm mt-2 ml-2 ${
-                      emailVerified ? 'text-green-600' : 'text-red-500'
-                    }`}
+                    className={`text-sm mt-2 ml-2 ${emailVerified ? 'text-green-600' : 'text-red-500'
+                      }`}
                   >
                     {verificationMessage}
                   </p>
@@ -1034,18 +1036,16 @@ const SignupPage = () => {
                 </label>
 
                 <div
-                  className={`h-[56px] bg-[#f8f9ff] border p-1.5 rounded-2xl flex ${
-                    errors.gender ? 'border-red-300' : 'border-[#e7e2f7]'
-                  }`}
+                  className={`h-[56px] bg-[#f8f9ff] border p-1.5 rounded-2xl flex ${errors.gender ? 'border-red-300' : 'border-[#e7e2f7]'
+                    }`}
                 >
                   <button
                     type="button"
                     onClick={() => handleGenderChange('M')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
-                      formData.gender === 'M'
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'M'
                         ? 'bg-white text-festival-purple shadow-md'
                         : 'text-gray-400'
-                    }`}
+                      }`}
                   >
                     남성
                   </button>
@@ -1053,11 +1053,10 @@ const SignupPage = () => {
                   <button
                     type="button"
                     onClick={() => handleGenderChange('F')}
-                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${
-                      formData.gender === 'F'
+                    className={`flex-1 rounded-xl text-[14px] font-bold transition-all ${formData.gender === 'F'
                         ? 'bg-white text-festival-purple shadow-md'
                         : 'text-gray-400'
-                    }`}
+                      }`}
                   >
                     여성
                   </button>
@@ -1081,6 +1080,7 @@ const SignupPage = () => {
                     type="date"
                     name="birthdate"
                     value={formData.birthdate || ''}
+                    max={maxBirthdate}
                     onChange={handleChange}
                     className={`${inputClass} pl-11 pr-4`}
                   />
@@ -1126,11 +1126,10 @@ const SignupPage = () => {
                   name="reside_sigungu_code"
                   value={formData.reside_sigungu_code || ''}
                   onChange={handleSigunguChange}
-                  className={`${inputClass} px-5 bg-white appearance-none ${
-                    !formData.reside_area_code
+                  className={`${inputClass} px-5 bg-white appearance-none ${!formData.reside_area_code
                       ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
                       : ''
-                  }`}
+                    }`}
                   disabled={!formData.reside_area_code || isSigunguLoading}
                 >
                   <option value="">
@@ -1155,11 +1154,10 @@ const SignupPage = () => {
 
         <section
           ref={termsRef}
-          className={`rounded-[32px] p-7 border transition-all ${
-            errors.terms
+          className={`rounded-[32px] p-7 border transition-all ${errors.terms
               ? 'bg-red-50 border-red-300'
               : 'bg-gray-50 border-[#eee]'
-          }`}
+            }`}
         >
           <label
             className="flex items-center gap-3 cursor-pointer mb-6"
@@ -1174,17 +1172,15 @@ const SignupPage = () => {
             />
 
             <div
-              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                allChecked
+              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${allChecked
                   ? 'bg-festival-purple border-festival-purple shadow-lg shadow-purple-200'
                   : 'bg-white border-gray-300'
-              }`}
+                }`}
             >
               <Check
                 size={16}
-                className={`text-white transition-opacity duration-200 ${
-                  allChecked ? 'opacity-100' : 'opacity-0'
-                }`}
+                className={`text-white transition-opacity duration-200 ${allChecked ? 'opacity-100' : 'opacity-0'
+                  }`}
               />
             </div>
 
@@ -1220,17 +1216,15 @@ const SignupPage = () => {
                     />
 
                     <div
-                      className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
-                        isChecked
+                      className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${isChecked
                           ? 'bg-festival-purple border-festival-purple'
                           : 'bg-white border-gray-300 group-hover:border-festival-purple'
-                      }`}
+                        }`}
                     >
                       <Check
                         size={14}
-                        className={`text-white transition-opacity duration-200 ${
-                          isChecked ? 'opacity-100' : 'opacity-0'
-                        }`}
+                        className={`text-white transition-opacity duration-200 ${isChecked ? 'opacity-100' : 'opacity-0'
+                          }`}
                       />
                     </div>
 

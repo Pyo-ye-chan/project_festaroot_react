@@ -721,7 +721,7 @@ const CommentDetailView = ({
             ) : (
               <Trash2 size={17} />
             )}
-            완전 삭제
+            삭제
           </button>
         </div>
       </footer>
