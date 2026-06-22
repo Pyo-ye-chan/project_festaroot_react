@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import MyPageSidebar from '../components/MyPageSidebar';
 import MyProfileTab from '../components/MyProfileTab';
 import MyAchievementsTab from '../components/MyAchievementsTab';
@@ -11,12 +12,21 @@ import MyNotificationsTab from '../components/MyNotificationsTab';
 import useAuthStore from '../../../store/useAuthStore';
 import { getMemberProfile } from '../../../api/memberApi';
 import { getMyPost } from '../../../api/boardApi';
+import LoginMessage from '../../../components/LoginMessage';
 
 const MyPage = () => {
   const { user, isLoggedIn } = useAuthStore();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [userDetails, setUserDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(!isLoggedIn);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setIsLoginModalOpen(true);
+    }
+  }, [isLoggedIn]);
   
 
   const fetchUserData = async () => {
@@ -69,6 +79,15 @@ const MyPage = () => {
         return <MyProfileTab userDetails={userDetails} onRefresh={fetchUserData} />;
     }
   };
+
+  if (!isLoggedIn) {
+    return (
+      <LoginMessage
+        isOpen={isLoginModalOpen}
+        onClose={() => navigate('/')}
+      />
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-[calc(100vh-80px)] flex flex-col">
