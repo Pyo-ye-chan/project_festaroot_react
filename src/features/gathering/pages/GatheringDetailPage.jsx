@@ -5,6 +5,7 @@ import CommunitySidebar from '../../community/components/CommunitySidebar';
 import gatheringApi from '../../../api/gatheringApi';
 import useAuthStore from '../../../store/useAuthStore';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
+import LoginMessage from '../../../components/LoginMessage';
 
 const GatheringDetailPage = () => {
   const { id } = useParams();
@@ -22,6 +23,7 @@ const GatheringDetailPage = () => {
   const [isDelegating, setIsDelegating] = useState(false);
 
   const [activeMenuMemberId, setActiveMenuMemberId] = useState(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -35,7 +37,6 @@ const GatheringDetailPage = () => {
     room_image: ''
   });
 
-  // 외부 클릭 시 드롭다운 닫기 (버블링 버그 방어막 구축)
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (!e.target.closest('.member-menu-container')) {
@@ -75,7 +76,6 @@ const GatheringDetailPage = () => {
       setLoading(true);
       let targetId = id;
 
-      // 1. 음수 코드로 넘어온 축제 연동 체크 단계
       if (Number(id) < 0) {
         try {
           const festivalId = Math.abs(Number(id));
@@ -90,22 +90,11 @@ const GatheringDetailPage = () => {
         }
       }
 
-      // 2. 모임 정보 및 참여 멤버 통합 분석 단계
       try {
         const [roomData, participantData] = await Promise.all([
           gatheringApi.gatheringDetail(targetId),
           gatheringApi.selectGatheringParticipants(targetId)
         ]);
-
-        // 유저가 이미 가입한 회원이거나 모임의 방장이라면 상세 페이지를 건너뛰고 채팅 페이지로 즉시 자동 이동 처리
-        const currentOwnerId = roomData.owner_id || roomData.OWNER_ID;
-        const userIsOwner = String(loggedInUserId) === String(currentOwnerId);
-        const userIsJoined = userIsOwner || (participantData || []).some(p => String(p.member_id || p.MEMBER_ID || p.id) === String(loggedInUserId));
-
-        if (userIsJoined && Number(targetId) > 0) {
-          navigate(`/community/chat/${targetId}`, { replace: true });
-          return; // 처리 즉시 얼리 리턴하여 렌더링 생략
-        }
 
         setGathering(roomData);
         setParticipants(participantData || []);
@@ -149,8 +138,9 @@ const GatheringDetailPage = () => {
   }
 
   const ownerId = gathering.owner_id || gathering.OWNER_ID;
-  const isOwner = String(loggedInUserId) === String(ownerId);
-  const isJoined = isOwner || participants.some(p => String(p.member_id || p.MEMBER_ID || p.id) === String(loggedInUserId));
+
+  const isOwner = loggedInUserId && String(loggedInUserId) === String(ownerId);
+  const isJoined = loggedInUserId && (isOwner || participants.some(p => String(p.member_id || p.MEMBER_ID || p.id) === String(loggedInUserId)));
   const isFull = gathering.current_count >= gathering.max_capacity;
 
   const handleImageChange = (e) => {
@@ -167,8 +157,7 @@ const GatheringDetailPage = () => {
 
   const handleJoinClick = async () => {
     if (!loggedInUserId) {
-      alert("로그인 후 이용이 가능합니다.");
-      navigate('/login');
+      setIsLoginModalOpen(true);
       return;
     }
 
@@ -198,7 +187,7 @@ const GatheringDetailPage = () => {
           try {
             await gatheringApi.deleteGathering(id, loggedInUserId);
             alert("모임이 삭제되었습니다.");
-            navigate('/community/gathering');
+            navigate('/community/community/gathering');
           } catch (error) {
             alert("모임 삭제 중 오류가 발생했습니다.");
           }
@@ -260,8 +249,7 @@ const GatheringDetailPage = () => {
 
   const handleDirectMessageClick = (targetMemberId, nickname) => {
     if (!loggedInUserId) {
-      alert("로그인 후 이용이 가능합니다.");
-      navigate('/login');
+      setIsLoginModalOpen(true);
       return;
     }
     if (String(targetMemberId) === String(loggedInUserId)) {
@@ -280,8 +268,7 @@ const GatheringDetailPage = () => {
 
   const handleEditProfileClick = () => {
     if (!loggedInUserId) {
-      alert("로그인 후 이용이 가능합니다.");
-      navigate('/login');
+      setIsLoginModalOpen(true);
       return;
     }
     navigate('/mypage');
@@ -686,7 +673,7 @@ const GatheringDetailPage = () => {
                     </div>
                   </div>
 
-                  {!isDelegating && (
+                  {loggedInUserId && !isDelegating && (
                     <div className="flex justify-end gap-3">
                       {isJoined ? (
                         <>
@@ -724,6 +711,11 @@ const GatheringDetailPage = () => {
           </main>
         </div>
       </div>
+
+      <LoginMessage
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
     </div>
   );
 };

@@ -1,21 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PlusCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import LoginMessage from '../../../components/LoginMessage';
 
 const GatheringHeader = ({ onOpenModal }) => {
-
   const navigate = useNavigate();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false); // 로그인 모달 제어 상태
 
   const handleCreateClick = () => {
-
     const storedUser = localStorage.getItem("user");
-    const user = JSON.parse(storedUser);
-    const userId = user?.userId || user?.id || user?.member_id;
 
-    // 유저 정보가 없다면 (비로그인 상태)
+    // 유저 정보가 없다면 (비로그인 상태) 얼럿 대신 커스텀 모달 오픈
     if (!storedUser) {
-      alert('로그인이 필요한 서비스입니다.');
-      navigate('/login');
+      setIsLoginModalOpen(true);
       return;
     }
 
@@ -36,8 +33,14 @@ const GatheringHeader = ({ onOpenModal }) => {
         <PlusCircle className="w-5 h-5" />
         자유 모임 만들기
       </button>
+
+      {/* 로그인 유도 모달 렌더링 */}
+      <LoginMessage
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
     </div>
-  )
+  );
 };
 
 export default GatheringHeader;
