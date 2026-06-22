@@ -37,7 +37,6 @@ const Pagination = ({ currentPage, totalItems, itemsPerPage, onPageChange }) => 
         </svg>
       </button>
 
-      {/* 첫 페이지 1번과 생략 기호 (...) */}
       {startPage > 1 && (
         <>
           <button

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Heart,
   Share2,
@@ -11,13 +11,10 @@ import {
   Globe,
   Info,
   ChevronRight,
-  ChevronLeft,
-  Send,
   List
 } from 'lucide-react';
 
 import { getFestivalDetail, getFestivalImages } from '../../../api/FestivalApi';
-
 import useAuthStore from '../../../store/useAuthStore';
 import { saveActivityLog } from '../../../api/activityApi';
 import festivalService from '../../../api/festivalService';
@@ -39,24 +36,7 @@ const FestivalDetailPage = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [sortType, setSortType] = useState('최신순');
 
-  const [showChat, setShowChat] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-
-  const [chatMessage, setChatMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState([
-    {
-      id: 1,
-      user: '운영진',
-      text: '축제 실시간 채팅방에 오신 것을 환영합니다! 🌟',
-      time: '오후 2:00'
-    },
-    {
-      id: 2,
-      user: '루키',
-      text: '지금 사람 많이 붐비나요?',
-      time: '오후 2:05'
-    }
-  ]);
 
   const [festivalImages, setFestivalImages] = useState([]);
   const [nearbyTravel, setNearbyTravel] = useState([]);
@@ -78,7 +58,6 @@ const FestivalDetailPage = () => {
         const data = await getFestivalDetail(id);
         setFestival(data);
 
-        // 로그인 사용자는 조회 활동 기록 저장
         if (data && isLoggedIn) {
           saveActivityLog({
             type: 'VIEW',
@@ -203,6 +182,20 @@ const FestivalDetailPage = () => {
     }
   };
 
+  // 로그인 체크 후 모임 상세페이지 화면으로 바로 라우팅 전환
+  const handleFestivalChatClick = () => {
+    if (!isLoggedIn || !currentMemberId) {
+      alert('로그인 후 이용이 가능합니다.');
+      navigate('/login');
+      return;
+    }
+
+    alert("축제 모임 페이지로 이동합니다! \n채팅방 참여를 원할 시 모임 참여를 눌러주세요!") 
+    // 기본적으로 음수 식별자(-content_id)를 생성하여 모임 상세페이지로 화면만 전환
+    const officialFestivalRoomId = -Math.abs(Number(id));
+    navigate(`/community/gathering/${officialFestivalRoomId}`);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -235,7 +228,7 @@ const FestivalDetailPage = () => {
     const lng = festival?.map_x;
 
     if (!lat || !lng) {
-      alert('위치 정보가 없습니다.');
+      alert('위치 Information이 없습니다.');
       return;
     }
 
@@ -243,7 +236,6 @@ const FestivalDetailPage = () => {
     window.open(url, '_blank');
   };
 
-  // 찜하기 처리
   const handleLikeClick = async () => {
     if (!isLoggedIn || !currentMemberId) {
       alert('로그인이 필요한 기능입니다.');
@@ -265,12 +257,10 @@ const FestivalDetailPage = () => {
     }
   };
 
-  // 공유 모달 열기
   const handleShareClick = () => {
     setShowShareModal(true);
   };
 
-  // 현재 페이지 링크 복사
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -282,7 +272,6 @@ const FestivalDetailPage = () => {
     }
   };
 
-  // 카카오톡 공유
   const handleKakaoShare = () => {
     if (!window.Kakao) {
       alert('카카오 공유 기능을 불러오지 못했습니다.');
@@ -316,26 +305,6 @@ const FestivalDetailPage = () => {
     });
 
     setShowShareModal(false);
-  };
-
-  // 채팅 메시지 전송
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-
-    if (!chatMessage.trim()) return;
-
-    const newMessage = {
-      id: chatHistory.length + 1,
-      user: '나',
-      text: chatMessage,
-      time: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    };
-
-    setChatHistory([...chatHistory, newMessage]);
-    setChatMessage('');
   };
 
   return (
@@ -386,7 +355,6 @@ const FestivalDetailPage = () => {
                   </div>
                 </div>
 
-                {/* 찜 / 공유 버튼 */}
                 <div className="flex gap-2">
                   <button
                     onClick={handleLikeClick}
@@ -466,7 +434,6 @@ const FestivalDetailPage = () => {
               </div>
             </div>
 
-            {/* 탭 메뉴 */}
             <div className="bg-white rounded-[2.5rem] p-4 shadow-sm border border-gray-100 top-24 z-30 flex gap-2">
               {tabs.map((tab) => (
                 <button
@@ -483,7 +450,6 @@ const FestivalDetailPage = () => {
               ))}
             </div>
 
-            {/* 탭 콘텐츠 */}
             <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-gray-100">
               {activeTab === '소개' && (
                 <FestivalIntroTab
@@ -520,7 +486,6 @@ const FestivalDetailPage = () => {
               )}
             </div>
 
-            {/* 목록 페이지 스타일에 맞춘 하단 CTA 카드 */}
             <div className="bg-white rounded-[2.5rem] p-7 md:p-8 shadow-sm border border-gray-100">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div>
@@ -592,13 +557,14 @@ const FestivalDetailPage = () => {
               </div>
             </div>
 
+            {/* 실시간 오픈채팅방 링크 버튼 카드 */}
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 overflow-hidden relative group">
               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform duration-500">
                 <MessageCircle size={100} />
               </div>
 
               <h3 className="text-xl font-black text-gray-900 mb-2">
-                실시간 채팅방
+                실시간 오픈채팅방
               </h3>
 
               <p className="text-gray-400 font-bold text-sm mb-8">
@@ -606,7 +572,7 @@ const FestivalDetailPage = () => {
               </p>
 
               <button
-                onClick={() => setShowChat(true)}
+                onClick={handleFestivalChatClick}
                 className="w-full h-14 bg-purple-50 text-purple-600 font-black rounded-2xl hover:bg-purple-100 transition-all active:scale-95 flex items-center justify-center gap-2"
               >
                 <MessageCircle size={20} />
@@ -650,80 +616,6 @@ const FestivalDetailPage = () => {
                   닫기
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* 채팅 모달 */}
-        {showChat && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
-            <div className="w-full max-w-md bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col h-[600px]">
-              <div className="bg-purple-600 p-6 text-white flex items-center justify-between">
-                <div>
-                  <h4 className="font-black text-lg">실시간 오픈채팅</h4>
-                  <p className="text-[10px] text-purple-200 font-bold uppercase tracking-widest mt-0.5">
-                    Live Festival Talk
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setShowChat(false)}
-                  className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center hover:bg-white/20 transition-all"
-                >
-                  <ChevronLeft size={24} />
-                </button>
-              </div>
-
-              <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-gray-50/50">
-                {chatHistory.map((chat) => (
-                  <div
-                    key={chat.id}
-                    className={`flex flex-col ${
-                      chat.user === '나' ? 'items-end' : 'items-start'
-                    }`}
-                  >
-                    <span className="text-[10px] text-gray-400 font-bold mb-1 px-1">
-                      {chat.user}
-                    </span>
-
-                    <div
-                      className={`max-w-[80%] p-4 rounded-3xl text-sm font-medium ${
-                        chat.user === '나'
-                          ? 'bg-purple-600 text-white rounded-tr-none shadow-lg shadow-purple-100'
-                          : 'bg-white text-gray-800 rounded-tl-none border border-gray-100 shadow-sm'
-                      }`}
-                    >
-                      {chat.text}
-                    </div>
-
-                    <span className="text-[9px] text-gray-300 mt-1 px-1">
-                      {chat.time}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <form
-                onSubmit={handleSendMessage}
-                className="p-6 bg-white border-t border-gray-100"
-              >
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    placeholder="메시지를 입력하세요..."
-                    className="w-full h-14 bg-gray-50 rounded-2xl pl-6 pr-14 text-sm font-bold border border-transparent focus:border-purple-300 focus:bg-white outline-none transition-all"
-                  />
-
-                  <button
-                    type="submit"
-                    className="absolute right-2 top-2 w-10 h-10 bg-purple-600 text-white rounded-xl flex items-center justify-center hover:bg-purple-700 transition-all active:scale-95 shadow-lg shadow-purple-100"
-                  >
-                    <Send size={18} />
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         )}

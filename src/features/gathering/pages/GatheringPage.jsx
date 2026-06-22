@@ -12,7 +12,7 @@ import useAuthStore from '../../../store/useAuthStore';
 import useGatheringStore from '../../../store/useGatheringStore';
 
 const GatheringPage = () => {
-  // 💡 전역 스토어 상태 구조 분해 할당
+  // 전역 스토어 상태 구조 분해 할당
   const {
     activeTab,
     currentPage,
@@ -25,7 +25,7 @@ const GatheringPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
 
-  // 🌟 페이지네이션 관련 상태
+  // 페이지네이션 관련 상태
   const [totalItems, setTotalItems] = useState(0); 
   const ITEMS_PER_PAGE = 5;
 
@@ -36,12 +36,12 @@ const GatheringPage = () => {
   const { user } = useAuthStore();
   const loggedInUserId = user?.member_id || user?.id;
 
-  // 🌟 [수정] 비회원일 경우 '참여중인 모임' 탭을 배열에서 제외하여 렌더링 차단
+  // 비회원일 경우 '참여중인 모임' 탭을 배열에서 제외하여 렌더링 차단
   const categories = loggedInUserId 
     ? ['전체 모임', '축제별 모임', '자유 모임', '참여중인 모임']
     : ['전체 모임', '축제별 모임', '자유 모임'];
 
-  // 🌟 DB 연동 페이징 메인 로직 수정 (비회원 대응)
+  // DB 연동 페이징 메인 로직 수정 (비회원 대응)
   useEffect(() => {
     // 혹시라도 비회원이 전역 스토어 상태 등의 이유로 '참여중인 모임' 탭에 위치해 있다면 '전체 모임'으로 강제 이동
     if (!loggedInUserId && activeTab === '참여중인 모임') {
@@ -50,7 +50,6 @@ const GatheringPage = () => {
     }
 
     const fetchGatheringData = async () => {
-      // ❌ [삭제] if (!loggedInUserId) return; -> 비회원도 아래 API 호출이 가능하도록 차단 해제
 
       try {
         // 비회원일 때는 백엔드에 ID 값 대신 null 또는 빈 문자열이 넘어가도록 처리 (백엔드 스펙에 맞춤)
@@ -98,7 +97,7 @@ const GatheringPage = () => {
   }, [loggedInUserId, activeTab, currentPage, keyword, setActiveTab]);
 
 
-  // 🌟 참여중인 모임 전용 페이징/필터 이펙트 (로그인 유저 전용 제어 유지)
+  // 참여중인 모임 전용 페이징/필터 이펙트 (로그인 유저 전용 제어 유지)
   useEffect(() => {
     const fetchJoinedData = async () => {
       if (!loggedInUserId || activeTab !== '참여중인 모임') return;

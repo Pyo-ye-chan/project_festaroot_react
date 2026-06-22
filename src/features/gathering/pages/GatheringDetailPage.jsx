@@ -18,14 +18,11 @@ const GatheringDetailPage = () => {
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 수정 모드 및 위임 모드 상태
   const [isEditing, setIsEditing] = useState(false);
   const [isDelegating, setIsDelegating] = useState(false);
 
-  // 특정 멤버의 프로필 팝업 메뉴를 열기 위한 고유 상태
   const [activeMenuMemberId, setActiveMenuMemberId] = useState(null);
 
-  // 이미지 업로드 관련 상태
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
@@ -38,24 +35,21 @@ const GatheringDetailPage = () => {
     room_image: ''
   });
 
-  // 외부 클릭 시 프로필 팝업 메뉴 닫기 효과
   useEffect(() => {
     const handleOutsideClick = () => setActiveMenuMemberId(null);
     window.addEventListener('click', handleOutsideClick);
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
-  // 서버에서 최신 데이터를 다시 불러오는 공통 함수
-  const fetchDetailAndParticipants = async () => {
+  const fetchDetailAndParticipants = async (targetId) => {
     try {
       const [roomData, participantData] = await Promise.all([
-        gatheringApi.gatheringDetail(id),
-        gatheringApi.selectGatheringParticipants(id)
+        gatheringApi.gatheringDetail(targetId),
+        gatheringApi.selectGatheringParticipants(targetId)
       ]);
       setGathering(roomData);
       setParticipants(participantData || []);
 
-      // 수정 폼 초기화
       setEditForm({
         room_title: roomData.room_title || '',
         free_date: roomData.free_date || '',
@@ -71,18 +65,39 @@ const GatheringDetailPage = () => {
     }
   };
 
-  // 컴포넌트 최초 로드시 실행
+  // 컴포넌트 최초 로드 시 양수/음수 아이디 자동 추적 및 검증 로직 빌트인
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
-      await fetchDetailAndParticipants();
+      let targetId = id;
+
+      // 주소창의 파라미터가 음수(-축제아이디)인 경우 처리 규칙
+      if (Number(id) < 0) {
+        try {
+          const festivalId = Math.abs(Number(id));
+          // 축제별 모임 전체를 조회하여 이미 누군가에 의해 개설된 양수 방 ID가 존재하는지 체크
+          const res = await gatheringApi.festivalGatheringList(loggedInUserId || '', 1, 1000);
+          const existingRoom = res.list?.find(r => Number(r.festival_id) === festivalId && Number(r.room_id) > 0);
+          
+          if (existingRoom) {
+            // 이미 생성된 방 번호(양수)가 있다면 타겟 번호를 전격 스위칭
+            targetId = existingRoom.room_id;
+            // 뒤로가기 히스토리를 더럽히지 않도록 replace 옵션으로 주소창의 음수값을 양수방 ID로 세련되게 치환
+            navigate(`/community/gathering/${targetId}`, { replace: true });
+          }
+        } catch (error) {
+          console.error("축제 연동 활성화 대화방 조회 실패:", error);
+        }
+      }
+
+      await fetchDetailAndParticipants(targetId);
       setLoading(false);
     };
 
     if (id) {
       initData();
     }
-  }, [id]);
+  }, [id, loggedInUserId]);
 
   if (loading) {
     return (
@@ -104,7 +119,6 @@ const GatheringDetailPage = () => {
   const isJoined = isOwner || participants.some(p => p.member_id === loggedInUserId);
   const isFull = gathering.current_count >= gathering.max_capacity;
 
-  // 이미지 변경 핸들러
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -120,7 +134,7 @@ const GatheringDetailPage = () => {
   // 모임 참여 핸들러
   const handleJoinClick = async () => {
     if (!loggedInUserId) {
-      alert("로그인이 필요한 서비스입니다.");
+      alert("로그인 후 이용이 가능합니다.");
       navigate('/login');
       return;
     }
@@ -129,7 +143,7 @@ const GatheringDetailPage = () => {
       const response = await gatheringApi.joinGathering(id, loggedInUserId);
       alert("모임에 성공적으로 참여되었습니다!");
 
-      await fetchDetailAndParticipants();
+      await fetchDetailAndParticipants(id);
 
       if (response && response.roomId) {
         const actualRoomId = response.roomId;
@@ -144,7 +158,6 @@ const GatheringDetailPage = () => {
     }
   };
 
-  // 모임 나가기 핸들러
   const handleLeaveClick = async () => {
     if (isOwner) {
       if (participants.length === 0) {
@@ -166,7 +179,7 @@ const GatheringDetailPage = () => {
     if (!window.confirm("정말로 이 모임에서 나가시겠습니까?")) return;
     try {
       await gatheringApi.leaveGathering(id, loggedInUserId);
-      await fetchDetailAndParticipants();
+      await fetchDetailAndParticipants(id);
       alert("모임에서 탈퇴되었습니다.");
     } catch (error) {
       console.error("모임 나가기 중 오류 발생:", error);
@@ -174,7 +187,6 @@ const GatheringDetailPage = () => {
     }
   };
 
-  // 위임 및 나가기
   const handleDelegateAndLeave = async (newOwnerId) => {
     if (!window.confirm("방장 권한을 위임하고 모임을 나가시겠습니까?")) return;
     try {
@@ -187,26 +199,23 @@ const GatheringDetailPage = () => {
     }
   };
 
-  // 자동 위임 및 나가기
   const handleAutoDelegateAndLeave = async () => {
     if (participants.length === 0) return;
     const oldestMember = participants[0];
     await handleDelegateAndLeave(oldestMember.member_id);
   };
 
-  // 강퇴 핸들러
   const handleKickMember = async (memberId, nickname) => {
     if (!window.confirm(`${nickname}님을 정말로 퇴장시키겠습니까?`)) return;
     try {
       await gatheringApi.kickParticipant(id, loggedInUserId, memberId);
       alert("강퇴 및 영구 추방 처리가 완료되었습니다.");
-      await fetchDetailAndParticipants();
+      await fetchDetailAndParticipants(id);
     } catch (error) {
       alert("강퇴 처리 중 오류가 발생했습니다.");
     }
   };
 
-  // 단체 채팅방 입장 핸들러
   const handleChatClick = () => {
     if (Number(id) <= 0) {
       alert("모임 참여를 완료한 뒤 채팅방 입장이 가능합니다.");
@@ -215,10 +224,9 @@ const GatheringDetailPage = () => {
     navigate(`/community/chat/${id}`);
   };
 
-  // 1:1 채팅 보내기 핸들러
   const handleDirectMessageClick = (targetMemberId, nickname) => {
     if (!loggedInUserId) {
-      alert("로그인이 필요한 서비스입니다.");
+      alert("로그인 후 이용이 가능합니다.");
       navigate('/login');
       return;
     }
@@ -231,10 +239,9 @@ const GatheringDetailPage = () => {
     }
   };
 
-  // 내 프로필 수정 페이지 이동 핸들러
   const handleEditProfileClick = () => {
     if (!loggedInUserId) {
-      alert("로그인이 필요한 서비스입니다.");
+      alert("로그인 후 이용이 가능합니다.");
       navigate('/login');
       return;
     }
@@ -276,7 +283,7 @@ const GatheringDetailPage = () => {
       await gatheringApi.updateGathering(id, finalPayload);
       alert("모임 정보가 성공적으로 수정되었습니다.");
       setIsEditing(false);
-      await fetchDetailAndParticipants();
+      await fetchDetailAndParticipants(id);
     } catch (error) {
       console.error("모임 수정 중 오류 발생:", error);
       alert("모임 수정에 실패했습니다.");
@@ -365,7 +372,6 @@ const GatheringDetailPage = () => {
                         type="date"
                         name="free_date"
                         value={editForm.free_date}
-                        min={new Date().toISOString().split('T')[0]}
                         onChange={handleInputChange}
                         className="w-full border border-gray-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-purple-100 focus:border-[var(--festival-purple)] outline-none"
                       />
@@ -477,7 +483,6 @@ const GatheringDetailPage = () => {
                     <p className="whitespace-pre-wrap">{gathering.room_description}</p>
                   </div>
 
-                  {/* 위임 UI */}
                   {isDelegating && (
                     <div className="mb-8 p-6 bg-blue-50 rounded-2xl border border-blue-100">
                       <div className="flex justify-between items-center mb-4">
@@ -526,12 +531,9 @@ const GatheringDetailPage = () => {
                     </div>
                   )}
 
-                  {/* 참여자 명단 영역 */}
                   <div className="mb-8">
                     <h3 className="text-xl font-bold text-gray-800 mb-4">참여자 ({gathering.current_count || 0}명)</h3>
                     <div className="flex flex-wrap gap-3">
-
-                      {/* 방장 프로필 카드 */}
                       {gathering.owner_id && (
                         <div
                           className="relative flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm cursor-pointer select-none"
@@ -550,7 +552,6 @@ const GatheringDetailPage = () => {
                             <span className="text-sm font-black text-gray-800 leading-tight">{gathering.nickname || '방장'}</span>
                           </div>
 
-                          {/* 방장 클릭 팝업 메뉴 */}
                           {activeMenuMemberId === gathering.owner_id && (
                             <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 text-sm text-gray-700">
                               {gathering.owner_id === loggedInUserId ? (
@@ -575,7 +576,6 @@ const GatheringDetailPage = () => {
                         </div>
                       )}
 
-                      {/* 일반 멤버 프로필 카드 루프 */}
                       {participants.map(participant => {
                         const isMe = participant.member_id === loggedInUserId;
                         return (
@@ -609,7 +609,6 @@ const GatheringDetailPage = () => {
                               </button>
                             )}
 
-                            {/* 멤버 클릭 팝업 메뉴 */}
                             {activeMenuMemberId === participant.member_id && (
                               <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 text-sm text-gray-700">
                                 {isMe ? (
@@ -637,7 +636,6 @@ const GatheringDetailPage = () => {
                     </div>
                   </div>
 
-                  {/* 하단 제어 버튼 스위치 */}
                   {!isDelegating && (
                     <div className="flex justify-end gap-3">
                       {isJoined ? (
