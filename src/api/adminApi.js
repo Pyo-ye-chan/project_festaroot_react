@@ -1,4 +1,4 @@
-﻿import { maxios } from "./axiosApi";
+import { maxios } from "./axiosApi";
 
 export const getAdminDashboard = (baseDate) => {
   return maxios.get('/admin/dashboard', {
@@ -91,6 +91,10 @@ export const getAdminFestivalSyncStatus = () => {
 export const updateFestivalVisibility = (contentId, isVisible) => {
   const visibilityParam = isVisible ? 'Y' : 'N';
   return maxios.patch(`/admin/festivals/${contentId}/visibility`, { isVisible: visibilityParam });
+};
+
+export const getAdminFestivalDetail = (contentId) => {
+  return maxios.get(`/admin/festivals/${contentId}`);
 };
 
 export const getAdminReviews = (params) => {

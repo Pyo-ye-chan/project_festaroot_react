@@ -12,14 +12,14 @@ const MyPageSidebar = ({ activeTab, setActiveTab }) => {
         { id: 'likes', label: '찜한 축제', icon: '❤️' },
       ]
     },
-    // {
-    //   title: '설정 및 지원',
-    //   items: [
-    //     { id: 'inquiry', label: '문의하기', icon: '🙋' },
-    //     { id: 'account', label: '계정 설정', icon: '⚙️' },
-    //     { id: 'notifications', label: '알림 설정', icon: '🔔' },
-    //   ]
-    // }
+    {
+      title: '설정 및 지원',
+      items: [
+        { id: 'inquiry', label: '문의하기', icon: '🙋' },
+        { id: 'account', label: '계정 설정', icon: '⚙️' },
+        // { id: 'notifications', label: '알림 설정', icon: '🔔' },
+      ]
+    }
   ];
 
   return (
@@ -43,8 +43,8 @@ const MyPageSidebar = ({ activeTab, setActiveTab }) => {
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
                     className={`flex items-center gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl text-sm font-bold transition-all duration-200 whitespace-nowrap ${activeTab === item.id
-                        ? 'bg-purple-50 text-purple-600'
-                        : 'text-gray-500 hover:bg-gray-50'
+                      ? 'bg-purple-50 text-purple-600'
+                      : 'text-gray-500 hover:bg-gray-50'
                       }`}
                   >
                     <span className={`text-base md:text-lg ${activeTab === item.id ? 'opacity-100' : 'opacity-50'}`}>
