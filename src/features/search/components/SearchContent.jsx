@@ -87,8 +87,10 @@ const SearchContent = ({
                 <div className="flex items-center justify-between mt-5 pt-5 border-t border-gray-50">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
-                      <Star className="w-3.5 h-3.5 text-[#FFD23F] fill-current" />
-                      <span className="text-xs font-black text-gray-700">{(fest.rating_avg ?? fest.avg_rating) ? Number(fest.rating_avg ?? fest.avg_rating).toFixed(1) : '0.0'}</span>
+                      <Star className="w-4 h-4 text-[#FFD23F] fill-current" />
+                      <span className="text-sm font-black text-gray-700">
+                        {Number(fest.avg_rating || fest.rating_avg || 0).toFixed(1)}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-400">
                       <Eye className="w-3.5 h-3.5" />
@@ -128,7 +130,7 @@ const SearchContent = ({
                     <p className="text-xs text-gray-500 font-bold flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-purple-400" /> {fest.addr1}</p>
                     <p className="text-xs text-gray-400 font-bold flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-gray-400" /> {formatDate(fest.event_start_date)} ~ {formatDate(fest.event_end_date)}</p>
                   </div>
-                  
+
                   {/* 테마 정보 출력 (리스트 뷰) */}
                   {fest.themes && fest.themes.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
@@ -143,8 +145,10 @@ const SearchContent = ({
                 <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                   <div className="flex gap-4">
                     <div className="flex items-center gap-1.5">
-                      <Star className="w-4 h-4 text-[#FFD23F] fill-current" />
-                      <span className="text-sm font-black text-gray-700">{(fest.rating_avg ?? fest.avg_rating) ? Number(fest.rating_avg ?? fest.avg_rating).toFixed(1) : '0.0'}</span>
+                      <Star className="w-3.5 h-3.5 text-[#FFD23F] fill-current" />
+                      <span className="text-xs font-black text-gray-700">
+                        {Number(fest.avg_rating || fest.rating_avg || 0).toFixed(1)}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-500">
                       <Eye className="w-4 h-4" /> <span className="text-sm font-black">{fest.view_count || 0}</span>

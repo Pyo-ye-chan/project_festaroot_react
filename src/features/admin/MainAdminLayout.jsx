@@ -13,7 +13,7 @@ import {
   Bell,
   ChevronDown,
   CircleUser,
-  UsersRound, // 주석 처리된 메뉴를 위해 유지
+  UsersRound, 
   LogOut,
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
@@ -31,23 +31,17 @@ const MainAdminLayout = () => {
     }
   };
 
-  // 현재 라우터에 실제로 등록된 관리자 페이지 기준 메뉴 (충돌 해결: 모임 관리 주석 유지)
   const menus = [
     { name: '대시보드', path: '/admin', icon: Home },
     { name: '회원 관리', path: '/admin/members', icon: Users },
     { name: '축제 관리', path: '/admin/festivals', icon: CalendarDays },
     { name: '게시글 관리', path: '/admin/posts', icon: Newspaper },
     { name: '댓글 관리', path: '/admin/comments', icon: MessageSquare },
-
-    { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound },
+     // { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound }, // 추후 기능 추가 가능성 대비 주석함
     { name: '공지사항 관리', path: '/admin/notices', icon: Megaphone },
     { name: '문의 관리', path: '/admin/inquiries', icon: ShieldAlert },
-
-    // { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound }, // 추후 기능 추가 가능성 대비 주석함
-
   ];
 
-  // 현재 경로에 맞는 메뉴명 찾기
   const getCurrentMenuName = () => {
     if (location.pathname === '/admin' || location.pathname === '/admin/dashboard') {
       return '대시보드';
@@ -64,20 +58,25 @@ const MainAdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-gray-900">
-      {/* 왼쪽 사이드바 (h-screen, flex-col 설계) */}
+      {/* 왼쪽 사이드바 */}
       <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[260px] flex-col border-r border-gray-100 bg-white shadow-[4px_0_24px_rgba(15,23,42,0.04)] lg:flex">
-        {/* 1. 로고 영역 */}
         <div className="flex h-[78px] items-center gap-3 border-b border-gray-100 px-7 flex-shrink-0">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#6d3df2] to-[#4f46e5] text-white shadow-lg shadow-purple-200">
-            <LayoutGrid size={22} />
-          </div>
+          <svg className="w-10 h-10 select-none flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="16" cy="16" r="16" fill="#f3eeff"/>
+            <path d="M16,3 C11,3 7,7 7,12 C7,18 16,29 16,29 C16,29 25,18 25,12 C25,7 21,3 16,3 Z" fill="#6d3df2"/>
+            {/* 관리자 그리드 코어 심볼 (골드) */}
+            <rect x="13" y="9" width="2.5" height="2.5" rx="0.5" fill="#ffd000"/>
+            <rect x="16.5" y="9" width="2.5" height="2.5" rx="0.5" fill="#ffd000"/>
+            <rect x="13" y="12.5" width="2.5" height="2.5" rx="0.5" fill="#ffd000"/>
+            <rect x="16.5" y="12.5" width="2.5" height="2.5" rx="0.5" fill="#ffd000"/>
+          </svg>
 
           <p className="text-xl font-black tracking-tight">
             <span className="text-[#6d3df2]">축제로</span> 관리자
           </p>
         </div>
 
-        {/* 2. 메뉴 영역 (flex-1과 overflow-y-auto 덕분에 메뉴가 늘어나도 이 부분만 스크롤 됩니다) */}
+        {/* 2. 메뉴 영역 */}
         <nav className="flex-1 overflow-y-auto px-5 py-5">
           <ul className="space-y-1.5">
             {menus.map((menu) => {
@@ -94,8 +93,8 @@ const MainAdminLayout = () => {
                     type="button"
                     onClick={() => navigate(menu.path)}
                     className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all ${isActive
-                        ? 'bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] text-white shadow-lg shadow-purple-100'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-[#6d3df2]'
+                      ? 'bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] text-white shadow-lg shadow-purple-100'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-[#6d3df2]'
                       }`}
                   >
                     <Icon
@@ -117,7 +116,7 @@ const MainAdminLayout = () => {
           </ul>
         </nav>
 
-        {/* 3. 하단 고정 로그아웃 영역 (사이드바 최하단에 무조건 고정) */}
+        {/* 3. 하단 고정 로그아웃 영역 */}
         <div className="p-5 border-t border-gray-100 bg-white flex-shrink-0">
           <button
             type="button"
@@ -133,9 +132,14 @@ const MainAdminLayout = () => {
       {/* 모바일 헤더 */}
       <header className="sticky top-0 z-20 flex h-[70px] items-center justify-between border-b border-gray-100 bg-white/90 px-5 backdrop-blur lg:hidden">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#6d3df2] to-[#4f46e5] text-white">
-            <LayoutGrid size={20} />
-          </div>
+          <svg className="w-10 h-10 select-none flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="16" cy="16" r="16" fill="#f3eeff"/>
+            <path d="M16,3 C11,3 7,7 7,12 C7,18 16,29 16,29 C16,29 25,18 25,12 C25,7 21,3 16,3 Z" fill="#6d3df2"/>
+            <rect x="13" y="9" width="2.5" height="2.5" rx="0.5" fill="#ffd000"/>
+            <rect x="16.5" y="9" width="2.5" height="2.5" rx="0.5" fill="#ffd000"/>
+            <rect x="13" y="12.5" width="2.5" height="2.5" rx="0.5" fill="#ffd000"/>
+            <rect x="16.5" y="12.5" width="2.5" height="2.5" rx="0.5" fill="#ffd000"/>
+          </svg>
 
           <p className="text-lg font-black">
             <span className="text-[#6d3df2]">축제로</span> 관리자
@@ -171,16 +175,6 @@ const MainAdminLayout = () => {
           </div>
 
           <div className="flex items-center gap-5">
-            <button
-              type="button"
-              className="relative rounded-2xl p-2 transition hover:bg-gray-50"
-            >
-              <Bell size={22} className="text-gray-500" />
-              <span className="absolute right-0 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-yellow-400 text-[11px] font-black text-yellow-900">
-                8
-              </span>
-            </button>
-
             <button
               type="button"
               onClick={handleLogout}

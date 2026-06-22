@@ -53,7 +53,7 @@ const SearchPage = () => {
   const sortOptions = ['popular', 'date', 'views'];
   const totalPages = Math.ceil(pageInfo.totalCount / ITEMS_PER_PAGE) || 1;
 
-  // [★수정] 무작위 렌더링 및 F5 레이스 컨디션을 방지하기 위한 초기화 완료 플래그 상태 추가
+  // 무작위 렌더링 및 F5 레이스 컨디션을 방지하기 위한 초기화 완료 플래그 상태 추가
   const [isInitialized, setIsInitialized] = useState(false);
 
   // 2. 데이터 페치 함수 정의
@@ -93,7 +93,7 @@ const SearchPage = () => {
     }
   };
 
-  // 3. [★수정] URL 파라미터를 Zustand 스토어 상태와 깨끗하게 동기화 후 초기화 완료 처리
+  // URL 파라미터를 Zustand 스토어 상태와 깨끗하게 동기화 후 초기화 완료 처리
   useEffect(() => {
     const initialSort = searchParams.get('sort') || location.state?.sort || 'popular';
     const initialOngoing = searchParams.get('ongoingOnly') === 'true' || !!location.state?.ongoingOnly;
@@ -111,7 +111,7 @@ const SearchPage = () => {
     setIsInitialized(true);
   }, [searchParams, location.state]); 
 
-  // 4. [★수정] 핵심 상태 변경 감지 페치 (초기 동기화가 완전히 끝난 직후부터 안전하게 반응)
+  // 핵심 상태 변경 감지 (초기 동기화가 완전히 끝난 직후부터 안전하게 반응)
   useEffect(() => {
     if (!isInitialized) return; // URL 동기화 전 스태일(stale) 데이터 호출 가드
 

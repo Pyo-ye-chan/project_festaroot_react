@@ -128,6 +128,12 @@ const ChatListPage = () => {
       fetchParticipants();
       fetchRoomDetail();
     }
+    // 현재 대화방에서 이탈하거나(퇴장), 페이지를 닫을 때 최종 읽은 시간 동기화
+    return () => {
+      if (activeChatId) {
+        chatApi.updateReadStatus(activeChatId, userId);
+      }
+    };
   }, [activeChatId, userId, fetchChatHistory, subscribeToRoom]);
 
   // 방장이 참가자를 강퇴하는 로직 핸들러
@@ -515,8 +521,8 @@ const ChatListPage = () => {
               />
 
               <div className={`min-w-0 bg-[#F8F9FF] relative overflow-hidden transition-all duration-500 ease-in-out ${activeChatId
-                  ? 'flex w-full md:flex-grow translate-x-0 opacity-100'
-                  : 'hidden md:flex translate-x-full opacity-0'
+                ? 'flex w-full md:flex-grow translate-x-0 opacity-100'
+                : 'hidden md:flex translate-x-full opacity-0'
                 }`}
                 style={{ flexGrow: activeChatId ? 1 : 0.00001, minWidth: activeChatId ? '0' : '0', width: activeChatId ? 'auto' : '0' }}>
 

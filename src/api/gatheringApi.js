@@ -115,7 +115,13 @@ const gatheringApi = {
         });
         return response.data;
     },
-    
+
+    // 인기 모임 목록 가져오기
+    getPopularGatherings: async () => {
+        const response = await maxios.get(`${BASE_PATH}/popular-gatherings`);
+        return response.data;
+    },
+
 };
 
 export default gatheringApi;

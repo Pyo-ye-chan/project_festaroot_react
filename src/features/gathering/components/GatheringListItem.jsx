@@ -8,7 +8,7 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
   const { user } = useAuthStore();
   const loggedInUserId = user?.member_id || user?.id;
 
-  // 🌟 백엔드 데이터 필드 매핑 (대문자/소문자 대응)
+  // 백엔드 데이터 필드 매핑 (대문자/소문자 대응)
   const currentCount = item.current_count || item.CURRENT_COUNT || 0;
   const maxCapacity = item.max_capacity || item.MAX_CAPACITY || 500;
   const isFull = currentCount >= maxCapacity;
@@ -23,10 +23,9 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
   // 참여 여부 확인 (백엔드에서 넘겨주는 is_joined 필드 혹은 방장 여부)
   const isJoined = item.is_joined || (loggedInUserId && loggedInUserId === ownerId);
 
-  // 🌟 room_title에서 ' 공식 모임'을 제거한 순수 축제 이름 추출
   const festivalName = roomTitle ? roomTitle.replace(' 공식 모임', '') : '';
 
-  // 🌟 이미지 우선순위 설정 (다양한 백엔드 필드 대응)
+  // 이미지 우선순위 설정 (다양한 백엔드 필드 대응)
   const gatheringImage = item.room_image || DEFAULT_IMAGES.ROOM_COVER;
 
   const formattedDate = freeDate ? freeDate.replace(/-/g, '.') : '';
