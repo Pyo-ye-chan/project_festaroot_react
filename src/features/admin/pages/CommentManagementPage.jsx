@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import CommentDetailView from '../components/CommentDetailView';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Search,
   RotateCcw,
   CalendarDays,
-  MessageCircle,
+  FileText,
   ShieldAlert,
   Eye,
   Trash2,
@@ -13,35 +12,32 @@ import {
   ChevronRight,
   CheckCircle2,
   ClipboardCheck,
-  CornerDownRight,
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
+import PostDetailView from '../components/PostDetailView';
 import {
-  getAdminCommentSummary,
-  getWaitingCommentReports,
-  getAdminComments,
-  getAdminCommentDetail,
+  getAdminPostSummary,
+  getWaitingPostReports,
+  getAdminPosts,
   getAdminPostDetail,
-  processAdminCommentReport,
-  deleteAdminComment,
-  deleteAdminComments,
+  processAdminPostReport,
+  deleteAdminPost,
+  deleteAdminPosts,
 } from '../../../api/adminApi';
 
 const CATEGORY_LABELS = {
   all: '전체',
   free: '자유',
-  review: '리뷰',
-  tip: '팁',
+  review: '후기',
+  tip: '꿀팁',
   notice: '공지',
 };
 
 const SEARCH_TYPE_OPTIONS = [
-  { value: 'content', label: '내용 검색' },
+  { value: 'title', label: '제목' },
   { value: 'author', label: '작성자' },
-  { value: 'id', label: '댓글 ID' },
-  { value: 'postTitle', label: '게시글 제목' },
-  { value: 'postId', label: '게시글 ID' },
+  { value: 'id', label: '게시글 ID' },
 ];
 
 const REPORT_RESULT_LABELS = {
@@ -56,41 +52,44 @@ const REPORT_RESULT_CLASSES = {
   REJECTED: 'bg-gray-100 text-gray-500',
 };
 
-const COMMENT_PAGE_SIZE = 5;
+const categoryClass = {
+  free: 'bg-slate-100 text-slate-600',
+  review: 'bg-purple-50 text-purple-600',
+  tip: 'bg-amber-50 text-amber-600',
+  notice: 'bg-blue-50 text-blue-600',
+};
+
+const VISIBLE_STATUS_OPTIONS = [
+  { value: 'all', label: '전체' },
+  { value: 'Y', label: '공개' },
+  { value: 'N', label: '비공개' },
+];
+
 const REPORT_PAGE_SIZE = 4;
+const POST_PAGE_SIZE = 5;
 
 const INITIAL_STATS = {
   total: 0,
   today: 0,
-  reportedCommentCount: 0,
+  reportedPostCount: 0,
   pendingReportCount: 0,
-};
-
-const commentTypeClass = {
-  COMMENT: 'bg-purple-50 text-purple-600',
-  REPLY: 'bg-blue-50 text-blue-600',
 };
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 
 const normalizeCategory = (category) => String(category || '').toLowerCase();
 
-const getCommentType = (comment) => {
-  if (comment?.commentType) return comment.commentType;
-  return comment?.parentCommentId ? 'REPLY' : 'COMMENT';
+const normalizeVisibleStatus = (visibleStatus) => {
+  if (visibleStatus === 'Y' || visibleStatus === 'N') {
+    return visibleStatus;
+  }
+
+  return 'all';
 };
 
-const getCommentTypeLabel = (comment) =>
-  getCommentType(comment) === 'REPLY' ? '대댓글' : '댓글';
-
-const getCommentCode = (comment) => {
-  if (comment?.commentCode) return comment.commentCode;
-  return `CMT-${String(comment?.commentId || 0).padStart(5, '0')}`;
-};
-
-const getPostCode = (comment) => {
-  if (comment?.postCode) return comment.postCode;
-  return `POST-${String(comment?.postId || 0).padStart(3, '0')}`;
+const getPostCode = (post) => {
+  if (post?.postCode) return post.postCode;
+  return `POST-${String(post?.postId || 0).padStart(3, '0')}`;
 };
 
 const getReportCode = (report) => {
@@ -98,23 +97,34 @@ const getReportCode = (report) => {
   return `RPT-${String(report?.reportId || 0).padStart(5, '0')}`;
 };
 
-const getReportCount = (comment) =>
-  Number(comment?.reportCount ?? comment?.reportItems?.length ?? 0);
-
-const getPendingReportCount = (comment) =>
-  Number(
-    comment?.pendingReportCount ??
-      comment?.reportItems?.filter((report) => report.status === 'WAITING')
-        .length ??
-      0
-  );
-
 const getSearchPlaceholder = (searchType) => {
   if (searchType === 'author') return '작성자 ID를 입력해 주세요.';
-  if (searchType === 'id') return '댓글 ID를 입력해 주세요.';
-  if (searchType === 'postTitle') return '게시글 제목을 입력해 주세요.';
-  if (searchType === 'postId') return '게시글 ID를 입력해 주세요.';
-  return '댓글 내용을 입력해 주세요.';
+  if (searchType === 'id') return '게시글 ID를 입력해 주세요.';
+  return '게시글 제목을 입력해 주세요.';
+};
+
+const formatShortDate = (value) => {
+  const text = String(value || '').trim();
+  if (!text) return '-';
+  return text.split(' ')[0].replace(/\./g, '-');
+};
+
+const getVisibleBadge = (isVisible) => {
+  const isPublic = String(isVisible || '').toUpperCase() === 'Y';
+
+  if (isPublic) {
+    return (
+      <span className="inline-flex h-7 max-w-full items-center justify-center rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-600">
+        <span className="truncate">공개</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex h-7 max-w-full items-center justify-center rounded-full bg-rose-50 px-3 py-1.5 text-xs font-black text-rose-600">
+      <span className="truncate">비공개</span>
+    </span>
+  );
 };
 
 const getErrorMessage = (error, fallback) => {
@@ -127,37 +137,37 @@ const getErrorMessage = (error, fallback) => {
   return responseData?.message || responseData?.error || fallback;
 };
 
-const CommentManagementPage = () => {
+const PostManagementPage = () => {
   const [stats, setStats] = useState(INITIAL_STATS);
   const [waitingReportRows, setWaitingReportRows] = useState([]);
-  const [comments, setComments] = useState([]);
+  const [posts, setPosts] = useState([]);
 
   const [keywordInput, setKeywordInput] = useState('');
-  const [searchType, setSearchType] = useState('content');
+  const [searchType, setSearchType] = useState('title');
+  const [visibleStatus, setVisibleStatus] = useState('all');
   const [searchCondition, setSearchCondition] = useState({
-    searchType: 'content',
+    searchType: 'title',
     keyword: '',
+    visibleStatus: 'all',
   });
   const [category, setCategory] = useState('all');
-  const [commentType, setCommentType] = useState('all');
 
-  const [selectedCommentIds, setSelectedCommentIds] = useState([]);
-  const [selectedComment, setSelectedComment] = useState(null);
-  const [sourcePost, setSourcePost] = useState(null);
+  const [selectedPostIds, setSelectedPostIds] = useState([]);
+  const [selectedPost, setSelectedPost] = useState(null);
   const [selectedReportId, setSelectedReportId] = useState(null);
 
   const [reportPage, setReportPage] = useState(1);
   const [reportTotalPages, setReportTotalPages] = useState(1);
   const [reportTotalCount, setReportTotalCount] = useState(0);
 
-  const [commentPage, setCommentPage] = useState(1);
-  const [commentTotalPages, setCommentTotalPages] = useState(1);
-  const [commentTotalCount, setCommentTotalCount] = useState(0);
+  const [postPage, setPostPage] = useState(1);
+  const [postTotalPages, setPostTotalPages] = useState(1);
+  const [postTotalCount, setPostTotalCount] = useState(0);
 
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [reportsLoading, setReportsLoading] = useState(false);
-  const [commentsLoading, setCommentsLoading] = useState(false);
-  const [openingCommentId, setOpeningCommentId] = useState(null);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [openingPostId, setOpeningPostId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
 
@@ -165,19 +175,19 @@ const CommentManagementPage = () => {
     setSummaryLoading(true);
 
     try {
-      const response = await getAdminCommentSummary();
+      const response = await getAdminPostSummary();
       const data = response.data || {};
 
       setStats({
         total: Number(data.total || 0),
         today: Number(data.today || 0),
-        reportedCommentCount: Number(data.reportedCommentCount || 0),
+        reportedPostCount: Number(data.reportedPostCount || 0),
         pendingReportCount: Number(data.pendingReportCount || 0),
       });
     } catch (error) {
-      console.error('댓글 관리자 통계 조회 실패:', error);
+      console.error('게시글 관리자 통계 조회 실패:', error);
       setLoadError(
-        getErrorMessage(error, '댓글 관리자 통계를 불러오지 못했습니다.')
+        getErrorMessage(error, '게시글 관리자 통계를 불러오지 못했습니다.')
       );
     } finally {
       setSummaryLoading(false);
@@ -188,7 +198,7 @@ const CommentManagementPage = () => {
     setReportsLoading(true);
 
     try {
-      const response = await getWaitingCommentReports({
+      const response = await getWaitingPostReports({
         page: targetPage,
         size: REPORT_PAGE_SIZE,
       });
@@ -214,37 +224,34 @@ const CommentManagementPage = () => {
 
       setWaitingReportRows(Array.isArray(data.list) ? data.list : []);
     } catch (error) {
-      console.error('처리 대기 댓글 신고 조회 실패:', error);
+      console.error('처리 대기 게시글 신고 조회 실패:', error);
       setWaitingReportRows([]);
       setLoadError(
-        getErrorMessage(
-          error,
-          '처리 대기 댓글 신고 목록을 불러오지 못했습니다.'
-        )
+        getErrorMessage(error, '처리 대기 게시글 신고 목록을 불러오지 못했습니다.')
       );
     } finally {
       setReportsLoading(false);
     }
   }, []);
 
-  const loadComments = useCallback(
+  const loadPosts = useCallback(
     async (targetPage) => {
-      setCommentsLoading(true);
+      setPostsLoading(true);
 
       try {
-        const response = await getAdminComments({
+        const response = await getAdminPosts({
           page: targetPage,
-          size: COMMENT_PAGE_SIZE,
+          size: POST_PAGE_SIZE,
           category,
-          commentType,
           searchType: searchCondition.searchType,
           keyword: searchCondition.keyword,
+          visibleStatus: normalizeVisibleStatus(searchCondition.visibleStatus),
         });
         const data = response.data || {};
         const totalCount = Math.max(Number(data.totalCount || 0), 0);
         const calculatedTotalPages = Math.max(
           1,
-          Math.ceil(totalCount / COMMENT_PAGE_SIZE)
+          Math.ceil(totalCount / POST_PAGE_SIZE)
         );
         const totalPages = Math.max(
           Number(data.totalPages || calculatedTotalPages),
@@ -252,26 +259,26 @@ const CommentManagementPage = () => {
         );
         const safeTargetPage = Math.min(Math.max(targetPage, 1), totalPages);
 
-        setCommentTotalPages(totalPages);
-        setCommentTotalCount(totalCount);
+        setPostTotalPages(totalPages);
+        setPostTotalCount(totalCount);
 
         if (safeTargetPage !== targetPage) {
-          setCommentPage(safeTargetPage);
+          setPostPage(safeTargetPage);
           return;
         }
 
-        setComments(Array.isArray(data.list) ? data.list : []);
+        setPosts(Array.isArray(data.list) ? data.list : []);
       } catch (error) {
-        console.error('전체 댓글 조회 실패:', error);
-        setComments([]);
+        console.error('전체 게시글 조회 실패:', error);
+        setPosts([]);
         setLoadError(
-          getErrorMessage(error, '전체 댓글 목록을 불러오지 못했습니다.')
+          getErrorMessage(error, '전체 게시글 목록을 불러오지 못했습니다.')
         );
       } finally {
-        setCommentsLoading(false);
+        setPostsLoading(false);
       }
     },
-    [category, commentType, searchCondition]
+    [category, searchCondition]
   );
 
   useEffect(() => {
@@ -283,8 +290,247 @@ const CommentManagementPage = () => {
   }, [loadWaitingReports, reportPage]);
 
   useEffect(() => {
-    loadComments(commentPage);
-  }, [loadComments, commentPage]);
+    loadPosts(postPage);
+  }, [loadPosts, postPage]);
+
+  const isAllChecked = useMemo(() => {
+    return (
+      posts.length > 0 &&
+      posts.every((post) => selectedPostIds.includes(post.postId))
+    );
+  }, [posts, selectedPostIds]);
+
+  const refreshOverview = async () => {
+    await Promise.allSettled([
+      loadSummary(),
+      loadWaitingReports(reportPage),
+      loadPosts(postPage),
+    ]);
+  };
+
+  const handleRetry = async () => {
+    setLoadError('');
+    await refreshOverview();
+  };
+
+  const handleSearch = () => {
+    setSearchCondition({
+      searchType,
+      keyword: keywordInput.trim(),
+      visibleStatus,
+    });
+    setSelectedPostIds([]);
+    setPostPage(1);
+  };
+
+  const handleSearchKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const handleReset = () => {
+    setKeywordInput('');
+    setSearchType('title');
+    setVisibleStatus('all');
+    setSearchCondition({
+      searchType: 'title',
+      keyword: '',
+      visibleStatus: 'all',
+    });
+    setCategory('all');
+    setSelectedPostIds([]);
+    setPostPage(1);
+  };
+
+  const handleChangeCategory = (nextCategory) => {
+    setCategory(nextCategory);
+    setSelectedPostIds([]);
+    setPostPage(1);
+  };
+
+  const handleChangeVisibleStatus = (nextVisibleStatus) => {
+    setVisibleStatus(nextVisibleStatus);
+    setSearchCondition((prev) => ({
+      ...prev,
+      visibleStatus: nextVisibleStatus,
+    }));
+    setSelectedPostIds([]);
+    setPostPage(1);
+  };
+
+  const handleChangeSearchType = (nextSearchType) => {
+    setSearchType(nextSearchType);
+  };
+
+  const handleOpenDetail = async (postId, reportId = null) => {
+    if (openingPostId !== null) return;
+
+    setOpeningPostId(postId);
+    setSelectedReportId(reportId);
+
+    try {
+      const response = await getAdminPostDetail(postId);
+      setSelectedPost(response.data);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      console.error('게시글 상세 조회 실패:', error);
+      window.alert(
+        getErrorMessage(error, '게시글 상세 정보를 불러오지 못했습니다.')
+      );
+    } finally {
+      setOpeningPostId(null);
+    }
+  };
+
+  const handleBackToList = () => {
+    setSelectedPost(null);
+    setSelectedReportId(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleToggleAll = () => {
+    const currentPageIds = posts.map((post) => post.postId);
+
+    if (isAllChecked) {
+      setSelectedPostIds((prev) =>
+        prev.filter((id) => !currentPageIds.includes(id))
+      );
+      return;
+    }
+
+    setSelectedPostIds((prev) =>
+      Array.from(new Set([...prev, ...currentPageIds]))
+    );
+  };
+
+  const handleTogglePost = (postId) => {
+    setSelectedPostIds((prev) => {
+      if (prev.includes(postId)) {
+        return prev.filter((id) => id !== postId);
+      }
+
+      return [...prev, postId];
+    });
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (actionLoading) return;
+
+    const target =
+      selectedPost?.postId === postId
+        ? selectedPost
+        : posts.find((post) => post.postId === postId);
+
+    const titleText = target?.title ? `\n\n제목: ${target.title}` : '';
+    const isConfirmed = window.confirm(
+      `선택한 게시글을 완전 삭제할까요?\n\n게시글 ID: ${getPostCode(
+        target || { postId }
+      )}${titleText}\n\n게시글과 연결된 신고 및 댓글 데이터가 함께 삭제됩니다.`
+    );
+
+    if (!isConfirmed) return;
+
+    setActionLoading(true);
+
+    try {
+      await deleteAdminPost(postId);
+
+      setSelectedPostIds((prev) => prev.filter((id) => id !== postId));
+
+      if (selectedPost?.postId === postId) {
+        setSelectedPost(null);
+        setSelectedReportId(null);
+      }
+
+      await refreshOverview();
+      window.alert('게시글이 완전 삭제되었습니다.');
+    } catch (error) {
+      console.error('게시글 삭제 실패:', error);
+      window.alert(
+        getErrorMessage(error, '게시글 삭제 중 오류가 발생했습니다.')
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteSelectedPosts = async () => {
+    if (actionLoading) return;
+
+    if (selectedPostIds.length === 0) {
+      window.alert('삭제할 게시글을 선택해 주세요.');
+      return;
+    }
+
+    const isConfirmed = window.confirm(
+      `선택한 게시글 ${selectedPostIds.length}건을 완전 삭제할까요?\n\n게시글과 연결된 신고 및 댓글 데이터가 함께 삭제되며, 삭제한 원본 데이터는 복구할 수 없습니다.`
+    );
+
+    if (!isConfirmed) return;
+
+    setActionLoading(true);
+
+    try {
+      await deleteAdminPosts(selectedPostIds);
+      setSelectedPostIds([]);
+      await refreshOverview();
+      window.alert('선택한 게시글이 완전 삭제되었습니다.');
+    } catch (error) {
+      console.error('선택 게시글 삭제 실패:', error);
+      window.alert(
+        getErrorMessage(error, '선택 게시글 삭제 중 오류가 발생했습니다.')
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleProcessReports = async ({
+    postId,
+    reportId,
+    resultStatus,
+    adminMemo,
+  }) => {
+    if (actionLoading) return;
+
+    const resultLabel = REPORT_RESULT_LABELS[resultStatus] || resultStatus;
+    const isConfirmed = window.confirm(
+      `신고 ${getReportCode({ reportId })}을(를) '${resultLabel}' 처리할까요?\n\n해당 신고 내역 한 건만 처리합니다.`
+    );
+
+    if (!isConfirmed) return;
+
+    setActionLoading(true);
+
+    try {
+      await processAdminPostReport({
+        postId,
+        reportId,
+        resultStatus,
+        adminMemo,
+      });
+
+      const detailResponse = await getAdminPostDetail(postId);
+      setSelectedPost(detailResponse.data);
+      setSelectedReportId(reportId);
+
+      await refreshOverview();
+
+      window.alert(
+        resultStatus === 'ACCEPTED'
+          ? '게시글 신고를 인정 처리했습니다.'
+          : '게시글 신고를 반려 처리했습니다.'
+      );
+    } catch (error) {
+      console.error('게시글 신고 처리 실패:', error);
+      window.alert(
+        getErrorMessage(error, '게시글 신고 처리 중 오류가 발생했습니다.')
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const handleReportPageChange = (nextPage) => {
     if (reportsLoading) return;
@@ -300,290 +546,29 @@ const CommentManagementPage = () => {
     setReportPage(safeNextPage);
   };
 
-  const handleCommentPageChange = (nextPage) => {
-    if (commentsLoading) return;
+  const handlePostPageChange = (nextPage) => {
+    if (postsLoading) return;
 
     const safeNextPage = Math.min(
       Math.max(Number(nextPage) || 1, 1),
-      Math.max(commentTotalPages, 1)
+      Math.max(postTotalPages, 1)
     );
 
-    if (safeNextPage === commentPage) return;
+    if (safeNextPage === postPage) return;
 
     setLoadError('');
-    setSelectedCommentIds([]);
-    setCommentPage(safeNextPage);
+    setSelectedPostIds([]);
+    setPostPage(safeNextPage);
   };
 
-  const isAllChecked = useMemo(() => {
+  if (selectedPost) {
     return (
-      comments.length > 0 &&
-      comments.every((comment) =>
-        selectedCommentIds.includes(comment.commentId)
-      )
-    );
-  }, [comments, selectedCommentIds]);
-
-  const refreshOverview = async () => {
-    await Promise.allSettled([
-      loadSummary(),
-      loadWaitingReports(reportPage),
-      loadComments(commentPage),
-    ]);
-  };
-
-  const handleRetry = async () => {
-    setLoadError('');
-    await refreshOverview();
-  };
-
-  const handleSearch = () => {
-    setSearchCondition({
-      searchType,
-      keyword: keywordInput.trim(),
-    });
-    setSelectedCommentIds([]);
-    setCommentPage(1);
-  };
-
-  const handleSearchKeyDown = (event) => {
-    if (event.key === 'Enter') {
-      handleSearch();
-    }
-  };
-
-  const handleReset = () => {
-    setKeywordInput('');
-    setSearchType('content');
-    setSearchCondition({
-      searchType: 'content',
-      keyword: '',
-    });
-    setCategory('all');
-    setCommentType('all');
-    setSelectedCommentIds([]);
-    setCommentPage(1);
-  };
-
-  const handleChangeCategory = (nextCategory) => {
-    setCategory(nextCategory);
-    setSelectedCommentIds([]);
-    setCommentPage(1);
-  };
-
-  const handleChangeCommentType = (nextType) => {
-    setCommentType(nextType);
-    setSelectedCommentIds([]);
-    setCommentPage(1);
-  };
-
-  const handleChangeSearchType = (nextSearchType) => {
-    setSearchType(nextSearchType);
-  };
-
-  const handleOpenDetail = async (commentId, reportId = null) => {
-    if (openingCommentId !== null) return;
-
-    setOpeningCommentId(commentId);
-    setSelectedReportId(reportId);
-    setSourcePost(null);
-
-    try {
-      const commentResponse = await getAdminCommentDetail(commentId);
-      const commentData = commentResponse.data || null;
-
-      if (!commentData) {
-        throw new Error('댓글 상세 응답이 비어 있습니다.');
-      }
-
-      let postData = null;
-
-      if (commentData.postId) {
-        try {
-          const postResponse = await getAdminPostDetail(commentData.postId);
-          postData = postResponse.data || null;
-        } catch (postError) {
-          // 원 게시글 조회 실패가 댓글 상세 진입 자체를 막지는 않도록 합니다.
-          console.error('원 게시글 상세 조회 실패:', postError);
-        }
-      }
-
-      setSourcePost(postData);
-      setSelectedComment(commentData);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (error) {
-      console.error('댓글 상세 조회 실패:', error);
-      window.alert(
-        getErrorMessage(error, '댓글 상세 정보를 불러오지 못했습니다.')
-      );
-    } finally {
-      setOpeningCommentId(null);
-    }
-  };
-
-  const handleBackToList = () => {
-    setSelectedComment(null);
-    setSourcePost(null);
-    setSelectedReportId(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleToggleAll = () => {
-    const currentPageIds = comments.map((comment) => comment.commentId);
-
-    if (isAllChecked) {
-      setSelectedCommentIds((prev) =>
-        prev.filter((id) => !currentPageIds.includes(id))
-      );
-      return;
-    }
-
-    setSelectedCommentIds((prev) =>
-      Array.from(new Set([...prev, ...currentPageIds]))
-    );
-  };
-
-  const handleToggleComment = (commentId) => {
-    setSelectedCommentIds((prev) => {
-      if (prev.includes(commentId)) {
-        return prev.filter((id) => id !== commentId);
-      }
-
-      return [...prev, commentId];
-    });
-  };
-
-  const handleDeleteComment = async (commentId) => {
-    if (actionLoading) return;
-
-    const target =
-      selectedComment?.commentId === commentId
-        ? selectedComment
-        : comments.find((comment) => comment.commentId === commentId);
-
-    const contentText = target?.content
-      ? `\n내용: ${target.content}`
-      : '';
-    const isConfirmed = window.confirm(
-      `댓글과 연결된 좋아요 및 신고 데이터가 함께 삭제됩니다. 부모 댓글인 경우 대댓글도 함께 삭제됩니다.\n\n댓글 ID: ${getCommentCode(
-        target || { commentId }
-      )}${contentText}\n\n정말 완전 삭제할까요?`
-    );
-
-    if (!isConfirmed) return;
-
-    setActionLoading(true);
-
-    try {
-      await deleteAdminComment(commentId);
-
-      setSelectedCommentIds((prev) =>
-        prev.filter((id) => id !== commentId)
-      );
-
-      if (selectedComment?.commentId === commentId) {
-        setSelectedComment(null);
-        setSourcePost(null);
-        setSelectedReportId(null);
-      }
-
-      await refreshOverview();
-      window.alert('댓글이 완전 삭제되었습니다.');
-    } catch (error) {
-      console.error('댓글 삭제 실패:', error);
-      window.alert(getErrorMessage(error, '댓글 삭제 중 오류가 발생했습니다.'));
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleDeleteSelectedComments = async () => {
-    if (actionLoading) return;
-
-    if (selectedCommentIds.length === 0) {
-      window.alert('삭제할 댓글을 선택해주세요.');
-      return;
-    }
-
-    const isConfirmed = window.confirm(
-      `선택한 댓글 ${selectedCommentIds.length}건을 완전 삭제할까요?\n\n댓글과 연결된 좋아요 및 신고 데이터가 함께 삭제되며, 부모 댓글인 경우 대댓글도 함께 삭제됩니다.`
-    );
-
-    if (!isConfirmed) return;
-
-    setActionLoading(true);
-
-    try {
-      await deleteAdminComments(selectedCommentIds);
-      setSelectedCommentIds([]);
-      await refreshOverview();
-      window.alert('선택한 댓글이 완전 삭제되었습니다.');
-    } catch (error) {
-      console.error('선택 댓글 삭제 실패:', error);
-      window.alert(
-        getErrorMessage(error, '선택 댓글 삭제 중 오류가 발생했습니다.')
-      );
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleProcessReport = async ({
-    commentId,
-    reportId,
-    resultStatus,
-    adminMemo,
-  }) => {
-    if (actionLoading) return;
-
-    const resultLabel = REPORT_RESULT_LABELS[resultStatus] || resultStatus;
-    const isConfirmed = window.confirm(
-      `신고 ${getReportCode({ reportId })}을(를) '${resultLabel}' 처리할까요?\n\n선택한 댓글 신고 내역 한 건만 처리됩니다.`
-    );
-
-    if (!isConfirmed) return;
-
-    setActionLoading(true);
-
-    try {
-      await processAdminCommentReport({
-        commentId,
-        reportId,
-        resultStatus,
-        adminMemo,
-      });
-
-      const detailResponse = await getAdminCommentDetail(commentId);
-      setSelectedComment(detailResponse.data);
-      setSelectedReportId(reportId);
-
-      await refreshOverview();
-
-      window.alert(
-        resultStatus === 'ACCEPTED'
-          ? '댓글 신고를 인정 처리했습니다.'
-          : '댓글 신고를 반려 처리했습니다.'
-      );
-    } catch (error) {
-      console.error('댓글 신고 처리 실패:', error);
-      window.alert(
-        getErrorMessage(error, '댓글 신고 처리 중 오류가 발생했습니다.')
-      );
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  if (selectedComment) {
-    return (
-      <CommentDetailView
-        comment={selectedComment}
-        post={sourcePost}
+      <PostDetailView
+        post={selectedPost}
         initialReportId={selectedReportId}
         onBack={handleBackToList}
-        onDelete={handleDeleteComment}
-        onProcessReport={handleProcessReport}
-        actionLoading={actionLoading}
+        onDelete={handleDeletePost}
+        onProcessReports={handleProcessReports}
       />
     );
   }
@@ -592,20 +577,17 @@ const CommentManagementPage = () => {
     <div className="space-y-6">
       <section>
         <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
-          댓글 관리
+          게시글 관리
         </h1>
         <p className="mt-2 text-sm font-medium text-gray-500">
-          댓글 원문과 연결 게시글을 확인하고, 접수된 댓글 신고는 관리자 메모와 함께 인정 또는 반려 처리합니다.
+          게시글 본문과 첨부 자료를 확인하고, 접수된 신고를 신고 내역 단위로 인정 또는 반려 처리합니다.
         </p>
       </section>
 
       {loadError && (
         <section className="flex flex-col gap-3 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <AlertTriangle
-              size={20}
-              className="mt-0.5 shrink-0 text-red-500"
-            />
+            <AlertTriangle size={20} className="mt-0.5 shrink-0 text-red-500" />
             <p className="text-sm font-bold text-red-600">{loadError}</p>
           </div>
 
@@ -622,29 +604,29 @@ const CommentManagementPage = () => {
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
-          icon={MessageCircle}
-          title="총 댓글"
+          icon={FileText}
+          title="전체 게시글"
           value={stats.total}
           unit="개"
-          description="게시판 전체 댓글과 대댓글"
+          description="게시판 전체 게시글"
           iconClass="bg-purple-50 text-[#6d3df2]"
           loading={summaryLoading}
         />
         <SummaryCard
           icon={CalendarDays}
-          title="오늘 등록"
+          title="오늘 작성"
           value={stats.today}
           unit="개"
-          description="오늘 새로 등록된 댓글"
+          description="오늘 새로 작성된 게시글"
           iconClass="bg-blue-50 text-blue-600"
           loading={summaryLoading}
         />
         <SummaryCard
           icon={ShieldAlert}
-          title="신고 댓글"
-          value={stats.reportedCommentCount}
+          title="신고 게시글"
+          value={stats.reportedPostCount}
           unit="개"
-          description="신고가 1회 이상 접수된 댓글"
+          description="신고가 1회 이상 접수된 게시글"
           iconClass="bg-red-50 text-red-500"
           loading={summaryLoading}
         />
@@ -652,7 +634,7 @@ const CommentManagementPage = () => {
           icon={ClipboardCheck}
           title="처리 대기 신고"
           value={stats.pendingReportCount}
-          unit="개"
+          unit="건"
           description="인정 또는 반려 처리 대기"
           iconClass="bg-yellow-50 text-yellow-600"
           loading={summaryLoading}
@@ -664,7 +646,7 @@ const CommentManagementPage = () => {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-black text-gray-900">
-                신고 접수 댓글
+                신고 접수 게시글
               </h2>
               <span className="inline-flex h-7 items-center rounded-full bg-red-50 px-3 text-xs font-black text-red-500">
                 {formatNumber(reportTotalCount)}건
@@ -674,22 +656,22 @@ const CommentManagementPage = () => {
               </span>
             </div>
             <p className="mt-1 text-xs font-bold text-gray-400">
-              처리 대기 중인 댓글 신고 단위로 상세 화면으로 이동합니다.
+              처리 대기 중인 게시글 신고 단위로 상세 화면으로 이동합니다.
             </p>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1050px] table-fixed text-left">
+          <table className="w-full table-fixed text-left">
             <colgroup>
+              <col className="w-[105px]" />
+              <col className="w-[110px]" />
+              <col className="w-[150px]" />
+              <col className="w-[260px]" />
               <col className="w-[120px]" />
-              <col className="w-[145px]" />
-              <col className="w-[145px]" />
-              <col className="w-[330px]" />
-              <col className="w-[130px]" />
-              <col className="w-[130px]" />
+              <col className="w-[120px]" />
               <col className="w-[95px]" />
-              <col className="w-[95px]" />
+              <col className="w-[85px]" />
             </colgroup>
 
             <thead>
@@ -697,7 +679,7 @@ const CommentManagementPage = () => {
                 <th className="px-4 py-4">접수 번호</th>
                 <th className="px-4 py-4">접수 일자</th>
                 <th className="px-4 py-4">신고 사유</th>
-                <th className="px-4 py-4">댓글 내용</th>
+                <th className="px-4 py-4">게시글 제목</th>
                 <th className="px-4 py-4">신고자</th>
                 <th className="px-4 py-4">작성자</th>
                 <th className="px-4 py-4">상태</th>
@@ -709,13 +691,24 @@ const CommentManagementPage = () => {
               {reportsLoading ? (
                 <LoadingTableRow
                   colSpan={8}
-                  text="처리 대기 댓글 신고를 불러오는 중입니다."
+                  text="처리 대기 게시글 신고를 불러오는 중입니다."
                 />
               ) : waitingReportRows.length > 0 ? (
                 waitingReportRows.map((row) => {
-                  const comment = row.comment || {};
-                  const report = row.report || {};
-                  const isOpening = openingCommentId === comment.commentId;
+                  const report = row?.report || row;
+                  const post = row?.post || row || {};
+                  const isOpening = openingPostId === (post.postId || report.postId);
+
+                  const categoryName =
+                    CATEGORY_LABELS[
+                      normalizeCategory(
+                        report.postCategory || post.postCategory || post.category
+                      )
+                    ] ||
+                    report.postCategory ||
+                    post.postCategory ||
+                    post.category ||
+                    '-';
 
                   return (
                     <tr
@@ -726,7 +719,7 @@ const CommentManagementPage = () => {
                         {getReportCode(report)}
                       </td>
                       <td className="px-4 py-4 text-center align-middle text-xs font-bold leading-5 text-gray-500">
-                        {report.createdAt || '-'}
+                        {formatShortDate(report.createdAt)}
                       </td>
                       <td className="px-4 py-4 text-center align-middle">
                         <span className="inline-flex max-w-full items-center justify-center rounded-full bg-red-50 px-3 py-1.5 text-xs font-black text-red-500">
@@ -739,26 +732,25 @@ const CommentManagementPage = () => {
                           disabled={isOpening}
                           onClick={() =>
                             handleOpenDetail(
-                              comment.commentId,
+                              post.postId || report.postId,
                               report.reportId
                             )
                           }
                           className="block w-full text-left disabled:cursor-wait"
                         >
                           <p className="line-clamp-1 break-keep text-sm font-black text-gray-800">
-                            {comment.content || '-'}
+                            {report.title || post.title || '-'}
                           </p>
                           <p className="mt-1 truncate text-xs font-semibold text-gray-400">
-                            {getCommentCode(comment)} · {getPostCode(comment)} ·{' '}
-                            {comment.postTitle || '-'}
+                            {post.postCode || getPostCode(post)} · {categoryName}
                           </p>
                         </button>
                       </td>
                       <td className="px-4 py-4 text-center align-middle font-bold text-gray-600">
-                        {report.reporterMemberId || '-'}
+                        {report.reporter || report.reporterMemberId || '-'}
                       </td>
                       <td className="px-4 py-4 text-center align-middle font-bold text-gray-600">
-                        {comment.memberId || '-'}
+                        {post.author || report.author || '-'}
                       </td>
                       <td className="px-4 py-4 text-center align-middle">
                         <StatusBadge
@@ -767,9 +759,7 @@ const CommentManagementPage = () => {
                             'bg-gray-100 text-gray-500'
                           }
                         >
-                          {REPORT_RESULT_LABELS[report.status] ||
-                            report.status ||
-                            '-'}
+                          {REPORT_RESULT_LABELS[report.status] || report.status || '-'}
                         </StatusBadge>
                       </td>
                       <td className="px-4 py-4 text-center align-middle">
@@ -778,18 +768,18 @@ const CommentManagementPage = () => {
                           disabled={isOpening}
                           onClick={() =>
                             handleOpenDetail(
-                              comment.commentId,
+                              post.postId || report.postId,
                               report.reportId
                             )
                           }
-                          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-xs font-black text-[#6d3df2] transition hover:border-[#6d3df2]/30 hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
+                          title="게시글 확인"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-[#6d3df2] transition hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
                         >
                           {isOpening ? (
-                            <Loader2 size={14} className="animate-spin" />
+                            <Loader2 size={15} className="animate-spin" />
                           ) : (
-                            <Eye size={14} />
+                            <Eye size={15} />
                           )}
-                          확인
                         </button>
                       </td>
                     </tr>
@@ -798,12 +788,9 @@ const CommentManagementPage = () => {
               ) : (
                 <tr>
                   <td colSpan={8} className="px-5 py-12 text-center">
-                    <CheckCircle2
-                      size={28}
-                      className="mx-auto text-emerald-500"
-                    />
+                    <CheckCircle2 size={28} className="mx-auto text-emerald-500" />
                     <p className="mt-3 text-sm font-black text-gray-700">
-                      처리 대기 중인 댓글 신고가 없습니다.
+                      처리 대기 중인 게시글 신고가 없습니다.
                     </p>
                     <p className="mt-1 text-xs font-bold text-gray-400">
                       신규 신고가 접수되면 이 영역에 표시됩니다.
@@ -828,9 +815,9 @@ const CommentManagementPage = () => {
       <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-black text-gray-900">전체 댓글 조회</h2>
+            <h2 className="text-lg font-black text-gray-900">전체 게시글 조회</h2>
             <p className="mt-1 text-xs font-bold text-gray-400">
-              게시글 카테고리와 댓글 유형을 선택한 뒤 댓글 내용, 작성자, ID를 검색합니다.
+              게시글 카테고리와 공개 상태를 선택한 뒤 제목, 작성자, ID를 검색합니다.
             </p>
           </div>
 
@@ -856,14 +843,10 @@ const CommentManagementPage = () => {
           />
 
           <FilterSelect
-            label="댓글 유형"
-            value={commentType}
-            onChange={handleChangeCommentType}
-            options={[
-              { value: 'all', label: '전체' },
-              { value: 'COMMENT', label: '댓글' },
-              { value: 'REPLY', label: '대댓글' },
-            ]}
+            label="공개 상태"
+            value={visibleStatus}
+            onChange={handleChangeVisibleStatus}
+            options={VISIBLE_STATUS_OPTIONS}
           />
 
           <FilterSelect
@@ -895,10 +878,10 @@ const CommentManagementPage = () => {
               <button
                 type="button"
                 onClick={handleSearch}
-                disabled={commentsLoading}
+                disabled={postsLoading}
                 className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#6d3df2] px-5 text-sm font-black text-white shadow-sm transition hover:bg-[#5b2ed8] disabled:cursor-wait disabled:bg-purple-300"
               >
-                {commentsLoading ? (
+                {postsLoading ? (
                   <Loader2 size={17} className="animate-spin" />
                 ) : (
                   <Search size={17} />
@@ -911,47 +894,47 @@ const CommentManagementPage = () => {
       </section>
 
       <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-5 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-black text-gray-900">댓글 목록</h2>
-              <span className="inline-flex h-7 items-center rounded-full bg-purple-50 px-3 text-xs font-black text-[#6d3df2]">
-                {formatNumber(commentTotalCount)}개
+              <h2 className="text-base font-black text-gray-900">게시글 목록</h2>
+              <span className="inline-flex h-6 items-center rounded-full bg-purple-50 px-2.5 text-[11px] font-black text-[#6d3df2]">
+                {formatNumber(postTotalCount)}개
               </span>
             </div>
-            <p className="mt-1 text-xs font-bold text-gray-400">
-              검색 조건에 맞는 댓글과 대댓글을 페이지 단위로 확인합니다.
+            <p className="mt-0.5 text-[11px] font-bold text-gray-400">
+              검색 조건에 맞는 게시글을 페이지 단위로 확인합니다.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={handleDeleteSelectedComments}
-            disabled={selectedCommentIds.length === 0 || actionLoading}
-            className={`inline-flex h-10 w-fit items-center gap-2 rounded-xl px-4 text-sm font-black transition ${
-              selectedCommentIds.length === 0 || actionLoading
+            onClick={handleDeleteSelectedPosts}
+            disabled={selectedPostIds.length === 0 || actionLoading}
+            className={`inline-flex h-8 w-fit items-center gap-1.5 rounded-lg px-3 text-xs font-black transition ${
+              selectedPostIds.length === 0 || actionLoading
                 ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
                 : 'border border-red-100 bg-red-50 text-red-500 hover:bg-red-100'
             }`}
           >
             {actionLoading ? (
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" />
             ) : (
-              <Trash2 size={16} />
+              <Trash2 size={14} />
             )}
             선택 삭제
-            {selectedCommentIds.length > 0 && ` ${selectedCommentIds.length}`}
+            {selectedPostIds.length > 0 && ` ${selectedPostIds.length}`}
           </button>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1180px] table-fixed text-left">
+          <table className="w-full table-fixed text-left">
             <colgroup>
               <col className="w-[52px]" />
               <col className="w-[120px]" />
-              <col className="w-[345px]" />
-              <col className="w-[265px]" />
+              <col className="w-[260px]" />
               <col className="w-[95px]" />
+              <col className="w-[105px]" />
               <col className="w-[125px]" />
               <col className="w-[145px]" />
               <col className="w-[75px]" />
@@ -960,155 +943,114 @@ const CommentManagementPage = () => {
             </colgroup>
 
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-xs font-black text-gray-500">
-                <th className="px-4 py-4 text-center">
-                  <input
-                    type="checkbox"
-                    checked={isAllChecked}
-                    onChange={handleToggleAll}
-                    disabled={commentsLoading || comments.length === 0}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                </th>
-                <th className="px-4 py-4 text-center">댓글 ID</th>
-                <th className="px-4 py-4">댓글 내용</th>
-                <th className="px-4 py-4">게시글 제목</th>
-                <th className="px-4 py-4 text-center">유형</th>
-                <th className="px-4 py-4 text-center">작성자</th>
-                <th className="px-4 py-4 text-center">작성일</th>
-                <th className="px-4 py-4 text-right">추천</th>
-                <th className="px-4 py-4 text-right">신고</th>
-                <th className="px-4 py-4 text-center">관리</th>
+              <tr className="border-b border-gray-100 bg-gray-50 text-[11px] font-black text-gray-500">
+                <th className="px-3 py-2.5 text-center"> </th>
+                <th className="px-3 py-2.5 text-center">게시글 ID</th>
+                <th className="px-3 py-2.5">제목</th>
+                <th className="px-3 py-2.5 text-center">카테고리</th>
+                <th className="px-3 py-2.5 text-center">공개상태</th>
+                <th className="px-3 py-2.5 text-center">작성자</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">작성일</th>
+                <th className="px-3 py-2.5 text-right">조회</th>
+                <th className="px-3 py-2.5 text-right">신고</th>
+                <th className="px-3 py-2.5 text-center">관리</th>
               </tr>
             </thead>
 
             <tbody>
-              {commentsLoading ? (
+              {postsLoading ? (
                 <LoadingTableRow
                   colSpan={10}
-                  text="댓글 목록을 불러오는 중입니다."
+                  text="게시글 목록을 불러오는 중입니다."
+                  compact
                 />
-              ) : comments.length > 0 ? (
-                comments.map((comment) => {
-                  const currentType = getCommentType(comment);
-                  const reportCount = getReportCount(comment);
-                  const pendingCount = getPendingReportCount(comment);
-                  const isChecked = selectedCommentIds.includes(
-                    comment.commentId
+              ) : posts.length > 0 ? (
+                posts.map((post) => {
+                  const postCategory = normalizeCategory(
+                    post.postCategory || post.category
                   );
-                  const isOpening = openingCommentId === comment.commentId;
+                  const reportCount = Number(post.reportCount || 0);
+                  const isChecked = selectedPostIds.includes(post.postId);
+                  const isOpening = openingPostId === post.postId;
 
                   return (
                     <tr
-                      key={comment.commentId}
-                      onClick={() => handleOpenDetail(comment.commentId)}
-                      className="cursor-pointer border-b border-gray-50 text-sm transition hover:bg-purple-50/40"
+                      key={post.postId}
+                      onClick={() => handleOpenDetail(post.postId)}
+                      className="h-10 cursor-pointer border-b border-gray-50 text-[13px] transition hover:bg-purple-50/40"
                     >
-                      <td className="px-4 py-4 text-center align-middle">
+                      <td className="px-3 py-1.5 text-center align-middle">
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onClick={(event) => event.stopPropagation()}
-                          onChange={() =>
-                            handleToggleComment(comment.commentId)
-                          }
+                          onChange={() => handleTogglePost(post.postId)}
                           className="h-4 w-4 rounded border-gray-300"
                         />
                       </td>
 
-                      <td className="px-4 py-4 text-center align-middle text-xs font-black text-gray-500">
-                        {getCommentCode(comment)}
+                      <td className="px-3 py-1.5 text-center align-middle text-xs font-black text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {getPostCode(post)}
                       </td>
 
-                      <td className="px-4 py-4 align-middle">
-                        <div className={comment.parentCommentId ? 'pl-4' : ''}>
-                          {comment.parentCommentId && (
-                            <span className="mb-1 flex items-center gap-1 text-xs font-black text-gray-300">
-                              <CornerDownRight size={13} /> 대댓글
-                            </span>
-                          )}
-                          <p className="line-clamp-2 break-keep text-sm font-black leading-5 text-gray-800">
-                            {comment.content}
-                          </p>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-4 align-middle">
-                        <p className="line-clamp-1 break-keep text-sm font-bold text-gray-700">
-                          {comment.postTitle || '-'}
-                        </p>
-                        <p className="mt-1 text-xs font-semibold text-gray-400">
-                          {getPostCode(comment)} ·{' '}
-                          {CATEGORY_LABELS[
-                            normalizeCategory(comment.postCategory)
-                          ] ||
-                            comment.postCategory ||
-                            '-'}
+                      <td className="px-3 py-1.5 align-middle">
+                        <p className="truncate text-[13px] font-black leading-4 text-gray-800">
+                          {post.title || '-'}
                         </p>
                       </td>
 
-                      <td className="px-4 py-4 text-center align-middle">
+                      <td className="px-3 py-1.5 text-center align-middle">
                         <StatusBadge
                           className={
-                            commentTypeClass[currentType] ||
-                            'bg-gray-100 text-gray-500'
+                            categoryClass[postCategory] || 'bg-gray-100 text-gray-500'
                           }
                         >
-                          {getCommentTypeLabel(comment)}
+                          {CATEGORY_LABELS[postCategory] || post.category || '-'}
                         </StatusBadge>
                       </td>
 
-                      <td className="px-4 py-4 text-center align-middle">
-                        <p className="truncate font-black text-gray-700">
-                          {comment.memberId || '-'}
+                      <td className="px-3 py-1.5 text-center align-middle">
+                        {getVisibleBadge(post.isVisible || post.is_visible)}
+                      </td>
+
+                      <td className="px-3 py-1.5 text-center align-middle">
+                        <p className="truncate text-[13px] font-black leading-4 text-gray-700">
+                          {post.author || '-'}
                         </p>
                       </td>
 
-                      <td className="px-4 py-4 text-center align-middle">
-                        <p className="text-xs font-bold leading-5 text-gray-600">
-                          {comment.createdAt || '-'}
+                      <td className="px-3 py-1.5 text-center align-middle whitespace-nowrap overflow-hidden text-ellipsis">
+                        <p className="whitespace-nowrap text-[11px] font-bold leading-4 text-gray-600">
+                          {formatShortDate(post.createdAt)}
                         </p>
                       </td>
 
-                      <td className="px-4 py-4 text-right align-middle font-bold text-gray-600">
-                        {formatNumber(comment.likeCount)}
+                      <td className="px-3 py-1.5 text-right align-middle font-bold text-gray-600">
+                        {formatNumber(post.views)}
                       </td>
 
-                      <td className="px-4 py-4 text-right align-middle">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <span
-                            className={
-                              reportCount > 0
-                                ? 'font-black text-red-500'
-                                : 'font-bold text-gray-300'
-                            }
-                          >
-                            {formatNumber(reportCount)}
-                          </span>
-                          {pendingCount > 0 && (
-                            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-50 px-1.5 text-[10px] font-black text-red-500">
-                              {pendingCount}
-                            </span>
-                          )}
-                        </div>
+                      <td className="px-3 py-1.5 text-right align-middle">
+                        <span className="font-black text-red-500">
+                          {formatNumber(reportCount)}
+                        </span>
                       </td>
 
-                      <td className="px-4 py-4 align-middle">
+                      <td className="px-3 py-1.5 align-middle">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
-                            title="댓글 보기"
+                            title="게시글 보기"
                             disabled={isOpening}
                             onClick={(event) => {
                               event.stopPropagation();
-                              handleOpenDetail(comment.commentId);
+                              handleOpenDetail(post.postId);
                             }}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-[#6d3df2] transition hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-[#6d3df2] transition hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
                           >
                             {isOpening ? (
-                              <Loader2 size={15} className="animate-spin" />
+                              <Loader2 size={14} className="animate-spin" />
                             ) : (
-                              <Eye size={15} />
+                              <Eye size={14} />
                             )}
                           </button>
 
@@ -1118,11 +1060,11 @@ const CommentManagementPage = () => {
                             disabled={actionLoading}
                             onClick={(event) => {
                               event.stopPropagation();
-                              handleDeleteComment(comment.commentId);
+                              handleDeletePost(post.postId);
                             }}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-white text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-gray-300"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-red-100 bg-white text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-gray-300"
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -1131,15 +1073,15 @@ const CommentManagementPage = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={10} className="px-5 py-16 text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50 text-gray-400">
-                      <MessageCircle size={24} />
+                  <td colSpan={10} className="px-5 py-10 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-gray-400">
+                      <FileText size={24} />
                     </div>
-                    <p className="mt-4 text-sm font-black text-gray-700">
-                      조회된 댓글이 없습니다.
+                    <p className="mt-3 text-sm font-black text-gray-700">
+                      조회된 게시글이 없습니다.
                     </p>
                     <p className="mt-1 text-sm font-semibold text-gray-400">
-                      검색어나 필터 조건을 다시 확인해주세요.
+                      검색어나 필터 조건을 다시 확인해 주세요.
                     </p>
                   </td>
                 </tr>
@@ -1148,12 +1090,13 @@ const CommentManagementPage = () => {
           </table>
         </div>
 
-        <div className="border-t border-gray-100 px-5 py-4">
+        <div className="border-t border-gray-100 px-4 py-2.5">
           <Pagination
-            page={commentPage}
-            totalPages={commentTotalPages}
-            onChange={handleCommentPageChange}
-            disabled={commentsLoading}
+            page={postPage}
+            totalPages={postTotalPages}
+            onChange={handlePostPageChange}
+            disabled={postsLoading}
+            compact
           />
         </div>
       </section>
@@ -1161,7 +1104,13 @@ const CommentManagementPage = () => {
   );
 };
 
-const Pagination = ({ page, totalPages, onChange, disabled = false }) => {
+const Pagination = ({
+  page,
+  totalPages,
+  onChange,
+  disabled = false,
+  compact = false,
+}) => {
   const visiblePages = useMemo(() => {
     const pageCount = Math.max(Number(totalPages || 1), 1);
     const currentPage = Math.min(Math.max(Number(page || 1), 1), pageCount);
@@ -1171,10 +1120,7 @@ const Pagination = ({ page, totalPages, onChange, disabled = false }) => {
       1,
       currentPage - Math.floor(maxVisible / 2)
     );
-    let endPage = Math.min(
-      pageCount,
-      startPage + maxVisible - 1
-    );
+    let endPage = Math.min(pageCount, startPage + maxVisible - 1);
 
     startPage = Math.max(1, endPage - maxVisible + 1);
 
@@ -1201,12 +1147,16 @@ const Pagination = ({ page, totalPages, onChange, disabled = false }) => {
   };
 
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div
+      className={`flex items-center justify-center ${compact ? 'gap-1.5' : 'gap-2'}`}
+    >
       <button
         type="button"
         onClick={handlePrev}
         disabled={disabled || safePage <= 1}
-        className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+        className={`flex items-center justify-center border transition ${
+          compact ? 'h-8 w-8 rounded-lg' : 'h-9 w-9 rounded-xl'
+        } ${
           disabled || safePage <= 1
             ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
             : 'border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
@@ -1221,7 +1171,11 @@ const Pagination = ({ page, totalPages, onChange, disabled = false }) => {
           type="button"
           disabled={disabled}
           onClick={() => onChange(pageNumber)}
-          className={`flex h-9 min-w-9 items-center justify-center rounded-xl px-3 text-sm font-black transition ${
+          className={`flex items-center justify-center font-black transition ${
+            compact
+              ? 'h-8 min-w-8 rounded-lg px-2.5 text-xs'
+              : 'h-9 min-w-9 rounded-xl px-3 text-sm'
+          } ${
             pageNumber === safePage
               ? 'bg-[#6d3df2] text-white shadow-sm'
               : disabled
@@ -1237,7 +1191,9 @@ const Pagination = ({ page, totalPages, onChange, disabled = false }) => {
         type="button"
         onClick={handleNext}
         disabled={disabled || safePage >= safeTotalPages}
-        className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+        className={`flex items-center justify-center border transition ${
+          compact ? 'h-8 w-8 rounded-lg' : 'h-9 w-9 rounded-xl'
+        } ${
           disabled || safePage >= safeTotalPages
             ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
             : 'border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
@@ -1318,15 +1274,21 @@ const StatusBadge = ({ children, className = '' }) => {
   );
 };
 
-const LoadingTableRow = ({ colSpan, text }) => {
+const LoadingTableRow = ({ colSpan, text, compact = false }) => {
   return (
     <tr>
-      <td colSpan={colSpan} className="px-5 py-14 text-center">
-        <Loader2 size={26} className="mx-auto animate-spin text-[#6d3df2]" />
-        <p className="mt-3 text-sm font-black text-gray-500">{text}</p>
+      <td
+        colSpan={colSpan}
+        className={`px-5 text-center ${compact ? 'py-8' : 'py-14'}`}
+      >
+        <Loader2
+          size={compact ? 22 : 26}
+          className="mx-auto animate-spin text-[#6d3df2]"
+        />
+        <p className="mt-3 text-sm font-black text-gray-600">{text}</p>
       </td>
     </tr>
   );
 };
 
-export default CommentManagementPage;
+export default PostManagementPage;
