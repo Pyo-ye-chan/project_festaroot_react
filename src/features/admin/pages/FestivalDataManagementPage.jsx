@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { getAdminFestivalList, updateFestivalVisibility, startAdminFestivalSync, getAdminFestivalSyncStatus } from '../../../api/adminApi';
 import FestivalReviewManagement from '../components/FestivalReviewManagement';
+import FestivalDetailModal from '../components/FestivalDetailModal';
 
 const FestivalDataManagementPage = () => {
   const [activeTab, setActiveTab] = useState('INFO'); // 'INFO' or 'REPORTS'
@@ -24,6 +25,13 @@ const FestivalDataManagementPage = () => {
   const [sortBy, setSortBy] = useState('DEFAULT'); // 'DEFAULT', 'VIEWS_DESC', 'LIKES_DESC', 'SAVES_DESC', 'REVIEWS_DESC', 'RATING_DESC'
   
   const [reviewSearchKeyword, setReviewSearchKeyword] = useState('');
+  const [selectedContentId, setSelectedContentId] = useState(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const handleRowClick = (contentId) => {
+    setSelectedContentId(contentId);
+    setIsDetailModalOpen(true);
+  };
 
   const handleGoToReviews = (contentId) => {
     setReviewSearchKeyword(String(contentId));
@@ -526,7 +534,11 @@ const FestivalDataManagementPage = () => {
                       const avgRating = festival.avg_rating ?? festival.rating_avg ?? festival.avgRating ?? 0.0;
 
                       return (
-                        <tr key={id} className="group hover:bg-gray-50/50 transition-colors">
+                        <tr 
+                          key={id} 
+                          onClick={() => handleRowClick(id)} 
+                          className="group hover:bg-gray-50/50 transition-colors cursor-pointer"
+                        >
                           <td className="px-8 py-6">
                             <div className="flex items-center gap-4">
                               <div className="h-14 w-14 rounded-2xl overflow-hidden bg-gray-100 shrink-0">
@@ -543,7 +555,7 @@ const FestivalDataManagementPage = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-6 text-center">
+                          <td className="px-6 py-6 text-center" onClick={(e) => e.stopPropagation()}>
                             <label className="relative inline-flex items-center cursor-pointer">
                               <input 
                                 type="checkbox" 
@@ -573,7 +585,10 @@ const FestivalDataManagementPage = () => {
                                 <Star size={12} fill="currentColor" />
                                 <span>{Number(avgRating).toFixed(2)}</span>
                                 <button 
-                                  onClick={() => handleGoToReviews(id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleGoToReviews(id);
+                                  }}
                                   className="text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded hover:bg-purple-100 transition ml-1 shrink-0 cursor-pointer border border-transparent"
                                 >
                                   후기 {reviewCount}건
@@ -673,6 +688,16 @@ const FestivalDataManagementPage = () => {
           onSearchKeywordChange={setReviewSearchKeyword}
         />
       )}
+
+      {/* 축제 상세보기 모달 */}
+      <FestivalDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedContentId(null);
+        }}
+        contentId={selectedContentId}
+      />
     </div>
   );
 };

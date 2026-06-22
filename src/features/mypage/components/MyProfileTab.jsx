@@ -448,7 +448,7 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[9px] font-black px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded uppercase">Viewed</span>
+                      <span className="text-[9px] font-black px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded uppercase">조회</span>
                       <p className="text-[11px] text-gray-400 font-bold">{formatDate(log.created_at)}</p>
                     </div>
                     <p className="font-bold text-gray-800 truncate group-hover:text-purple-600 transition-colors">
