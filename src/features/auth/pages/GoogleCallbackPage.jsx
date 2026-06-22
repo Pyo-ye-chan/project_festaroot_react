@@ -13,7 +13,7 @@ const GoogleCallbackPage = () => {
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
 
-    const API_BASE_URL = import.meta.env.VITE_API_URL;
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost';
     const parentOrigin = window.location.origin; // https://festaroute.site
 
     const sendMessageAndClose = (payload) => {
@@ -38,14 +38,6 @@ const GoogleCallbackPage = () => {
       sendMessageAndClose({
         type: 'GOOGLE_LOGIN_FAIL',
         message: '구글 인가코드가 없습니다.',
-      });
-      return;
-    }
-
-    if (!API_BASE_URL) {
-      sendMessageAndClose({
-        type: 'GOOGLE_LOGIN_FAIL',
-        message: 'API 주소가 설정되지 않았습니다.',
       });
       return;
     }
