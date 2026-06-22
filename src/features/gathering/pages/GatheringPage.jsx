@@ -26,7 +26,7 @@ const GatheringPage = () => {
   const [keyword, setKeyword] = useState('');
 
   // 페이지네이션 관련 상태
-  const [totalItems, setTotalItems] = useState(0); 
+  const [totalItems, setTotalItems] = useState(0);
   const ITEMS_PER_PAGE = 5;
 
   const [festivalRooms, setFestivalRooms] = useState([]);
@@ -37,7 +37,7 @@ const GatheringPage = () => {
   const loggedInUserId = user?.member_id || user?.id;
 
   // 비회원일 경우 '참여중인 모임' 탭을 배열에서 제외하여 렌더링 차단
-  const categories = loggedInUserId 
+  const categories = loggedInUserId
     ? ['전체 모임', '축제별 모임', '자유 모임', '참여중인 모임']
     : ['전체 모임', '축제별 모임', '자유 모임'];
 
@@ -60,31 +60,31 @@ const GatheringPage = () => {
             gatheringApi.festivalGatheringList(currentUserId, 1, 4),
             gatheringApi.freeGatheringList(currentUserId, 1, 4)
           ]);
-          
+
           const fList = festivalData.list || [];
           const gList = freeData.list || [];
-          
+
           setFestivalRooms(fList);
           setFreeGatherings(gList);
           setTotalItems(0); // 전체 모임 탭에서는 하단 네비게이션을 숨김
-        } 
+        }
 
         else if (activeTab === '축제별 모임') {
           const res = await gatheringApi.festivalGatheringList(currentUserId, currentPage, ITEMS_PER_PAGE, keyword);
-          
+
           const list = res.list || [];
-          const total = res.pageInfo?.totalCount || 0; 
-          
+          const total = res.pageInfo?.totalCount || 0;
+
           setFestivalRooms(list);
           setTotalItems(total);
-        } 
+        }
 
         else if (activeTab === '자유 모임') {
           const res = await gatheringApi.freeGatheringList(currentUserId, currentPage, ITEMS_PER_PAGE, keyword);
-          
+
           const list = res.list || [];
-          const total = res.pageInfo?.totalCount || 0; 
-          
+          const total = res.pageInfo?.totalCount || 0;
+
           setFreeGatherings(list);
           setTotalItems(total);
         }
@@ -103,10 +103,10 @@ const GatheringPage = () => {
       if (!loggedInUserId || activeTab !== '참여중인 모임') return;
       try {
         const res = await gatheringApi.getJoinedGatherings(loggedInUserId, currentPage, ITEMS_PER_PAGE, joinedFilter, keyword);
-        
+
         const list = res.list || [];
-        const total = res.pageInfo?.totalCount || 0; 
-        
+        const total = res.pageInfo?.totalCount || 0;
+
         setJoinedRooms(list);
         setTotalItems(total);
       } catch (error) {
@@ -162,6 +162,7 @@ const GatheringPage = () => {
                   activeTab={activeTab}
                   festivalRooms={festivalRooms}
                   onTabChange={handleTabChange}
+                  keyword={keyword}
                 />
               )}
 
@@ -171,10 +172,11 @@ const GatheringPage = () => {
                   activeTab={activeTab}
                   freeGatherings={freeGatherings}
                   onTabChange={handleTabChange}
+                  keyword={keyword}
                 />
               )}
 
-              {/* 참여중인 모임 섹션 (로그인했을 때만 보이도록 조건부 렌더링 보안 강화) */}
+              {/* 참여중인 모임 섹션 */}
               {loggedInUserId && activeTab === '참여중인 모임' && (
                 <JoinedGatheringSection
                   joinedFilter={joinedFilter}
