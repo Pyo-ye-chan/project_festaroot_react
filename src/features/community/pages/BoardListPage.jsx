@@ -35,7 +35,6 @@ const CATEGORY_NAMES = {
   notice: '공지사항',
 };
 
-// API가 영문 또는 한글 카테고리를 내려줘도 화면에는 한글만 표시합니다.
 const CATEGORY_LABELS = {
   all: '전체',
   free: '자유',
@@ -87,7 +86,6 @@ const SORT_OPTIONS = [
 const VALID_SORTS = new Set(SORT_OPTIONS.map(({ value }) => value));
 const VALID_SEARCH_TYPES = new Set(['title', 'content', 'author']);
 
-// FREE, Free, free처럼 영문 카테고리의 대소문자가 달라도 같은 값으로 처리합니다.
 const getCategoryLookupKey = (value) =>
   String(value ?? '')
     .normalize('NFKC')
@@ -142,7 +140,6 @@ const toFiniteNumber = (value) => {
   return Number.isFinite(parsedValue) ? parsedValue : 0;
 };
 
-// 실제 DB 카테고리가 FREE/REVIEW/TIP/NOTICE 형태여도 조회되도록 맞춥니다.
 const getApiCategory = (value) => {
   const normalizedValue = normalizeCategory(value, 'all');
 
@@ -151,7 +148,6 @@ const getApiCategory = (value) => {
     : normalizedValue.toUpperCase();
 };
 
-// 백엔드/Jackson 설정에 따라 snake_case 또는 camelCase로 내려오는 값을 통일합니다.
 const normalizePost = (post = {}) => ({
   ...post,
   post_id: post.post_id ?? post.postId ?? post.id,
@@ -183,7 +179,6 @@ const BoardListPage = () => {
 
   const isLoggedIn = Boolean(user || token);
 
-  // URL을 목록 상태의 기준으로 사용해 새로고침/뒤로가기/앞으로가기를 지원합니다.
   const currentPage = getPositivePage(
     searchParams.get('page') ?? searchParams.get('cpage')
   );
@@ -199,7 +194,6 @@ const BoardListPage = () => {
 
   const keyword = (searchParams.get('keyword') ?? '').trim();
 
-  // 입력 중인 검색어와 실제 API 검색어를 분리해 타이핑할 때마다 요청하지 않습니다.
   const [keywordInput, setKeywordInput] = useState(keyword);
   const [posts, setPosts] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -221,7 +215,6 @@ const BoardListPage = () => {
 
     const nextParams = new URLSearchParams(searchParams);
 
-    // 이전에 사용하던 별칭이 남아 있지 않도록 URL을 한 가지 형식으로 정리합니다.
     nextParams.delete('cpage');
     nextParams.delete('sort');
 
@@ -254,6 +247,18 @@ const BoardListPage = () => {
     setSearchParams(nextParams, options);
   };
 
+  // 메인 화면 검색 등 외부(state)에서 넘어온 검색 키워드 동기화 로직
+  useEffect(() => {
+    const stateKeyword = location.state?.keyword;
+    if (stateKeyword && stateKeyword !== keyword) {
+      updateListParams({
+        page: 1,
+        keyword: stateKeyword,
+        searchType: 'title',
+      });
+    }
+  }, [location.state, keyword]);
+
   useEffect(() => {
     let ignore = false;
 
@@ -272,7 +277,6 @@ const BoardListPage = () => {
 
         if (ignore) return;
 
-        // Axios 응답과 data를 직접 반환하는 인터셉터 구성을 모두 지원합니다.
         const payload = result?.data ?? result ?? {};
         const nextPosts = Array.isArray(payload.list)
           ? payload.list
@@ -293,10 +297,8 @@ const BoardListPage = () => {
 
         setTotalCount(nextTotalCount);
 
-        // 주소창에 존재하지 않는 페이지가 입력된 경우 마지막 페이지로 보정합니다.
         if (currentPage > nextTotalPages) {
           const nextParams = new URLSearchParams(searchParams);
-
           nextParams.delete('cpage');
 
           if (nextTotalPages > 1) {
@@ -327,7 +329,6 @@ const BoardListPage = () => {
 
     loadPosts();
 
-    // 정렬/페이지를 빠르게 바꿨을 때 이전 요청이 최신 결과를 덮어쓰지 않게 합니다.
     return () => {
       ignore = true;
     };
@@ -367,8 +368,6 @@ const BoardListPage = () => {
 
   const handleSortChange = (nextSortBy) => {
     if (nextSortBy === sortBy) return;
-
-    // 페이지 초기화와 정렬 변경을 한 번에 적용해 중복 API 요청을 막습니다.
     updateListParams({ page: 1, sortBy: nextSortBy });
   };
 
@@ -378,24 +377,20 @@ const BoardListPage = () => {
 
   const handlePageChange = (nextPage) => {
     const safePage = Math.min(Math.max(nextPage, 1), totalPages);
-
     if (safePage === currentPage) return;
-
     updateListParams({ page: safePage });
   };
 
   const getCategoryLink = (categoryId) => {
     const nextParams = new URLSearchParams();
 
-    // 카테고리 이동 시 페이지는 1로 초기화하고 나머지 조회 조건은 유지합니다.
     if (sortBy !== 'latest') nextParams.set('sortBy', sortBy);
     if (searchType !== 'title') nextParams.set('searchType', searchType);
     if (keyword) nextParams.set('keyword', keyword);
 
     const queryString = nextParams.toString();
 
-    return `/community/board/${categoryId}${queryString ? `?${queryString}` : ''
-      }`;
+    return `/community/board/${categoryId}${queryString ? `?${queryString}` : ''}`;
   };
 
   const listLocation = `${location.pathname}${location.search}`;
@@ -459,10 +454,11 @@ const BoardListPage = () => {
                   key={board.id}
                   to={getCategoryLink(board.id)}
                   aria-current={activeCategory === board.id ? 'page' : undefined}
-                  className={`px-4 py-2.5 rounded-full text-sm font-black transition-all whitespace-nowrap border ${activeCategory === board.id
-                    ? 'bg-[var(--festival-yellow)] text-[var(--dark-gray)] border-[var(--festival-yellow)]'
-                    : 'bg-white text-gray-500 border-gray-100 hover:text-[var(--festival-purple)] hover:border-purple-100'
-                    }`}
+                  className={`px-4 py-2.5 rounded-full text-sm font-black transition-all whitespace-nowrap border ${
+                    activeCategory === board.id
+                      ? 'bg-[var(--festival-yellow)] text-[var(--dark-gray)] border-[var(--festival-yellow)]'
+                      : 'bg-white text-gray-500 border-gray-100 hover:text-[var(--festival-purple)] hover:border-purple-100'
+                  }`}
                 >
                   {board.label}
                 </Link>
@@ -516,10 +512,11 @@ const BoardListPage = () => {
                       type="button"
                       onClick={() => handleSortChange(sort.value)}
                       aria-pressed={sortBy === sort.value}
-                      className={`h-12 px-5 rounded-2xl text-sm font-black whitespace-nowrap transition-all ${sortBy === sort.value
-                        ? 'bg-[var(--festival-purple)] text-white'
-                        : 'bg-gray-50 text-gray-500 hover:bg-purple-50 hover:text-[var(--festival-purple)]'
-                        }`}
+                      className={`h-12 px-5 rounded-2xl text-sm font-black whitespace-nowrap transition-all ${
+                        sortBy === sort.value
+                          ? 'bg-[var(--festival-purple)] text-white'
+                          : 'bg-gray-50 text-gray-500 hover:bg-purple-50 hover:text-[var(--festival-purple)]'
+                      }`}
                     >
                       {sort.label}
                     </button>
@@ -651,10 +648,11 @@ const BoardListPage = () => {
                     onClick={() => handlePageChange(page)}
                     disabled={isLoading}
                     aria-current={page === currentPage ? 'page' : undefined}
-                    className={`w-10 h-10 rounded-xl text-xs font-black transition-all disabled:cursor-not-allowed disabled:opacity-60 ${page === currentPage
-                      ? 'bg-[var(--festival-purple)] text-white'
-                      : 'bg-gray-50 border border-gray-100 text-gray-400 hover:text-[var(--festival-purple)] hover:bg-purple-50'
-                      }`}
+                    className={`w-10 h-10 rounded-xl text-xs font-black transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
+                      page === currentPage
+                        ? 'bg-[var(--festival-purple)] text-white'
+                        : 'bg-gray-50 border border-gray-100 text-gray-400 hover:text-[var(--festival-purple)] hover:bg-purple-50'
+                    }`}
                   >
                     {page}
                   </button>

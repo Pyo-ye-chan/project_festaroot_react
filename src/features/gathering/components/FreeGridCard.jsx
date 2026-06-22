@@ -8,7 +8,7 @@ const FreeGridCard = ({ item }) => { // 전체 자유 모임 목록 4개
   const { user } = useAuthStore();
   const loggedInUserId = user?.member_id || user?.id;
 
-  // 🌟 데이터 필드 추출 (대문자/소문자 대응)
+  // 데이터 필드 추출 (대문자/소문자 대응)
   const currentCount = item.current_count || item.CURRENT_COUNT || 0;
   const maxCapacity = item.max_capacity || item.MAX_CAPACITY || 5;
   const isFull = currentCount >= maxCapacity;

@@ -46,7 +46,7 @@ import MemberManagementPage from './features/admin/pages/MemberManagementPage';
 import FestivalDataManagementPage from './features/admin/pages/FestivalDataManagementPage';
 import PostManagementPage from './features/admin/pages/PostManagementPage';
 import CommentManagementPage from './features/admin/pages/CommentManagementPage';
-import GatheringManagementPage from './features/admin/pages/GatheringManagementPage';
+// import GatheringManagementPage from './features/admin/pages/GatheringManagementPage';
 import NoticeManagementPage from './features/admin/pages/NoticeManagementPage';
 import InquiryManagementPage from './features/admin/pages/InquiryManagement/pages/InquiryManagementPage';
 
@@ -204,7 +204,7 @@ function App() {
             <Route path="festivals" element={<FestivalDataManagementPage />} />
             <Route path="posts" element={<PostManagementPage />} />
             <Route path="comments" element={<CommentManagementPage />} />
-            <Route path="gatherings" element={<GatheringManagementPage />} />
+            {/* <Route path="gatherings" element={<GatheringManagementPage />} /> */}
             <Route path="notices" element={<NoticeManagementPage />} />
             <Route path="inquiries" element={<InquiryManagementPage />} />
           </Route>

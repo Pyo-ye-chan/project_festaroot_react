@@ -6,23 +6,44 @@ import NotificationDropdown from './notifications/NotificationDropdown';
 import { getUnreadNotifications } from '../api/notificationApi';
 import { DEFAULT_IMAGES } from '../constants/DefaultImages';
 import { getMemberProfile } from '../api/memberApi';
+import useRegionStore from '../store/useRegionStore';
+import WeatherApi from '../api/weatherApi'; // 날씨 API 임포트
 
 const Header = () => {
-  const [region, setRegion] = useState('서울');
+  const { currentRegion: region, setCurrentRegion: setRegion } = useRegionStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { isLoggedIn, logout, user } = useAuthStore();
   const navigate = useNavigate();
   const [isWeatherDropdownOpen, setIsWeatherDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
-
-  // 2. 헤더에서 관리할 프로필 이미지 URL 상태 추가
   const [profileImageUrl, setProfileImageUrl] = useState(null);
+
+  const [headerWeather, setHeaderWeather] = useState({ icon: '☀️', temp: 24 });
 
   const dropdownRef = useRef(null);
   const notificationRef = useRef(null);
 
-  // 시간 포맷팅 함수
+  // 헤더 상단 미니 날씨 가져오기 Effect
+  useEffect(() => {
+    const fetchHeaderWeather = async () => {
+      try {
+        if (region) {
+          const data = await WeatherApi.todayWeather(region);
+          if (data) {
+            setHeaderWeather({
+              icon: data.icon || '☀️',
+              temp: data.temp ?? 24
+            });
+          }
+        }
+      } catch (error) {
+        console.error("헤더 날씨 수신 실패:", error);
+      }
+    };
+    fetchHeaderWeather();
+  }, [region]); // 전역 지역(region)이 변경될 때마다 헤더 날씨도 실시간 동기화 호출
+
   const formatTime = (dateString) => {
     if (!dateString) return '방금 전';
     const now = new Date();
@@ -39,12 +60,10 @@ const Header = () => {
     return past.toLocaleDateString();
   };
 
-  // 알림 데이터 가져오기
   const fetchNotifications = async () => {
     if (!isLoggedIn) return;
     try {
       const response = await getUnreadNotifications();
-      // 백엔드 DTO 필드에 맞춰 매핑
       const mappedData = response.data.map(n => {
         const activityMap = {
           ACHIEVEMENT: { label: '업적 달성', icon: '🏆', color: 'bg-orange-50 text-orange-600' },
@@ -57,7 +76,6 @@ const Header = () => {
 
         const info = activityMap[n.noti_type] || { label: '알림', icon: '🔔', color: 'bg-gray-50 text-gray-600' };
 
-        // content에서 경험치 추출 시도 (예: "POST(20)")
         let exp = null;
         const expMatch = n.content ? n.content.match(/\((\d+)\)/) : null;
         if (expMatch) exp = expMatch[1];
@@ -89,7 +107,6 @@ const Header = () => {
   }, [isLoggedIn]);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
-
   const primaryPurple = '#6B46FE';
   const regions = [
     '서울', '경기', '인천', '강원', '충북', '충남', '대전', '세종',
@@ -107,26 +124,20 @@ const Header = () => {
 
   const currentUserId = user?.member_id || user?.id;
 
-  // 3. 로그인 상태일 때 백엔드로부터 최신 프로필 정보(이미지) 로드
   useEffect(() => {
     const fetchHeaderProfile = async () => {
       if (isLoggedIn && currentUserId) {
         try {
           const resp = await getMemberProfile(currentUserId);
-
-          const imgUrl = resp.data?.member?.profile_image_url ||
-            resp.data?.profile_image_url || // 기존 예외 대비 유지
-            resp.data?.data?.profile_image_url;
+          const imgUrl = resp.data?.member?.profile_image_url || resp.data?.profile_image_url || resp.data?.data?.profile_image_url;
           setProfileImageUrl(imgUrl);
         } catch (error) {
           console.error('헤더 프로필 이미지 로드 실패:', error);
         }
       } else {
-        // 로그아웃 상태면 이미지 상태 초기화
         setProfileImageUrl(null);
       }
     };
-
     fetchHeaderProfile();
   }, [isLoggedIn, user, currentUserId]);
 
@@ -139,14 +150,11 @@ const Header = () => {
     }
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Weather dropdown
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsWeatherDropdownOpen(false);
       }
-      // Notification dropdown
       if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setIsNotificationOpen(false);
       }
@@ -157,37 +165,25 @@ const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200 font-sans">
-      {/* Top Row: Logo, Notification, Profile */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 sm:h-20">
-          {/* Logo */}
           <Link to="/" className="flex items-center gap-2 cursor-pointer group">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105" style={{ backgroundColor: primaryPurple }}>
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-            </div>
+            <svg
+              className="w-9 h-9 sm:w-10 sm:h-10 transition-transform group-hover:scale-105 select-none"
+              viewBox="0 0 32 32"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="16" cy="16" r="16" fill="#f3eeff" />
+              <path d="M16,3 C11,3 7,7 7,12 C7,18 16,29 16,29 C16,29 25,18 25,12 C25,7 21,3 16,3 Z" fill="#6d3df2" />
+              <path d="M16,7 L17.5,10.5 L21,12 L17.5,13.5 L16,17 L14.5,13.5 L11,12 L14.5,10.5 Z" fill="#ffd000" />
+              <circle cx="16" cy="12" r="1.5" fill="#ffffff" />
+            </svg>
             <span className="text-xl sm:text-2xl font-black tracking-tight" style={{ color: primaryPurple }}>축제로</span>
           </Link>
 
-          {/* User Section (Right) */}
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Notification */}
             <div className="relative" ref={notificationRef}>
-              {/* <button
-                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                className={`p-2 rounded-full transition-all relative ${isNotificationOpen ? 'bg-purple-50 text-purple-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
-              >
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                {unreadCount > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full border-2 border-white bg-rose-500"></span>
-                )}
-              </button> */}
-
-              {/* Notification Dropdown Component */}
               <NotificationDropdown
                 isOpen={isNotificationOpen}
                 onClose={() => setIsNotificationOpen(false)}
@@ -195,7 +191,6 @@ const Header = () => {
               />
             </div>
 
-            {/* Profile/Login Button with Hover Effect */}
             <button
               onClick={handleLoginLogout}
               className="group flex items-center gap-0 hover:gap-2 p-1 bg-white border border-gray-200 rounded-full hover:shadow-md transition-all duration-300 overflow-hidden"
@@ -203,7 +198,6 @@ const Header = () => {
             >
               <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
                 {isLoggedIn ? (
-                  // 4. API로 받아온 profileImageUrl 적용 (없으면 기본 이미지 지정)
                   <img
                     src={profileImageUrl || DEFAULT_IMAGES.PROFILE}
                     alt="Profile"
@@ -222,7 +216,6 @@ const Header = () => {
               </span>
             </button>
 
-            {/* Mobile Menu Toggle */}
             <button
               className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -239,7 +232,6 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Bottom Row: Navigation & Weather (Desktop) */}
       <nav className="hidden md:block border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-8 flex justify-between items-center">
           <ul className="flex gap-10">
@@ -264,8 +256,8 @@ const Header = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
               </svg>
               <div className="flex items-center gap-1 text-blue-500">
-                <span className="text-lg">☀️</span>
-                <span className="text-sm font-black">24°C</span>
+                <span className="text-lg">{headerWeather.icon}</span>
+                <span className="text-sm font-black">{headerWeather.temp}°C</span>
               </div>
             </div>
 
@@ -290,7 +282,6 @@ const Header = () => {
         </div>
       </nav>
 
-      {/* Mobile Menu (Drawer style) */}
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 shadow-xl py-6 px-4 space-y-6 animate-in slide-in-from-top duration-300">
           <ul className="grid grid-cols-2 gap-3">
@@ -321,8 +312,8 @@ const Header = () => {
                   ))}
                 </select>
                 <div className="flex items-center gap-1 text-blue-500 font-black">
-                  <span>☀️</span>
-                  <span>24°</span>
+                  <span>{headerWeather.icon}</span>
+                  <span>{headerWeather.temp}°</span>
                 </div>
               </div>
             </div>

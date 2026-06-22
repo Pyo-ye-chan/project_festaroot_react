@@ -1,63 +1,112 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Users,
   TrendingUp,
   ChevronRight,
   Search,
-  Star,
-  Clock,
-  ThumbsUp,
-  Eye,
   MapPin,
   Calendar
 } from 'lucide-react';
 import CommunitySidebar from '../components/CommunitySidebar';
+import { getPopularPosts } from '../../../api/boardApi';
+import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
+import gatheringApi from '../../../api/gatheringApi';
 
 const CommunityMainPage = () => {
-  // Mock Data
-  const popularPosts = [
-    { id: 1, title: '양평 딸기축제 다녀왔어요! 🍓 너무 재밌네요', author: '축제요정', views: '1.2k', likes: 45, category: '후기', time: '1시간 전' },
-    { id: 2, title: '서울 밤거리 페스티벌 주차 꿀팁 공유합니다', author: '베스트드라이버', views: '2.5k', likes: 120, category: '팁', time: '3시간 전' },
-    { id: 3, title: '강릉 커피축제 웨이팅 실시간 현황', author: '커피러버', views: '980', likes: 32, category: '정보', time: '5시간 전' },
-  ];
+  const navigate = useNavigate();
 
-  const gatherings = [
-    { id: 1, title: '자라섬 재즈 페스티벌 피크닉 메이트', date: '06.15', location: '가평', participants: 4, maxParticipants: 6, image: 'https://picsum.photos/seed/moim1/100/100' },
-    { id: 2, title: '부산 불꽃축제 사진 동호회 출사', date: '11.05', location: '부산', participants: 10, maxParticipants: 12, image: 'https://picsum.photos/seed/moim2/100/100' },
-  ];
+  const [popularPosts, setPopularPosts] = useState([]);
+  const [gatherings, setGatherings] = useState([]);
+  const [isPostsLoading, setIsPostsLoading] = useState(true);
+  const [isGatheringsLoading, setIsGatheringsLoading] = useState(true);
+  
+  const [searchKeyword, setSearchKeyword] = useState('');
+
+  useEffect(() => {
+    const fetchHomeData = async () => {
+      // 1. 실시간 인기글 로딩
+      try {
+        setIsPostsLoading(true);
+        const postRes = await getPopularPosts();
+        
+        // 데이터 구조가 배열인지 객체인지 안전하게 검사하는 방어 로직
+        let postsArray = [];
+        if (postRes) {
+          if (Array.isArray(postRes)) {
+            postsArray = postRes;
+          } else if (Array.isArray(postRes.data)) {
+            postsArray = postRes.data;
+          } else if (postRes.data && Array.isArray(postRes.data.list)) {
+            postsArray = postRes.data.list;
+          } else if (Array.isArray(postRes.list)) {
+            postsArray = postRes.list;
+          }
+        }
+        
+        setPopularPosts(postsArray);
+      } catch (error) {
+        console.error("실시간 인기글 로딩 실패:", error);
+        setPopularPosts([]);
+      } finally {
+        setIsPostsLoading(false);
+      }
+
+      // 2. 인기 모임 로딩
+      try {
+        setIsGatheringsLoading(true);
+        const gatheringData = await gatheringApi.getPopularGatherings();
+        setGatherings(gatheringData || []);
+      } catch (error) {
+        console.error("인기 모임 로딩 실패:", error);
+        setGatherings([]);
+      } finally {
+        setIsGatheringsLoading(false);
+      }
+    };
+
+    fetchHomeData();
+  }, []);
 
   const getCategoryClasses = (category) => {
     switch (category) {
-      case '후기':
-        return 'bg-[var(--festival-yellow)] text-gray-800';
-      case '팁':
-        return 'bg-[var(--festival-purple-soft)] text-white';
-      case '정보':
-        return 'bg-gray-300 text-gray-800';
-      case '자유': // Assuming '자유' might appear
-        return 'bg-[var(--festival-purple)] text-white';
-      case '공지사항': // Assuming '공지사항' might appear
-        return 'bg-red-400 text-white';
-      default:
-        return 'bg-gray-200 text-gray-700';
+      case '후기': return 'bg-[var(--festival-yellow)] text-gray-800';
+      case '팁': return 'bg-[var(--festival-purple-soft)] text-white';
+      case '정보': return 'bg-gray-300 text-gray-800';
+      case '자유': return 'bg-[var(--festival-purple)] text-white';
+      case '공지사항': return 'bg-red-400 text-white';
+      default: return 'bg-gray-200 text-gray-700';
+    }
+  };
+
+  const formatMoimDate = (dateStr) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter' && searchKeyword.trim()) {
+      navigate('/community/board/all', { 
+        state: { keyword: searchKeyword.trim() } 
+      });
     }
   };
 
   return (
     <div className="min-h-screen bg-[var(--warm-white)] font-['Pretendard'] pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-
-        {/* Main Grid Layout - Sidebar on Left */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-          {/* Left Sidebar - Reusable Community Navigation (3 cols) */}
-          
+          {/* Left Sidebar */}
           <aside className="lg:col-span-3">
             <CommunitySidebar />
           </aside>
 
-          {/* Main Content (9 cols) */}
+          {/* Main Content */}
           <main className="lg:col-span-9 space-y-8">
             {/* Festival Ad Banner */}
             <section className="relative bg-[var(--festival-purple)] text-white rounded-[2.5rem] p-8 overflow-hidden shadow-lg border border-gray-100">
@@ -72,7 +121,7 @@ const CommunityMainPage = () => {
                     다양한 축제 정보와 특별한 경험이 여러분을 기다립니다.
                   </p>
                   <Link
-                    to="/festival-map" // Example link to festival map
+                    to="/search"
                     className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-bold rounded-full shadow-sm text-[var(--festival-purple)] bg-[var(--festival-yellow)] hover:bg-yellow-400 transition-colors"
                   >
                     축제 찾아보기
@@ -80,23 +129,22 @@ const CommunityMainPage = () => {
                   </Link>
                 </div>
                 <div className="md:w-1/3 flex justify-center">
-                  {/* Placeholder for an image or illustration */}
                   <img src="https://picsum.photos/seed/festivalad/300/200" alt="Festival Ad" className="rounded-xl shadow-lg" />
                 </div>
               </div>
-              {/* Background abstract shapes (optional, for visual flair) */}
-              <div className="absolute -top-10 -left-10 w-48 h-48 bg-white/10 rounded-full mix-blend-overlay blur-xl"></div>
-              <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-[var(--festival-yellow)]/10 rounded-full mix-blend-overlay blur-xl"></div>
             </section>
 
-            {/* Search Bar Placeholder */}
+            {/* Search Bar */}
             <div className="relative group">
               <input
                 type="text"
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 placeholder="궁금한 축제 소식을 검색해보세요!"
-                className="w-full bg-white border border-gray-100 rounded-[2rem] py-4 pl-14 pr-6 shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--festival-purple)]/20 focus:border-[var(--festival-purple)] transition-all"
+                className="w-full bg-white border border-gray-100 rounded-[2rem] py-4 pl-14 pr-6 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 transition-all font-bold text-gray-700"
               />
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[var(--festival-purple)] transition-colors w-5 h-5" />
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-purple-600 transition-colors w-5 h-5" />
             </div>
 
             {/* Popular Posts Section */}
@@ -109,32 +157,38 @@ const CommunityMainPage = () => {
                 <Link to="/community/board/all" className="text-sm font-bold text-gray-400 hover:text-[var(--festival-purple)]">전체보기</Link>
               </div>
               <div className="space-y-4">
-                {popularPosts.map((post, idx) => (
-                  <Link
-                    to={`/community/post/${post.id}`}
-                    key={post.id}
-                    className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group border border-transparent hover:border-[var(--festival-purple-soft)]"
-                  >
-                    <span className={`text-xl font-black ${idx === 0 ? 'text-[var(--festival-purple)]' : 'text-gray-300'}`}>
-                      {idx + 1}
-                    </span>
-                    <div className="flex-grow">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${getCategoryClasses(post.category)}`}>
-                          {post.category}
-                        </span>
-                        <span className="text-xs font-bold text-gray-400">{post.author}</span>
+                {isPostsLoading ? (
+                  <div className="text-center py-10 font-bold text-gray-400">인기 게시글 집계 중...</div>
+                ) : popularPosts.length === 0 ? (
+                  <div className="text-center py-10 font-bold text-gray-400">현재 집계된 인기 게시글이 없습니다.</div>
+                ) : (
+                  popularPosts.slice(0, 3).map((post, idx) => (
+                    <Link
+                      to={`/community/post/${post.post_id || post.id}`}
+                      key={post.post_id || post.id}
+                      className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group border border-transparent hover:border-[var(--festival-purple-soft)]"
+                    >
+                      <span className={`text-xl font-black ${idx === 0 ? 'text-[var(--festival-purple)]' : 'text-gray-300'}`}>
+                        {idx + 1}
+                      </span>
+                      <div className="flex-grow">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${getCategoryClasses(post.category || '자유')}`}>
+                            {post.category || '자유'}
+                          </span>
+                          <span className="text-xs font-bold text-gray-400">{post.nickname || post.author || '익명'}</span>
+                        </div>
+                        <h4 className="font-bold text-gray-800 group-hover:text-[var(--festival-purple)] transition-colors truncate">
+                          {post.title}
+                        </h4>
                       </div>
-                      <h4 className="font-bold text-gray-800 group-hover:text-[var(--festival-purple)] transition-colors truncate">
-                        {post.title}
-                      </h4>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs font-bold text-gray-400">
-                      <span className="flex items-center gap-1">👁️ {post.views}</span>
-                      <span className="flex items-center gap-1 text-rose-500">❤️ {post.likes}</span>
-                    </div>
-                  </Link>
-                ))}
+                      <div className="flex items-center gap-3 text-xs font-bold text-gray-400">
+                        <span className="flex items-center gap-1">👁️ {Number(post.view_count || post.views || 0).toLocaleString()}</span>
+                        <span className="flex items-center gap-1 text-rose-500">❤️ {Number(post.like_count || post.likes || 0).toLocaleString()}</span>
+                      </div>
+                    </Link>
+                  ))
+                )}
               </div>
             </section>
 
@@ -145,45 +199,74 @@ const CommunityMainPage = () => {
                   <Users className="w-6 h-6 text-[var(--festival-purple)]" />
                   이번 주 인기 모임
                 </h3>
-                <button className="text-sm font-bold text-gray-400 hover:text-[var(--festival-purple)]">더보기</button>
+                <button onClick={() => navigate('/community/gathering')} className="text-sm font-bold text-gray-400 hover:text-[var(--festival-purple)]">더보기</button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {gatherings.map((moim) => (
-                  <div key={moim.id} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="bg-[var(--festival-purple-soft)] p-3 rounded-2xl group-hover:bg-[var(--festival-purple)] transition-colors duration-500">
-                        <Calendar className="w-6 h-6 text-[var(--festival-purple)] group-hover:text-white" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {isGatheringsLoading ? (
+                  <div className="col-span-2 text-center py-10 font-bold text-gray-400">추천 모임을 탐색 중입니다...</div>
+                ) : gatherings.length === 0 ? (
+                  <div className="col-span-2 text-center py-10 font-bold text-gray-400">이번 주 활성화된 인기 모임이 존재하지 않습니다.</div>
+                ) : (
+                  gatherings.map((moim) => (
+                    <div key={moim.roomId} className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between overflow-hidden">
+                      <div>
+                        <div className="relative w-full h-48 bg-gray-50 overflow-hidden border-b border-gray-50">
+                          <img
+                            src={moim.roomImage || DEFAULT_IMAGES.ROOM_COVER}
+                            alt="모임 커버"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = DEFAULT_IMAGES.ROOM_COVER;
+                            }}
+                          />
+                          
+                          <span className={`absolute top-4 left-4 text-[10px] font-black px-3 py-1 rounded-full shadow-md backdrop-blur-sm ${
+                            moim.roomType?.toUpperCase() === 'FESTIVAL' 
+                              ? 'bg-purple-100/90 text-[var(--festival-purple)] border border-purple-200' 
+                              : 'bg-amber-100/90 text-amber-700 border border-amber-200'
+                          }`}>
+                            {moim.roomType?.toUpperCase() === 'FESTIVAL' ? '축제 모임' : '자유 모임'}
+                          </span>
+                        </div>
+                        
+                        <div className="p-6">
+                          <h4 className="font-black text-xl text-gray-900 mb-3 group-hover:text-[var(--festival-purple)] transition-colors line-clamp-1">
+                            {moim.roomTitle}
+                          </h4>
+                          <div className="space-y-1.5 mb-2">
+                            <p className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+                              <MapPin className="w-3.5 h-3.5" /> {moim.freeLocation || '온라인/미정'}
+                            </p>
+                            <p className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5" /> 
+                              {moim.roomType?.toUpperCase() === 'FESTIVAL' && moim.endDate
+                                ? `${formatMoimDate(moim.freeDate)} ~ ${formatMoimDate(moim.endDate)}`
+                                : formatMoimDate(moim.freeDate)
+                              }
+                            </p>
+                            <p className="text-xs font-bold text-gray-500 flex items-center gap-1.5 pt-1">
+                              <Users className="w-3.5 h-3.5" /> 인원수: <span className="text-[var(--festival-purple)] font-black">{moim.participants}</span> / {moim.maxCapacity}명
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-black text-white px-3 py-1 bg-[var(--festival-purple)] rounded-full uppercase tracking-tighter">
-                        Recruiting
-                      </span>
+
+                      <div className="px-6 pb-6">
+                        <button
+                          onClick={() => navigate(`/community/gathering/${moim.roomId}`)}
+                          className="w-full py-3 bg-gray-50 text-gray-600 font-bold rounded-xl hover:bg-[var(--festival-purple)] hover:text-white transition-all active:scale-95 border border-gray-100 hover:border-[var(--festival-purple)]"
+                        >
+                          참여하기
+                        </button>
+                      </div>
                     </div>
-                    <h4 className="font-black text-gray-900 mb-2 group-hover:text-[var(--festival-purple)] transition-colors">
-                      {moim.title}
-                    </h4>
-                    <div className="space-y-1 mb-6">
-                      <p className="text-xs font-bold text-gray-400 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" /> {moim.location}
-                      </p>
-                      <p className="text-xs font-bold text-gray-400 flex items-center gap-1">
-                        <Calendar className="w-3 h-3" /> {moim.date}
-                      </p>
-                    </div>
-                    <button className="w-full py-3 bg-gray-50 text-gray-600 font-bold rounded-xl hover:bg-[var(--festival-purple)] hover:text-white transition-all active:scale-95 border border-gray-100 hover:border-[var(--festival-purple)]">
-                      참여하기
-                    </button>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </section>
 
-
-
-
-
-
           </main>
-
         </div>
       </div>
     </div>

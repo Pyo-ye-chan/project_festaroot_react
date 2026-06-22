@@ -32,14 +32,12 @@ const FestivalGatheringSection = ({ activeTab, festivalRooms, onTabChange }) => 
     {activeTab === '전체 모임' ? (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-8 pt-4">
         {festivalRooms.slice(0, 3).map(room => (
-          // 🌟 key 값을 room.id에서 room.room_id로 수정
           <FestivalGridCard key={room.room_id} item={room} />
         ))}
       </div>
     ) : (
       <div className="divide-y divide-gray-50">
         {festivalRooms.map(room => (
-          // 🌟 key 값을 room.id에서 room.room_id로 수정
           <GatheringListItem key={room.room_id} item={room} isFestival={true} activeTab={activeTab} />
         ))}
       </div>
