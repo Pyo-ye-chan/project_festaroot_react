@@ -229,6 +229,9 @@ const LoginPage = () => {
       `&scope=${encodeURIComponent('openid email profile')}` +
       `&prompt=select_account`;
 
+    console.log('GOOGLE_REDIRECT_URI:', import.meta.env.VITE_GOOGLE_REDIRECT_URI);
+    console.log('API_URL:', import.meta.env.VITE_API_URL);
+
     window.open(
       googleURL,
       'googleLogin',

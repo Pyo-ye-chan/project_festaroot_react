@@ -18,7 +18,7 @@ const NaverCallbackPage = () => {
         if (!code) return;
 
         fetch(
-            `http://localhost/oauth/naver/callback?code=${code}&state=${state}`
+            `https://festaroute.site/oauth/naver/callback?code=${code}&state=${state}`
         )
             .then(res => res.json())
             .then(data => {
@@ -28,7 +28,7 @@ const NaverCallbackPage = () => {
                         type: 'NAVER_LOGIN_SUCCESS',
                         data
                     },
-                    'http://localhost:5173'
+                    'https://festaroute.site'
                 );
 
                 window.close();
@@ -40,7 +40,7 @@ const NaverCallbackPage = () => {
                     {
                         type: 'NAVER_LOGIN_FAIL'
                     },
-                    'http://localhost:5173'
+                    'https://festaroute.site'
                 );
 
                 window.close();

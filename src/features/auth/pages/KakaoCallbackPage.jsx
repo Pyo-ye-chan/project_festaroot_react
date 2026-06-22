@@ -13,7 +13,7 @@ const KakaoCallbackPage = () => {
 
     const code = searchParams.get('code');
 
-    const parentOrigin = 'http://localhost:5173';
+    const parentOrigin = 'https://festaroute.site';
 
     if (!code) {
       window.opener?.postMessage(
@@ -33,7 +33,7 @@ const KakaoCallbackPage = () => {
         console.log('카카오 인가코드:', code);
 
         const res = await fetch(
-          `http://localhost/oauth/kakao/callback?code=${encodeURIComponent(code)}`
+          `https://localhost/oauth/kakao/callback?code=${encodeURIComponent(code)}`
         );
 
         if (!res.ok) {

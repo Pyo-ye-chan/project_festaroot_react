@@ -13,11 +13,12 @@ const GoogleCallbackPage = () => {
         calledRef.current = true;
 
         const code = searchParams.get('code');
+        const API_BASE_URL = import.meta.env.VITE_API_URL;
 
         if (!code) return;
 
         fetch(
-            `http://localhost/oauth/google/callback?code=${code}`
+            `${API_BASE_URL}/oauth/google/callback?code=${code}`
         )
             .then(res => res.json())
             .then(data => {
@@ -27,7 +28,7 @@ const GoogleCallbackPage = () => {
                         type: 'GOOGLE_LOGIN_SUCCESS',
                         data
                     },
-                    'http://localhost:5173'
+                    'https://festaroute.site'
                 );
 
                 window.close();
@@ -39,7 +40,7 @@ const GoogleCallbackPage = () => {
                     {
                         type: 'GOOGLE_LOGIN_FAIL'
                     },
-                    'http://localhost:5173'
+                    'https://festaroute.site'
                 );
 
                 window.close();
