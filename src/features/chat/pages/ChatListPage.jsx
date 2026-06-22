@@ -5,7 +5,7 @@ import ChatWindow from '../components/ChatWindow';
 import ChatDetails from '../components/ChatDetails';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import gatheringApi from '../../../api/gatheringApi';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Ban, Crown, LogOut, X } from 'lucide-react';
 import useLoadingStore from '../../../store/useLoadingStore';
 import chatApi from '../../../api/chatApi';
@@ -17,6 +17,10 @@ const ChatListPage = () => {
   const [showDirectLeaveModal, setShowDirectLeaveModal] = useState(false); // 1:1 채팅 전용 나가기
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // StrictMode로 인한 useEffect 중복 실행 차단용 레퍼런스
+  const processedTargetRef = useRef(null);
 
   const {
     activeChatId,
@@ -43,11 +47,27 @@ const ChatListPage = () => {
   ];
 
   const { startLoading, stopLoading } = useLoadingStore();
-  // const { chatRooms, setChatRooms, setActiveChatId, ...chatStore } = useChatStore();
 
   // 로그인 유저 ID 추출
   const user = JSON.parse(localStorage.getItem('user'));
   const userId = user?.member_id || user?.id || user?.userId;
+
+  // 외부(모임 상세 페이지 등)에서 state에 1:1 채팅 요청을 담아 넘어왔을 때 자동 감지 및 처리
+  useEffect(() => {
+    if (location.state?.targetMemberId && userId) {
+      const { targetMemberId, targetNickname } = location.state;
+
+      // 이미 처리한 targetId와 같다면 실행 취소
+      if (processedTargetRef.current === targetMemberId) return;
+      processedTargetRef.current = targetMemberId;
+
+      // 이미 구현되어 있는 하단의 1:1 채팅방 생성/조회 함수를 실행합니다.
+      handleStartDirectChat(targetMemberId, targetNickname);
+
+      // 뒤로가기나 새로고침 시 중복으로 방 생성을 요청하지 않도록 브라우저 history state를 깔끔하게 초기화합니다.
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, userId]);
 
   // 참여자 목록
   const fetchParticipants = async () => {
@@ -145,9 +165,6 @@ const ChatListPage = () => {
       await gatheringApi.kickParticipant(activeChatId, userId, targetMemberId);
       alert("해당 참여자가 모임에서 퇴장 처리되었습니다.");
 
-      // 2. 채팅창에 강퇴 안내 시스템 메시지 전송
-      // 백엔드 웹소켓 프로토콜 구조에 따라 'TALK' 대신 'NOTICE'나 'SYSTEM' 타입을 사용할 수도 있습니다.
-      // 여기서는 기본 구현된 'TALK' 핸들러를 기반으로 메시지를 보냄
       if (sendMessage) {
         sendMessage(activeChatId, `방장님이 ${targetNickname}님을 퇴장시켰습니다.`, 'KICK');
       }
@@ -209,7 +226,6 @@ const ChatListPage = () => {
     if (isDirect) {
       // 참여자가 1명 이하(혼자)이면 모달 없이 바로 나가기 실행
       if (participants.length <= 1) {
-
         handleDirectLeaveOnly();
       } else {
         setShowDirectLeaveModal(true);
@@ -275,10 +291,9 @@ const ChatListPage = () => {
 
   // 1:1 채팅방 그냥 나가기 실행 함수
   const handleDirectLeaveOnly = async () => {
-    // 채팅방에 혼자 남은 경우, 바로 나가지 않고 한 번 더 확인 받기
     if (participants.length <= 1) {
       if (!window.confirm("정말 이 채팅방에서 나가시겠습니까?")) {
-        return; // '취소'를 누르면 함수를 종료하여 나가지 않음
+        return;
       }
     }
 
@@ -288,19 +303,15 @@ const ChatListPage = () => {
         return String(pId) !== String(userId);
       });
 
-      // 상대방이 이미 나가서 없는 경우 null로 처리하여 본인은 나갈 수 있도록 방어
       const targetMemberId = target?.member_id || target?.MEMBER_ID || target?.id || null;
 
-      // 1. 백엔드 API 호출
       await chatApi.leaveDirectRoom(activeChatId, userId, false, targetMemberId);
 
-      // 상대방이 아직 방에 남아있을 때만 웹소켓으로 퇴장 알림 전송
       if (targetMemberId && sendMessage) {
         const myNickname = user?.nickname || user?.NICKNAME || '상대방';
         sendMessage(activeChatId, `${myNickname}님이 퇴장하셨습니다.`, 'LEAVE');
       }
 
-      // '확인'을 누르고 정상 처리되면 브라우저 알림창 출력
       alert("채팅방에서 퇴장하였습니다.");
 
       setShowDirectLeaveModal(false);
@@ -327,7 +338,6 @@ const ChatListPage = () => {
         return;
       }
 
-      // 차단 여부(isBlock)를 true로 설정하여 순서대로 넘기기
       await chatApi.leaveDirectRoom(activeChatId, userId, true, targetMemberId);
 
       alert("상대방을 차단하고 채팅방에서 퇴장하였습니다.");
@@ -341,7 +351,6 @@ const ChatListPage = () => {
     }
   };
 
-  // URL 주소에 roomId가 없을 때는 자동으로 빈 화면(목록만) 렌더링하도록 분기 처리
   useEffect(() => {
     if (roomId) {
       const parsedRoomId = Number(roomId);
@@ -349,7 +358,6 @@ const ChatListPage = () => {
         setActiveChatId(parsedRoomId);
       }
     } else {
-      // URL 경로가 '/community/chat' 형태로 들어왔다면 열려있던 방 선택을 지워줌
       setActiveChatId(null);
     }
   }, [roomId, activeChatId, setActiveChatId]);
@@ -389,12 +397,7 @@ const ChatListPage = () => {
       const responseData = await chatApi.getUserChatRooms(userId);
       const rawRooms = Array.isArray(responseData) ? responseData : (responseData.list || []);
 
-      // console.log("responseData =", responseData); 
-      // console.log("isArray =", Array.isArray(responseData)); // 배열 여부
-
       const formattedRooms = rawRooms.map(room => {
-
-        const isDirect = room.room_type === 'DIRECT';
         return {
           id: Number(room.room_id),
           type: room.room_type,
@@ -405,13 +408,11 @@ const ChatListPage = () => {
           max_capacity: room.max_capacity,
           nickname: room.nickname,
           profile_image_url: room.profile_image_url,
-          unread_count: room.unread_count || 0, // 미확인 메세지 수
-          lastMessage: room.lastMessage || room.last_message || room.LAST_MESSAGE || '대화 내용이 없습니다.', // 백엔드에서 넘겨준 마지막 메시지 필드를 프론트 상태에 매핑 
+          unread_count: room.unread_count || 0,
+          lastMessage: room.lastMessage || room.last_message || room.LAST_MESSAGE || '대화 내용이 없습니다.',
           owner_id: room.owner_id
         }
       });
-
-      // console.log("formattedRooms", formattedRooms); // 받은 값
 
       setChatRooms(formattedRooms);
     } catch (error) {
@@ -423,24 +424,45 @@ const ChatListPage = () => {
     fetchMyChatRooms();
   }, [userId])
 
-  // 1:1 채팅방 생성 및 이동 요청 핸들러 추가
+  // 1:1 채팅방 생성 및 이동 요청 핸들러
   const handleStartDirectChat = async (targetMemberId, targetNickname) => {
     try {
       startLoading();
 
+      // 프론트엔드 1차 중복검사: 이미 기존 채팅 리스트에 해당 상대와의 1:1 방이 떠있는지 실시간 확인
+      const existingRoom = chatRooms.find(room => {
+        const roomType = (room.type || room.room_type || room.ROOM_TYPE)?.toUpperCase();
+        if (roomType !== 'DIRECT') return false;
+
+        // 상대방 객체 추출 비교
+        const hasOpponent = room.participants?.some(p => {
+          const pId = p.member_id || p.MEMBER_ID || p.id;
+          return String(pId) === String(targetMemberId);
+        });
+        const opponentId = room.opponent_id || room.OPPONENT_ID || room.target_id || room.TARGET_ID;
+        const matchesOpponent = opponentId && String(opponentId) === String(targetMemberId);
+
+        return hasOpponent || matchesOpponent;
+      });
+
+      // 이미 방이 리스트에 존재한다면 추가 요청을 날리지 않고 기존 방으로 직행 이동
+      if (existingRoom) {
+        const existingId = existingRoom.id || existingRoom.room_id;
+        setActiveChatId(Number(existingId));
+        navigate(`/community/chat/${existingId}`);
+        return;
+      }
+
       console.log(userId, targetMemberId)
 
-      // 백엔드로 현재 유저 ID와 상대방 ID 전송
       const response = await chatApi.createOrGetDirectRoom(userId, targetMemberId);
       const targetRoomId = response?.room_id || response;
 
       console.log(response)
 
       if (targetRoomId) {
-        // 이제 스코프 에러 없이 정상 작동함
         await fetchMyChatRooms();
 
-        // 생성되거나 찾아온 룸 ID로 활성화 및 페이지 이동
         setActiveChatId(Number(targetRoomId));
         navigate(`/community/chat/${targetRoomId}`);
 
@@ -455,6 +477,8 @@ const ChatListPage = () => {
       }
     } finally {
       stopLoading();
+      // 요청 프로세스가 끝나면 레퍼런스를 다시 비워주어 다음 요청 수신 대기
+      processedTargetRef.current = null;
     }
   };
 
@@ -485,12 +509,10 @@ const ChatListPage = () => {
   const customScrollbarClass = "[&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-300";
   const scrollbarHideClass = "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]";
 
-  // 활성화된 채팅방이 바뀌면 해당 방의 unread_count를 0으로 리셋 (무한루프 방지 조건 포함)
   useEffect(() => {
     if (!activeChatId) return;
 
     const targetRoom = chatRooms.find(r => r.id === Number(activeChatId));
-    // 해당 방이 존재하고, 읽지 않은 메시지가 1개 이상일 때만 상태 업데이트 트리거
     if (targetRoom && targetRoom.unread_count > 0) {
       const updated = chatRooms.map(room =>
         room.id === Number(activeChatId) ? { ...room, unread_count: 0 } : room
@@ -566,6 +588,7 @@ const ChatListPage = () => {
           </main>
         </div>
       </div>
+      
       {/* 방장 권한 위임 선택용 팝업 모달 UI */}
       {showDelegateModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in backdrop-blur-xs">
@@ -587,7 +610,6 @@ const ChatListPage = () => {
               채팅방을 나가기 전 권한을 넘겨줄 유저를 직접 선택하거나, 자동 선택 버튼을 눌러 먼저 참여한 사람에게 권한을 위임할 수 있습니다.
             </p>
 
-            {/* 위임 가능 참여자 리스트 (본인 제외) */}
             <div className="max-h-52 overflow-y-auto space-y-2 mb-5 pr-1 [&::-webkit-scrollbar]:w-[4px] [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full">
               {participants
                 .filter(p => {
@@ -615,20 +637,9 @@ const ChatListPage = () => {
                 })}
             </div>
 
-            {/* 하단 제어 영역 버튼 단축 구성 */}
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => {
-                  const otherParticipants = participants.filter(p => {
-                    const pId = p.member_id || p.MEMBER_ID || p.id;
-                    return String(pId) !== String(userId);
-                  });
-                  if (otherParticipants.length > 0) {
-                    const nextOwnerId = otherParticipants[0].member_id || otherParticipants[0].MEMBER_ID || otherParticipants[0].id;
-                    const nextOwnerNickname = otherParticipants[0].nickname || otherParticipants[0].NICKNAME;
-                    handleDelegateAndLeave(nextOwnerId, nextOwnerNickname);
-                  }
-                }}
+                onClick={handleAutoDelegateAndLeave}
                 className="py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl transition-colors shadow-md shadow-purple-600/10 flex items-center justify-center gap-1.5"
               >
                 <Crown className="w-3.5 h-3.5 text-white/90 fill-white/20" />
@@ -644,6 +655,7 @@ const ChatListPage = () => {
           </div>
         </div>
       )}
+
       {/* 1:1 채팅방 전용 나가기/차단 선택 모달 UI */}
       {showDirectLeaveModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in backdrop-blur-xs">
@@ -668,7 +680,6 @@ const ChatListPage = () => {
               차단 해제가 불가능 합니다.
             </p>
 
-            {/* 버튼 제어 영역 */}
             <div className="flex flex-col gap-2">
               <button
                 onClick={handleDirectBlockAndLeave}
