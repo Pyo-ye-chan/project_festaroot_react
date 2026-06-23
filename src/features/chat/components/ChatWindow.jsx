@@ -54,7 +54,7 @@ const ChatWindow = ({
   };
 
   return (
-    <div className="flex flex-col flex-grow min-w-0 bg-white">
+    <div className="flex flex-col flex-grow max-w-[1000px] mx-auto min-w-0 bg-white border-x border-gray-100 shadow-sm">
       {/* 헤더 영역 */}
       <header className="h-20 border-b border-gray-100 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md z-10 flex-shrink-0">
         <div
