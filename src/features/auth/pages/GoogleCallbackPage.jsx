@@ -2,52 +2,91 @@ import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 const GoogleCallbackPage = () => {
-    const [searchParams] = useSearchParams();
-    const calledRef = useRef(false);
+  const [searchParams] = useSearchParams();
+  const calledRef = useRef(false);
 
+  useEffect(() => {
+    if (calledRef.current) return;
+    calledRef.current = true;
 
-    useEffect(() => {
+    const code = searchParams.get('code');
+    const error = searchParams.get('error');
+    const errorDescription = searchParams.get('error_description');
 
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost';
+    const parentOrigin = window.location.origin; // https://festaroute.site
 
-        if (calledRef.current) return;
-        calledRef.current = true;
+    const sendMessageAndClose = (payload) => {
+      window.opener?.postMessage(payload, parentOrigin);
+      window.close();
+    };
 
-        const code = searchParams.get('code');
+    console.log('GOOGLE CALLBACK PAGE 실행');
+    console.log('GOOGLE CALLBACK FULL URL:', window.location.href);
+    console.log('GOOGLE CALLBACK CODE:', code);
+    console.log('API_BASE_URL:', API_BASE_URL);
 
-        if (!code) return;
+    if (error) {
+      sendMessageAndClose({
+        type: 'GOOGLE_LOGIN_FAIL',
+        message: errorDescription || `구글 로그인 실패: ${error}`,
+      });
+      return;
+    }
 
-        fetch(
-            `http://localhost/oauth/google/callback?code=${code}`
-        )
-            .then(res => res.json())
-            .then(data => {
+    if (!code) {
+      sendMessageAndClose({
+        type: 'GOOGLE_LOGIN_FAIL',
+        message: '구글 인가코드가 없습니다.',
+      });
+      return;
+    }
 
-                window.opener.postMessage(
-                    {
-                        type: 'GOOGLE_LOGIN_SUCCESS',
-                        data
-                    },
-                    'http://localhost:5173'
-                );
+    const googleLogin = async () => {
+      try {
+        const url = new URL('/oauth/google/callback', API_BASE_URL);
+        url.searchParams.set('code', code);
 
-                window.close();
-            })
-            .catch(err => {
-                console.error(err);
+        console.log('GOOGLE BACKEND REQUEST URL:', url.toString());
 
-                window.opener.postMessage(
-                    {
-                        type: 'GOOGLE_LOGIN_FAIL'
-                    },
-                    'http://localhost:5173'
-                );
+        const res = await fetch(url.toString(), {
+          method: 'GET',
+        });
 
-                window.close();
-            });
+        const text = await res.text();
 
-    }, []);
+        console.log('GOOGLE BACKEND STATUS:', res.status);
+        console.log('GOOGLE BACKEND RESPONSE:', text);
 
-    return <div>구글 로그인 처리중...</div>;
+        let data = {};
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          data = { message: text };
+        }
+
+        if (!res.ok) {
+          throw new Error(data.message || text || '구글 로그인 요청 실패');
+        }
+
+        sendMessageAndClose({
+          type: 'GOOGLE_LOGIN_SUCCESS',
+          data,
+        });
+      } catch (err) {
+        console.error('구글 로그인 처리 실패:', err);
+
+        sendMessageAndClose({
+          type: 'GOOGLE_LOGIN_FAIL',
+          message: err.message || '구글 로그인 처리 중 오류가 발생했습니다.',
+        });
+      }
+    };
+
+    googleLogin();
+  }, [searchParams]);
+
+  return <div>구글 로그인 처리중...</div>;
 };
 
 export default GoogleCallbackPage;

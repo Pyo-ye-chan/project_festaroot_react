@@ -3,67 +3,82 @@ import { useSearchParams } from 'react-router-dom';
 
 const KakaoCallbackPage = () => {
   const [searchParams] = useSearchParams();
-
   const calledRef = useRef(false);
 
   useEffect(() => {
-
     if (calledRef.current) return;
     calledRef.current = true;
 
     const code = searchParams.get('code');
+    const error = searchParams.get('error');
 
-    const parentOrigin = 'http://localhost:5173';
+    const API_BASE_URL = import.meta.env.VITE_API_URL;
+    const parentOrigin = window.location.origin; // https://festaroute.site
+
+    const sendMessageAndClose = (payload) => {
+      window.opener?.postMessage(payload, parentOrigin);
+      window.close();
+    };
+
+    if (error) {
+      sendMessageAndClose({
+        type: 'KAKAO_LOGIN_FAIL',
+        message: `카카오 로그인 실패: ${error}`,
+      });
+      return;
+    }
 
     if (!code) {
-      window.opener?.postMessage(
-        {
-          type: 'KAKAO_LOGIN_FAIL',
-          message: '카카오 인가코드가 없습니다.'
-        },
-        parentOrigin
-      );
+      sendMessageAndClose({
+        type: 'KAKAO_LOGIN_FAIL',
+        message: '카카오 인가코드가 없습니다.',
+      });
+      return;
+    }
 
-      window.close();
+    if (!API_BASE_URL) {
+      sendMessageAndClose({
+        type: 'KAKAO_LOGIN_FAIL',
+        message: 'API 주소가 설정되지 않았습니다.',
+      });
       return;
     }
 
     const kakaoLogin = async () => {
       try {
-        console.log('카카오 인가코드:', code);
+        const url = new URL('/oauth/kakao/callback', API_BASE_URL);
+        url.searchParams.set('code', code);
 
-        const res = await fetch(
-          `http://localhost/oauth/kakao/callback?code=${encodeURIComponent(code)}`
-        );
+        console.log('KAKAO CALLBACK FULL URL:', window.location.href);
+        console.log('KAKAO CALLBACK CODE:', code);
+        console.log('KAKAO BACKEND REQUEST URL:', url.toString());
+
+        const res = await fetch(url.toString(), {
+          method: 'GET',
+        });
+
+        const text = await res.text();
+
+        console.log('KAKAO BACKEND STATUS:', res.status);
+        console.log('KAKAO BACKEND RESPONSE:', text);
 
         if (!res.ok) {
-          throw new Error('카카오 로그인 요청 실패');
+          throw new Error(text || '카카오 로그인 요청 실패');
         }
 
-        const data = await res.json();
+        const data = text ? JSON.parse(text) : {};
 
-        window.opener?.postMessage(
-          {
-            type: 'KAKAO_LOGIN_SUCCESS',
-            data
-          },
-          parentOrigin
-        );
-        console.log(data);
-
-        window.close();
+        sendMessageAndClose({
+          type: 'KAKAO_LOGIN_SUCCESS',
+          data,
+        });
       } catch (error) {
         console.error('카카오 로그인 처리 실패:', error);
 
-        window.opener?.postMessage(
-          {
-            type: 'KAKAO_LOGIN_FAIL',
-            message: '카카오 로그인 처리 중 오류가 발생했습니다.'
-          },
-          parentOrigin
-        );
-
-        window.close();
+        sendMessageAndClose({
+          type: 'KAKAO_LOGIN_FAIL',
+          message: error.message || '카카오 로그인 처리 중 오류가 발생했습니다.',
+        });
       }
     };
 
