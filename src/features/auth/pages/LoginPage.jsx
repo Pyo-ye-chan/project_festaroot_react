@@ -240,39 +240,39 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-[#f8f9ff] text-[#111111] font-['Pretendard'] flex flex-col">
-      {/* Header */}
-      <header className="w-full bg-white border-b border-gray-200 shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-[60px] sm:h-[68px] lg:h-[72px]">
-            <Link to="/" className="flex items-center gap-2 group">
-              <div
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105"
-                style={{ backgroundColor: primaryPurple }}
-              >
-                <svg
-                  className="w-5 h-5 sm:w-6 sm:h-6 text-white"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                  <path d="M2 17l10 5 10-5" />
-                  <path d="M2 12l10 5 10-5" />
-                </svg>
-              </div>
-              <span
-                className="text-xl sm:text-2xl font-black tracking-tight"
-                style={{ color: primaryPurple }}
-              >
-                축제로
-              </span>
-            </Link>
-          </div>
+    {/* Header */}
+    <header className="w-full bg-white border-b border-gray-200 shrink-0">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center h-16 sm:h-20">
+          <Link to="/" className="flex items-center gap-2 cursor-pointer group">
+            <svg
+              className="w-9 h-9 sm:w-10 sm:h-10 transition-transform group-hover:scale-105 select-none"
+              viewBox="0 0 32 32"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="16" cy="16" r="16" fill="#f3eeff" />
+              <path
+                d="M16,3 C11,3 7,7 7,12 C7,18 16,29 16,29 C16,29 25,18 25,12 C25,7 21,3 16,3 Z"
+                fill="#6d3df2"
+              />
+              <path
+                d="M16,7 L17.5,10.5 L21,12 L17.5,13.5 L16,17 L14.5,13.5 L11,12 L14.5,10.5 Z"
+                fill="#ffd000"
+              />
+              <circle cx="16" cy="12" r="1.5" fill="#ffffff" />
+            </svg>
+
+            <span
+              className="text-xl sm:text-2xl font-black tracking-tight"
+              style={{ color: primaryPurple }}
+            >
+              축제로
+            </span>
+          </Link>
         </div>
-      </header>
+      </div>
+    </header>
 
       {/* Main */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-5 py-6 sm:py-7 lg:py-6">
