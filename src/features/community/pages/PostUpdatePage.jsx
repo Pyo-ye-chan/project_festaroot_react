@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useParams } from 'react-router-dom';
 import {
   X,
   Image as ImageIcon,
@@ -13,28 +13,49 @@ import StarterKit from '@tiptap/starter-kit';
 import MenuBar from '../components/MenuBar';
 import Image from '@tiptap/extension-image';
 
-import { uploadImage, updatePost } from '../../../api/boardApi';
+import { uploadImage, updatePost, getPostDetail } from '../../../api/boardApi';
 
 const POST_CONTENT_MAX_LENGTH = 1500;
 
 const PostUpdatePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { post: initialPost } = location.state || {}; // Get initial post data from navigation state
+  const params = useParams();
+
+  const { id } = useParams();
+
+  const routePostId = params.id || params.post_id || params.postId;
+
+  const { post: initialPost } = location.state || {};
+
+  const [postId, setPostId] = useState(initialPost?.post_id || id);
 
   const [uploading, setUploading] = useState(false);
   const [contentLength, setContentLength] = useState(0);
   const lastValidContentRef = useRef(initialPost?.content || '');
 
-  const [existingFiles, setExistingFiles] = useState(initialPost?.attachments || []); // 기존 첨부파일
-  const [attachedFiles, setAttachedFiles] = useState([]); // 새로 추가하는 첨부파일
-  const [deleteFileIds, setDeleteFileIds] = useState([]); // 삭제할 기존 첨부파일 ID 목록
+  const [existingFiles, setExistingFiles] = useState([]);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [deleteFileIds, setDeleteFileIds] = useState([]);
 
   const [formData, setFormData] = useState({
-    category: initialPost?.category || 'FREE',
-    title: initialPost?.title || '',
-    content: initialPost?.content || '',
+    category: 'FREE',
+    title: '',
+    content: '',
   });
+
+  const addFilesWithoutDuplicate = (files) => {
+    setAttachedFiles((prev) => {
+      const newFiles = files.filter(
+        (file) =>
+          !prev.some(
+            (saved) => saved.name === file.name && saved.size === file.size
+          )
+      );
+
+      return [...prev, ...newFiles];
+    });
+  };
 
   const editor = useEditor({
     extensions: [StarterKit, Image],
@@ -63,38 +84,118 @@ const PostUpdatePage = () => {
     },
   });
 
-  // Effect to ensure editor content updates if initialPost changes (e.g., if navigating to edit different post)
   useEffect(() => {
-    if (editor && initialPost?.content && editor.getHTML() !== initialPost.content) {
-      editor.commands.setContent(initialPost.content);
+    const loadPost = async () => {
+      try {
+        let postData = initialPost;
+        let fileList =
+          initialPost?.attachments ||
+          initialPost?.dto?.attachments ||
+          initialPost?.files ||
+          initialPost?.fileList ||
+          initialPost?.list ||
+          [];
+
+        const needFetch = !postData || !postData.title;
+
+        if (needFetch) {
+          const res = await getPostDetail(routePostId);
+
+          console.log('수정 페이지 상세조회 응답:', res.data);
+
+          const data = res.data;
+
+          postData =
+            data.dto ||
+            data.post ||
+            data.board ||
+            data.data ||
+            data.result ||
+            data;
+
+          fileList =
+            data.list ||
+            data.dto?.attachments ||
+            data.attachments ||
+            data.files ||
+            data.fileList ||
+            data.attachmentList ||
+            postData?.list ||
+            postData?.attachments ||
+            postData?.dto?.attachments ||
+            postData?.files ||
+            postData?.fileList ||
+            [];
+        }
+
+        if (!postData) {
+          throw new Error('게시글 데이터가 없습니다.');
+        }
+
+        const loadedPostId =
+          postData.post_id ||
+          postData.postId ||
+          routePostId;
+
+        const normalizedFiles = fileList.map((file) => ({
+          attach_id: file.attach_id || file.attachId,
+          post_id: file.post_id || file.postId || loadedPostId,
+          file_name:
+            file.file_name ||
+            file.fileName ||
+            file.original_name ||
+            file.originalName ||
+            file.name ||
+            '첨부파일',
+          file_size:
+            file.file_size ||
+            file.fileSize ||
+            file.size ||
+            0,
+          file_path:
+            file.file_path ||
+            file.filePath ||
+            file.path ||
+            file.url ||
+            '',
+          content_type:
+            file.content_type ||
+            file.contentType ||
+            file.type ||
+            '',
+          ...file,
+        }));
+
+        console.log('수정 페이지 기존 첨부파일:', normalizedFiles);
+
+        setPostId(loadedPostId);
+
+        setFormData({
+          category: (postData.category || 'FREE').toUpperCase(),
+          title: postData.title || '',
+          content: postData.content || '',
+        });
+
+        setExistingFiles(normalizedFiles);
+
+        if (editor) {
+          const content = postData.content || '';
+
+          editor.commands.setContent(content);
+          setContentLength(editor.getText().length);
+          lastValidContentRef.current = content;
+        }
+      } catch (error) {
+        console.error('수정 페이지 게시글 로드 실패:', error);
+        alert('게시글 정보를 불러오지 못했습니다.');
+        navigate('/community');
+      }
+    };
+
+    if (routePostId || initialPost?.post_id || initialPost?.postId) {
+      loadPost();
     }
-    if (editor) {
-      const currentText = editor.getText();
-      lastValidContentRef.current = editor.getHTML();
-      setContentLength(currentText.length);
-    }
-    // Handle existing attachments here if initialPost has them.
-    // For now, assuming attachments are handled separately or re-uploaded.
-  }, [editor, initialPost]);
-
-  const formatFileSize = (size) => {
-    if (size < 1024) return `${size}B`;
-    if (size < 1024 * 1024) return `${Math.round(size / 1024)}KB`;
-    return `${(size / 1024 / 1024).toFixed(1)}MB`;
-  };
-
-  const addFilesWithoutDuplicate = (files) => { // 중복되지 않는 파일만 추가
-    setAttachedFiles((prev) => {
-      const newFiles = files.filter(
-        (file) =>
-          !prev.some(
-            (saved) => saved.name === file.name && saved.size === file.size
-          )
-      );
-
-      return [...prev, ...newFiles];
-    });
-  };
+  }, [routePostId, initialPost, editor, navigate]);
 
   const handleRemoveExistingFile = (file) => { // 기존 첨부파일 제거
     setExistingFiles((prev) =>
@@ -185,45 +286,42 @@ const PostUpdatePage = () => {
       return;
     }
 
-    if (!initialPost?.post_id) {
+    if (!postId) {
       alert('수정할 게시글 정보를 찾을 수 없습니다.');
       return;
     }
 
     try {
-      const data = new FormData();
+      const multipartFormData = new FormData();
 
       const post = {
         category: formData.category,
         title: formData.title,
         content: formData.content,
-        deleteFileIds, // 삭제할 기존 첨부파일 ID 목록  
+        deleteFileIds,
       };
 
-      data.append(
-        'post',
-        new Blob([JSON.stringify(post)], {
-          type: 'application/json',
-        })
-      );
+      multipartFormData.append('post', JSON.stringify(post));
 
-      // Existing attachments would need to be handled here too (e.g., send IDs of unremoved ones)
-      // For now, assuming new files are sent and old ones are implicitly replaced or handled by backend.
       if (attachedFiles.length > 0) {
         attachedFiles.forEach((file) => {
-          data.append('files', file);
+          multipartFormData.append('files', file);
         });
       }
-      console.log(data);
 
-      await updatePost(initialPost.post_id, data); // Call updatePost with ID and data
+      for (const [key, value] of multipartFormData.entries()) {
+        console.log('update post formData:', key, value);
+      }
+
+      await updatePost(postId, multipartFormData);
 
       console.log('Post updated successfully');
       alert('수정 완료');
 
-      navigate(`/community/post/${initialPost.post_id}`); // Navigate back to the detail page
+      navigate(`/community/post/${postId}`); // Navigate back to the detail page
     } catch (error) {
       console.error(error);
+      console.error('게시글 수정 실패 응답:', error.response?.data);
       alert('수정 실패');
     }
   };
@@ -249,7 +347,7 @@ const PostUpdatePage = () => {
 
           <button
             type="button"
-            onClick={() => navigate(`/community/post/${initialPost?.post_id}`)} // Navigate back to detail page
+            onClick={() => navigate(`/community/post/${postId}`)} // Navigate back to detail page
             className="p-3 bg-white text-gray-400 hover:text-gray-600 rounded-full border border-gray-100 transition-all hover:shadow-md"
           >
             <X className="w-6 h-6" />
@@ -367,12 +465,12 @@ const PostUpdatePage = () => {
 
                   {existingFiles.map((file) => (
                     <div
-                      key={file.attach_id}
+                      key={file.attach_id || file.attachId || file.file_path || file.filePath}
                       className="flex items-center justify-between gap-4 rounded-xl bg-white border border-gray-100 px-4 py-3"
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-gray-700 truncate">
-                          {file.original_name}
+                          {file.original_name || file.file_name || file.originalName || file.fileName || file.name || '첨부파일'}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">
                           기존 첨부파일

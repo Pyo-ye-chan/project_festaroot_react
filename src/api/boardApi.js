@@ -1,5 +1,33 @@
 import { maxios } from './axiosApi';
 
+const cloneFormDataWithJsonKey = (sourceFormData, jsonKey, asJsonBlob = false) => {
+  const nextFormData = new FormData();
+  const jsonValue = sourceFormData.get('post') ?? sourceFormData.get('dto') ?? sourceFormData.get('postData');
+
+  if (jsonValue != null) {
+    if (asJsonBlob) {
+      nextFormData.append(
+        jsonKey,
+        new Blob([String(jsonValue)], {
+          type: 'application/json',
+        })
+      );
+    } else {
+      nextFormData.append(jsonKey, jsonValue);
+    }
+  }
+
+  for (const [key, value] of sourceFormData.entries()) {
+    if (key === 'post' || key === 'dto' || key === 'postData') {
+      continue;
+    }
+
+    nextFormData.append(key, value);
+  }
+
+  return nextFormData;
+};
+
 export const uploadImage = async (file, folder = '/board/image') => {
   const formData = new FormData();
   formData.append('file', file);
@@ -27,7 +55,59 @@ export const getPosts = async (cpage = 1, category = 'all', sortBy = 'latest', s
 
 export const getPostDetail = async (id) => await maxios.get(`/board/post/${id}`);
 
-export const updatePost = async (id, data) => await maxios.put(`/board/post/${id}`, data);
+export const updatePost = async (id, data) => {
+  console.log('updatePost request:', id, data);
+
+  const requestUrl = `/board/post/${id}`;
+
+  try {
+    return await maxios.put(requestUrl, data);
+  } catch (error) {
+    console.error('updatePost primary error response:', error.response?.data);
+
+    if (!(data instanceof FormData) || error.response?.status !== 400) {
+      throw error;
+    }
+
+    const fallbackStrategies = [
+      { key: 'dto', asJsonBlob: false },
+      { key: 'postData', asJsonBlob: false },
+      { key: 'post', asJsonBlob: true },
+      { key: 'dto', asJsonBlob: true },
+      { key: 'postData', asJsonBlob: true },
+    ];
+
+    for (const { key, asJsonBlob } of fallbackStrategies) {
+      const fallbackFormData = cloneFormDataWithJsonKey(data, key, asJsonBlob);
+
+      for (const [key, value] of fallbackFormData.entries()) {
+        console.log(
+          `updatePost fallback(${asJsonBlob ? 'blob' : 'text'}:${key}) formData:`,
+          key,
+          value
+        );
+      }
+
+      try {
+        return await maxios.put(requestUrl, fallbackFormData);
+      } catch (fallbackError) {
+        console.error(
+          `updatePost fallback(${asJsonBlob ? 'blob' : 'text'}:${key}) error response:`,
+          fallbackError.response?.data
+        );
+
+        const isLastFallback =
+          key === 'postData' && asJsonBlob;
+
+        if (fallbackError.response?.status !== 400 || isLastFallback) {
+          throw fallbackError;
+        }
+      }
+    }
+
+    throw error;
+  }
+};
 
 export const deletePost = async (id) => await maxios.delete(`/board/post/${id}`);
 
