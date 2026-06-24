@@ -190,7 +190,7 @@ const FestivalDetailPage = () => {
       return;
     }
 
-    alert("축제 모임 페이지로 이동합니다! \n채팅방 참여를 원할 시 모임 참여를 눌러주세요!") 
+    alert("축제 모임 페이지로 이동합니다! \n채팅방 참여를 원할 시 모임 참여를 눌러주세요!")
     // 기본적으로 음수 식별자(-content_id)를 생성하여 모임 상세페이지로 화면만 전환
     const officialFestivalRoomId = -Math.abs(Number(id));
     navigate(`/community/gathering/${officialFestivalRoomId}`);
@@ -272,36 +272,50 @@ const FestivalDetailPage = () => {
     }
   };
 
+  const shareUrl = `${window.location.origin}/festival/${festival.content_id}`;
+
   const handleKakaoShare = () => {
     if (!window.Kakao) {
       alert('카카오 공유 기능을 불러오지 못했습니다.');
       return;
     }
 
-    if (!window.Kakao.isInitialized()) {
-      window.Kakao.init(import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY);
+    const kakaoKey = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY;
+
+    if (!kakaoKey) {
+      alert('카카오 JavaScript 키가 설정되지 않았습니다.');
+      return;
     }
+
+    if (!window.Kakao.isInitialized()) {
+      window.Kakao.init(kakaoKey);
+    }
+
+    const festivalId = festival?.content_id || festival?.contentId;
+    const shareUrl = `${window.location.origin}/festival/${festivalId}`;
+
+    const descriptionText = `${period} · ${location || '주소 정보 없음'}`;
 
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: festival.title,
-        description: `${period} · ${location || '주소 정보 없음'}`,
-        imageUrl: imageUrl,
+        title: festival?.title || '축제로',
         link: {
-          mobileWebUrl: window.location.href,
-          webUrl: window.location.href
-        }
+          mobileWebUrl: shareUrl,
+          webUrl: shareUrl,
+        },
+        description: `${shareUrl}\n\n${descriptionText}`,
+        imageUrl: imageUrl || `${window.location.origin}/no-image.png`,
       },
       buttons: [
         {
           title: '축제 보러가기',
           link: {
-            mobileWebUrl: window.location.href,
-            webUrl: window.location.href
-          }
-        }
-      ]
+            mobileWebUrl: shareUrl,
+            webUrl: shareUrl,
+          },
+        },
+      ],
     });
 
     setShowShareModal(false);
@@ -358,11 +372,10 @@ const FestivalDetailPage = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={handleLikeClick}
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 border ${
-                      isLiked
-                        ? 'bg-rose-50 border-rose-100 text-rose-500'
-                        : 'bg-white border-gray-100 text-gray-400 hover:text-rose-500'
-                    }`}
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 border ${isLiked
+                      ? 'bg-rose-50 border-rose-100 text-rose-500'
+                      : 'bg-white border-gray-100 text-gray-400 hover:text-rose-500'
+                      }`}
                   >
                     <Heart size={24} fill={isLiked ? 'currentColor' : 'none'} />
                   </button>
@@ -439,11 +452,10 @@ const FestivalDetailPage = () => {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-3.5 rounded-2xl font-black text-sm transition-all ${
-                    activeTab === tab
-                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-100'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                  }`}
+                  className={`flex-1 py-3.5 rounded-2xl font-black text-sm transition-all ${activeTab === tab
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-100'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                    }`}
                 >
                   {tab}
                 </button>

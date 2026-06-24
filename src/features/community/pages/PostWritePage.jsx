@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   X,
@@ -16,11 +16,15 @@ import Image from '@tiptap/extension-image';
 import { uploadImage } from '../../../api/boardApi';
 import { addPost } from '../../../api/boardApi';
 
+const POST_CONTENT_MAX_LENGTH = 1500;
+
 const PostWritePage = () => {
   const navigate = useNavigate();
 
   const [uploading, setUploading] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [contentLength, setContentLength] = useState(0);
+  const lastValidContentRef = useRef('');
 
   const [formData, setFormData] = useState({
     category:'FREE',
@@ -32,6 +36,16 @@ const PostWritePage = () => {
     extensions: [StarterKit, Image],
     content: '',
     onUpdate: ({ editor }) => {
+      const plainText = editor.getText();
+
+      if (plainText.length > POST_CONTENT_MAX_LENGTH) {
+        alert(`게시글 내용은 ${POST_CONTENT_MAX_LENGTH}자까지 입력할 수 있습니다.`);
+        editor.commands.setContent(lastValidContentRef.current, false);
+        return;
+      }
+
+      lastValidContentRef.current = editor.getHTML();
+      setContentLength(plainText.length);
       setFormData((prev) => ({
         ...prev,
         content: editor.getHTML(),
@@ -137,6 +151,11 @@ const PostWritePage = () => {
 
     if (!formData.content || formData.content === '<p></p>') {
       alert('내용을 입력해 주세요.');
+      return;
+    }
+
+    if (contentLength > POST_CONTENT_MAX_LENGTH) {
+      alert(`게시글 내용은 ${POST_CONTENT_MAX_LENGTH}자까지 입력할 수 있습니다.`);
       return;
     }
 
@@ -253,9 +272,14 @@ const PostWritePage = () => {
             </div>
 
             <div className="mb-8">
-              <label className="block text-sm font-black text-gray-900 mb-3 ml-1 uppercase tracking-widest">
-                내용
-              </label>
+              <div className="flex items-center justify-between gap-3 mb-3 ml-1">
+                <label className="block text-sm font-black text-gray-900 uppercase tracking-widest">
+                  내용
+                </label>
+                <span className="text-xs font-bold text-gray-400">
+                  {contentLength} / {POST_CONTENT_MAX_LENGTH}
+                </span>
+              </div>
 
               <div className="overflow-hidden bg-gray-50 border border-gray-200 rounded-2xl focus-within:ring-2 focus-within:ring-[var(--festival-purple)]/20 focus-within:border-[var(--festival-purple)]/30 transition-all">
                 <MenuBar editor={editor} />

@@ -1486,11 +1486,11 @@ const AIPlannerPage = () => {
                         })}
                       </div>
 
-                      <div className="mt-10 pt-6 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+                      <div className="mt-10 pt-6 border-t border-slate-100 flex justify-center">
                         <button
                           onClick={handleSavePlanner}
                           disabled={isSavingPlanner || isPlannerSaved}
-                          className={`w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-black transition-colors ${
+                          className={`w-full sm:w-auto sm:min-w-[220px] px-6 py-3 rounded-xl text-sm font-black transition-colors ${
                             isPlannerSaved
                               ? 'bg-emerald-100 text-emerald-700 cursor-default'
                               : 'bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50'
@@ -1501,13 +1501,6 @@ const AIPlannerPage = () => {
                             : isSavingPlanner
                               ? '저장 중...'
                               : '마이페이지에 저장하기'}
-                        </button>
-
-                        <button
-                          onClick={() => setShowPlannerModal(true)}
-                          className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gray-100 text-gray-700 text-sm font-black hover:bg-gray-200 transition-colors"
-                        >
-                          조건 바꿔 다시 만들기
                         </button>
                       </div>
                     </>

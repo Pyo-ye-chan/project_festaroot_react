@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   X,
@@ -15,12 +15,16 @@ import Image from '@tiptap/extension-image';
 
 import { uploadImage, updatePost } from '../../../api/boardApi';
 
+const POST_CONTENT_MAX_LENGTH = 1500;
+
 const PostUpdatePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { post: initialPost } = location.state || {}; // Get initial post data from navigation state
 
   const [uploading, setUploading] = useState(false);
+  const [contentLength, setContentLength] = useState(0);
+  const lastValidContentRef = useRef(initialPost?.content || '');
 
   const [existingFiles, setExistingFiles] = useState(initialPost?.attachments || []); // 기존 첨부파일
   const [attachedFiles, setAttachedFiles] = useState([]); // 새로 추가하는 첨부파일
@@ -36,6 +40,16 @@ const PostUpdatePage = () => {
     extensions: [StarterKit, Image],
     content: formData.content, // Initialize editor with existing content
     onUpdate: ({ editor }) => {
+      const plainText = editor.getText();
+
+      if (plainText.length > POST_CONTENT_MAX_LENGTH) {
+        alert(`게시글 내용은 ${POST_CONTENT_MAX_LENGTH}자까지 입력할 수 있습니다.`);
+        editor.commands.setContent(lastValidContentRef.current, false);
+        return;
+      }
+
+      lastValidContentRef.current = editor.getHTML();
+      setContentLength(plainText.length);
       setFormData((prev) => ({
         ...prev,
         content: editor.getHTML(),
@@ -53,6 +67,11 @@ const PostUpdatePage = () => {
   useEffect(() => {
     if (editor && initialPost?.content && editor.getHTML() !== initialPost.content) {
       editor.commands.setContent(initialPost.content);
+    }
+    if (editor) {
+      const currentText = editor.getText();
+      lastValidContentRef.current = editor.getHTML();
+      setContentLength(currentText.length);
     }
     // Handle existing attachments here if initialPost has them.
     // For now, assuming attachments are handled separately or re-uploaded.
@@ -158,6 +177,11 @@ const PostUpdatePage = () => {
 
     if (!formData.content || formData.content === '<p></p>') {
       alert('내용을 입력해 주세요.');
+      return;
+    }
+
+    if (contentLength > POST_CONTENT_MAX_LENGTH) {
+      alert(`게시글 내용은 ${POST_CONTENT_MAX_LENGTH}자까지 입력할 수 있습니다.`);
       return;
     }
 
@@ -282,9 +306,14 @@ const PostUpdatePage = () => {
             </div>
 
             <div className="mb-8">
-              <label className="block text-sm font-black text-gray-900 mb-3 ml-1 uppercase tracking-widest">
-                내용
-              </label>
+              <div className="flex items-center justify-between gap-3 mb-3 ml-1">
+                <label className="block text-sm font-black text-gray-900 uppercase tracking-widest">
+                  내용
+                </label>
+                <span className="text-xs font-bold text-gray-400">
+                  {contentLength} / {POST_CONTENT_MAX_LENGTH}
+                </span>
+              </div>
 
               <div className="overflow-hidden bg-gray-50 border border-gray-200 rounded-2xl focus-within:ring-2 focus-within:ring-[var(--festival-purple)]/20 focus-within:border-[var(--festival-purple)]/30 outline-none transition-all">
                 <MenuBar editor={editor} />

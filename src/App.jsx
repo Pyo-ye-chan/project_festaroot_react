@@ -194,9 +194,7 @@ function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/ai-planner" element={<AIPlannerPage />} />
-          <Route path="/privacy" element={<LegalPage />} />
-          <Route path="/terms" element={<LegalPage />} />
-          <Route path="/location-terms" element={<LegalPage />} />
+          <Route path="/legal/:slug" element={<LegalPage />} />
         </Route>
 
         {/* Admin Routes */}
