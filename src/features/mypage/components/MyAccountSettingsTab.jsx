@@ -11,6 +11,7 @@ import {
 } from '../../../api/memberApi';
 import { getSidoList, getSigunguList } from '../../../api/regionApi';
 import useAuthStore from '../../../store/useAuthStore';
+import { Eye, EyeOff } from 'lucide-react';
 
 const MyAccountSettingsTab = ({ userDetails, onRefresh }) => {
   if (!userDetails) return null;
@@ -27,6 +28,11 @@ const MyAccountSettingsTab = ({ userDetails, onRefresh }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
+
+  // 비밀번호 보기/숨기기 상태 추가
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
 
   // 계정 삭제 상태
   const [isDeleting, setIsDeleting] = useState(false);
@@ -231,6 +237,9 @@ const MyAccountSettingsTab = ({ userDetails, onRefresh }) => {
     setCurrentPassword('');
     setNewPassword('');
     setConfirmNewPassword('');
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmNewPassword(false);
   };
 
   // 비밀번호 변경 저장
@@ -239,10 +248,13 @@ const MyAccountSettingsTab = ({ userDetails, onRefresh }) => {
       toast.warn('현재 비밀번호를 입력해 주세요.');
       return;
     }
-    if (!newPassword || newPassword.length < 8) {
-      toast.warn('새 비밀번호는 8자 이상이어야 합니다.');
+    
+    const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      toast.warn('새 비밀번호는 8자 이상 영문/숫자 혼합이어야 합니다.');
       return;
     }
+    
     if (newPassword !== confirmNewPassword) {
       toast.error('새 비밀번호가 일치하지 않습니다.');
       return;
@@ -508,33 +520,63 @@ const MyAccountSettingsTab = ({ userDetails, onRefresh }) => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-gray-400 uppercase ml-1">현재 비밀번호</label>
-                      <input 
-                        type="password" 
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder="현재 비밀번호 입력"
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-700 focus:border-purple-500 outline-none transition-all"
-                      />
+                      <div className="relative">
+                        <input 
+                          type={showCurrentPassword ? "text" : "password"} 
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="현재 비밀번호 입력"
+                          className="w-full bg-white border border-gray-200 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-gray-700 focus:border-purple-500 outline-none transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(prev => !prev)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                          aria-label="현재 비밀번호 보기"
+                        >
+                          {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-gray-400 uppercase ml-1">새 비밀번호</label>
-                      <input 
-                        type="password" 
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="8자 이상 입력"
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-700 focus:border-purple-500 outline-none transition-all"
-                      />
+                      <div className="relative">
+                        <input 
+                          type={showNewPassword ? "text" : "password"} 
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="8자 이상 입력"
+                          className="w-full bg-white border border-gray-200 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-gray-700 focus:border-purple-500 outline-none transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(prev => !prev)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                          aria-label="새 비밀번호 보기"
+                        >
+                          {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-gray-400 uppercase ml-1">새 비밀번호 확인</label>
-                      <input 
-                        type="password" 
-                        value={confirmNewPassword}
-                        onChange={(e) => setConfirmNewPassword(e.target.value)}
-                        placeholder="다시 한번 입력"
-                        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-700 focus:border-purple-500 outline-none transition-all"
-                      />
+                      <div className="relative">
+                        <input 
+                          type={showConfirmNewPassword ? "text" : "password"} 
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          placeholder="다시 한번 입력"
+                          className="w-full bg-white border border-gray-200 rounded-xl pl-4 pr-10 py-3 text-sm font-bold text-gray-700 focus:border-purple-500 outline-none transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmNewPassword(prev => !prev)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                          aria-label="새 비밀번호 확인 보기"
+                        >
+                          {showConfirmNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-2">
