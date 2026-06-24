@@ -138,7 +138,6 @@ const GatheringDetailPage = () => {
   }
 
   const ownerId = gathering.owner_id || gathering.OWNER_ID;
-
   const isOwner = loggedInUserId && String(loggedInUserId) === String(ownerId);
   const isJoined = loggedInUserId && (isOwner || participants.some(p => String(p.member_id || p.MEMBER_ID || p.id) === String(loggedInUserId)));
   const isFull = gathering.current_count >= gathering.max_capacity;
@@ -162,32 +161,31 @@ const GatheringDetailPage = () => {
     }
 
     try {
-      const response = await gatheringApi.joinGathering(id, loggedInUserId);
+      const response = await gatheringApi.joinGathering(gathering.room_id, loggedInUserId);
       alert("모임에 성공적으로 참여되었습니다!");
-
-      await fetchDetailAndParticipants(id);
 
       if (response && response.roomId) {
         const actualRoomId = response.roomId;
-        if (String(actualRoomId) !== String(id)) {
-          navigate(`/community/gathering/${actualRoomId}`, { replace: true });
-        }
+        navigate(`/community/gathering/${actualRoomId}`, { replace: true });
+      } else {
+        await fetchDetailAndParticipants(gathering.room_id);
       }
     } catch (error) {
       console.error("모임 참여 중 오류 발생:", error);
-      const errorMsg = error.response?.data?.message || "모임 참여에 실패했습니다. 다시 시도해 주세요.";
-      alert(errorMsg);
+      alert(error.response?.data?.message || "모임 참여에 실패했습니다. 다시 시도해 주세요.");
     }
   };
 
   const handleLeaveClick = async () => {
+    const activeRoomId = gathering.room_id;
+
     if (isOwner) {
       if (participants.length === 0) {
         if (window.confirm("참여자가 없어 모임이 자동으로 삭제됩니다. 정말 나가시겠습니까?")) {
           try {
-            await gatheringApi.deleteGathering(id, loggedInUserId);
+            await gatheringApi.deleteGathering(activeRoomId, loggedInUserId);
             alert("모임이 삭제되었습니다.");
-            navigate('/community/community/gathering');
+            navigate('/community/gathering');
           } catch (error) {
             alert("모임 삭제 중 오류가 발생했습니다.");
           }
@@ -200,9 +198,10 @@ const GatheringDetailPage = () => {
 
     if (!window.confirm("정말로 이 모임에서 나가시겠습니까?")) return;
     try {
-      await gatheringApi.leaveGathering(id, loggedInUserId);
-      await fetchDetailAndParticipants(id);
+      await gatheringApi.leaveGathering(activeRoomId, loggedInUserId);
       alert("모임에서 탈퇴되었습니다.");
+      // 만약 혼자 남아있다 나간 거라면 백엔드에서 삭제 처리되므로 목록으로 이동 유도
+      navigate('/community/gathering');
     } catch (error) {
       console.error("모임 나가기 중 오류 발생:", error);
       alert(error.response?.data?.message || "모임 나가기에 실패했습니다. 다시 시도해 주세요.");
@@ -212,8 +211,8 @@ const GatheringDetailPage = () => {
   const handleDelegateAndLeave = async (newOwnerId) => {
     if (!window.confirm("방장 권한을 위임하고 모임을 나가시겠습니까?")) return;
     try {
-      await gatheringApi.delegateOwner(id, loggedInUserId, newOwnerId);
-      await gatheringApi.leaveGathering(id, loggedInUserId);
+      await gatheringApi.delegateOwner(gathering.room_id, loggedInUserId, newOwnerId);
+      await gatheringApi.leaveGathering(gathering.room_id, loggedInUserId);
       alert("방장 권한을 위임하고 모임에서 나갔습니다.");
       navigate('/community/gathering');
     } catch (error) {
@@ -231,20 +230,20 @@ const GatheringDetailPage = () => {
   const handleKickMember = async (memberId, nickname) => {
     if (!window.confirm(`${nickname}님을 정말로 퇴장시키겠습니까?`)) return;
     try {
-      await gatheringApi.kickParticipant(id, loggedInUserId, memberId);
+      await gatheringApi.kickParticipant(gathering.room_id, loggedInUserId, memberId);
       alert("강퇴 및 영구 추방 처리가 완료되었습니다.");
-      await fetchDetailAndParticipants(id);
+      await fetchDetailAndParticipants(gathering.room_id);
     } catch (error) {
       alert("강퇴 처리 중 오류가 발생했습니다.");
     }
   };
 
   const handleChatClick = () => {
-    if (Number(id) <= 0) {
+    if (Number(gathering.room_id) <= 0) {
       alert("모임 참여를 완료한 뒤 채팅방 입장이 가능합니다.");
       return;
     }
-    navigate(`/community/chat/${id}`);
+    navigate(`/community/chat/${gathering.room_id}`);
   };
 
   const handleDirectMessageClick = (targetMemberId, nickname) => {
@@ -306,10 +305,10 @@ const GatheringDetailPage = () => {
         festival_id: gathering.festival_id || null
       };
 
-      await gatheringApi.updateGathering(id, finalPayload);
+      await gatheringApi.updateGathering(gathering.room_id, finalPayload);
       alert("모임 정보가 성공적으로 수정되었습니다.");
       setIsEditing(false);
-      await fetchDetailAndParticipants(id);
+      await fetchDetailAndParticipants(gathering.room_id);
     } catch (error) {
       console.error("모임 수정 중 오류 발생:", error);
       alert("모임 수정에 실패했습니다.");
@@ -319,7 +318,7 @@ const GatheringDetailPage = () => {
   const handleDeleteSubmit = async () => {
     if (!window.confirm("정말로 이 모임을 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.")) return;
     try {
-      await gatheringApi.deleteGathering(id, loggedInUserId);
+      await gatheringApi.deleteGathering(gathering.room_id, loggedInUserId);
       alert("모임이 삭제되었습니다.");
       navigate('/community/gathering');
     } catch (error) {
