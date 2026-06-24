@@ -31,6 +31,7 @@ import NaverCallbackPage from './features/auth/pages/NaverCallbackPage'
 import GoogleCallbackPage from './features/auth/pages/GoogleCallbackPage'
 import GatheringPage from './features/gathering/pages/GatheringPage'
 import GatheringDetailPage from './features/gathering/pages/GatheringDetailPage'
+import LegalPage from './features/legal/pages/LegalPage'
 import useFestivalLikeStore from './store/useFestivalLikeStore'
 import festivalService from './api/festivalService'
 import ScrollToTop from './components/ScrollToTop'
@@ -193,6 +194,9 @@ function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/ai-planner" element={<AIPlannerPage />} />
+          <Route path="/privacy" element={<LegalPage />} />
+          <Route path="/terms" element={<LegalPage />} />
+          <Route path="/location-terms" element={<LegalPage />} />
         </Route>
 
         {/* Admin Routes */}
