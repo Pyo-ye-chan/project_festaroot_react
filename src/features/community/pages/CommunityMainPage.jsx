@@ -13,6 +13,77 @@ import { getPopularPosts } from '../../../api/boardApi';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 import gatheringApi from '../../../api/gatheringApi';
 
+const CATEGORY_LABELS = {
+  all: '전체',
+  free: '자유',
+  review: '후기',
+  tip: '꿀팁',
+  notice: '공지',
+
+  전체: '전체',
+  자유: '자유',
+  후기: '후기',
+  팁: '꿀팁',
+  꿀팁: '꿀팁',
+  공지: '공지',
+  공지사항: '공지',
+};
+
+const CATEGORY_KEY_MAP = {
+  all: 'all',
+  free: 'free',
+  review: 'review',
+  tip: 'tip',
+  notice: 'notice',
+
+  전체: 'all',
+  자유: 'free',
+  후기: 'review',
+  팁: 'tip',
+  꿀팁: 'tip',
+  공지: 'notice',
+  공지사항: 'notice',
+  정보: 'notice',
+
+  전체게시판: 'all',
+  자유게시판: 'free',
+  축제후기: 'review',
+  꿀팁공유: 'tip',
+};
+
+const categoryClass = {
+  all: 'bg-gray-100 text-gray-600 border-gray-200',
+  free: 'bg-slate-100 text-slate-600 border-slate-200',
+  review: 'bg-purple-50 text-purple-600 border-purple-100',
+  tip: 'bg-amber-50 text-amber-600 border-amber-100',
+  notice: 'bg-blue-50 text-blue-600 border-blue-100',
+};
+
+const getCategoryLookupKey = (value) =>
+  String(value ?? '')
+    .normalize('NFKC')
+    .trim()
+    .toLowerCase();
+
+const normalizeCategory = (value, fallback = 'unknown') => {
+  const lookupKey = getCategoryLookupKey(value);
+
+  if (!lookupKey) return fallback;
+
+  return CATEGORY_KEY_MAP[lookupKey] || fallback;
+};
+
+const getCategoryLabel = (value) => {
+  const rawValue = String(value ?? '').trim();
+  const normalizedValue = normalizeCategory(rawValue);
+
+  return (
+    CATEGORY_LABELS[rawValue] ||
+    CATEGORY_LABELS[normalizedValue] ||
+    '기타'
+  );
+};
+
 const CommunityMainPage = () => {
   const navigate = useNavigate();
 
@@ -68,15 +139,13 @@ const CommunityMainPage = () => {
     fetchHomeData();
   }, []);
 
-  const getCategoryClasses = (category) => {
-    switch (category) {
-      case '후기': return 'bg-[var(--festival-yellow)] text-gray-800';
-      case '팁': return 'bg-[var(--festival-purple-soft)] text-white';
-      case '정보': return 'bg-gray-300 text-gray-800';
-      case '자유': return 'bg-[var(--festival-purple)] text-white';
-      case '공지사항': return 'bg-red-400 text-white';
-      default: return 'bg-gray-200 text-gray-700';
-    }
+  const getCategoryClasses = (value) => {
+    const normalizedValue = normalizeCategory(value);
+
+    return (
+      categoryClass[normalizedValue] ||
+      'bg-gray-100 text-gray-500 border-gray-200'
+    );
   };
 
   const formatMoimDate = (dateStr) => {
@@ -173,8 +242,8 @@ const CommunityMainPage = () => {
                       </span>
                       <div className="flex-grow">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${getCategoryClasses(post.category || '자유')}`}>
-                            {post.category || '자유'}
+                          <span className={`inline-flex border text-[10px] font-black px-2 py-0.5 rounded-md ${getCategoryClasses(post.category || '자유')}`}>
+                            {getCategoryLabel(post.category || '자유')}
                           </span>
                           <span className="text-xs font-bold text-gray-400">{post.nickname || post.author || '익명'}</span>
                         </div>
