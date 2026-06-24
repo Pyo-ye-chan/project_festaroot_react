@@ -52,6 +52,8 @@ const ChatListPage = () => {
   const user = JSON.parse(localStorage.getItem('user'));
   const userId = user?.member_id || user?.id || user?.userId;
 
+  const messages = messagesByRoom[activeChatId] || [];
+
   // 외부(모임 상세 페이지 등)에서 state에 1:1 채팅 요청을 담아 넘어왔을 때 자동 감지 및 처리
   useEffect(() => {
     if (location.state?.targetMemberId && userId) {
@@ -91,6 +93,29 @@ const ChatListPage = () => {
       console.error("참여자 목록 로드 실패", e);
     }
   };
+
+  // 입장(ENTER), 퇴장(LEAVE), 강퇴(KICK) 메시지가 수신되면 참여자 명단을 새로고침 없이 즉시 갱신합니다.
+  useEffect(() => {
+    if (messages.length > 0 && activeChatId) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg.type === 'ENTER' || lastMsg.type === 'LEAVE' || lastMsg.type === 'KICK') {
+        fetchParticipants();
+      }
+    }
+  }, [messages, activeChatId]);
+
+  // 외부(모임 상세 페이지 등)에서 state에 1:1 채팅 요청을 담아 넘어왔을 때 자동 감지 및 처리
+  useEffect(() => {
+    if (location.state?.targetMemberId && userId) {
+      const { targetMemberId, targetNickname } = location.state;
+
+      if (processedTargetRef.current === targetMemberId) return;
+      processedTargetRef.current = targetMemberId;
+
+      handleStartDirectChat(targetMemberId, targetNickname);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, userId]);
 
   // 선택된 채팅 및 상세정보 매핑 변수를 함수들이 참조
   const selectedChat = chatRooms.find(c => Number(c.id) === Number(activeChatId || displayChatId));
@@ -482,8 +507,6 @@ const ChatListPage = () => {
     }
   };
 
-  const messages = messagesByRoom[activeChatId] || [];
-
   const setMessages = (updater) => {
     if (Array.isArray(updater)) {
       const lastAddedMsg = updater[updater.length - 1];
@@ -588,7 +611,7 @@ const ChatListPage = () => {
           </main>
         </div>
       </div>
-      
+
       {/* 방장 권한 위임 선택용 팝업 모달 UI */}
       {showDelegateModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in backdrop-blur-xs">

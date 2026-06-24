@@ -144,8 +144,11 @@ const Header = () => {
 
   const handleLoginLogout = () => {
     if (isLoggedIn) {
-      logout();
-      navigate('/');
+      // 로그아웃 확인 얼럿창 추가
+      if (window.confirm('로그아웃 하시겠습니까?')) {
+        logout();
+        navigate('/');
+      }
     } else {
       navigate('/login');
     }

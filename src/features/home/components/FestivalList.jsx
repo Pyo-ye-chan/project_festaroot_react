@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Heart } from 'lucide-react'; 
 import festivalService from '../../../api/festivalService';
 import useAuthStore from '../../../store/useAuthStore'; 
 import { maxios } from '../../../api/axiosApi'; 
@@ -8,6 +9,7 @@ const FestivalList = () => {
   const [popularList, setPopularList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [likedIds, setLikedIds] = useState([]); 
+  const [likeLoading, setLikeLoading] = useState(false); 
 
   const { isLoggedIn } = useAuthStore(); 
 
@@ -15,7 +17,6 @@ const FestivalList = () => {
     const fetchPopularFestivals = async () => {
       try {
         setIsLoading(true);
-
         const params = {
           page: 1,
           size: 4,
@@ -44,7 +45,10 @@ const FestivalList = () => {
         const resData = response.data || response;
         const dataArray = Array.isArray(resData) ? resData : (resData.list || []);
         
-        const ids = dataArray.map(fest => (typeof fest === 'object' ? (fest.contentId || fest.content_id) : fest));
+        const ids = dataArray.map(fest => {
+          const id = typeof fest === 'object' ? (fest.contentId || fest.content_id) : fest;
+          return Number(id);
+        });
         setLikedIds(ids);
       } catch (error) {
         console.error("사용자의 찜 목록을 불러오는 데 실패했습니다:", error);
@@ -55,12 +59,84 @@ const FestivalList = () => {
     fetchLikedFestivals();
   }, [isLoggedIn]); 
 
+  const handleLikeToggle = async (e, contentId) => {
+    e.stopPropagation(); 
+    e.preventDefault();
+
+    if (!isLoggedIn) {
+      alert('로그인이 필요한 기능입니다.');
+      return;
+    }
+
+    if (likeLoading) return; 
+
+    setLikeLoading(true);
+    const numericId = Number(contentId);
+    const isCurrentlyLiked = likedIds.includes(numericId);
+
+    // 1. UI 선반영 (Optimistic Update) - 프론트에서 먼저 정확하게 계산
+    if (isCurrentlyLiked) {
+      setLikedIds(prev => prev.filter(id => id !== numericId));
+    } else {
+      setLikedIds(prev => [...prev, numericId]);
+    }
+
+    setPopularList(prevList =>
+      prevList.map(fest => {
+        const currentId = Number(fest.contentId || fest.content_id);
+        if (currentId === numericId) {
+          const currentLikes = fest.likes || fest.likeCount || fest.like_count || 0;
+          const updatedLikes = isCurrentlyLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1;
+          return {
+            ...fest,
+            likes: updatedLikes,
+            likeCount: updatedLikes,
+            like_count: updatedLikes,
+          };
+        }
+        return fest;
+      })
+    );
+
+    // 2. API 호출
+    try {
+      // 서버 통신이 성공하면 위의 선반영된 상태(예: 4 -> 5)를 그대로 매끄럽게 유지합니다.
+      await festivalService.toggleFestivalLike(numericId);
+    } catch (error) {
+      console.error("인기 축제 찜하기 실패:", error);
+      
+      // 통신 실패 시에만 원래 숫자로 롤백 (Rollback)
+      if (isCurrentlyLiked) {
+        setLikedIds(prev => [...prev, numericId]);
+      } else {
+        setLikedIds(prev => prev.filter(id => id !== numericId));
+      }
+      setPopularList(prevList =>
+        prevList.map(fest => {
+          const currentId = Number(fest.contentId || fest.content_id);
+          if (currentId === numericId) {
+            const currentLikes = fest.likes || fest.likeCount || fest.like_count || 0;
+            const rolledBackLikes = isCurrentlyLiked ? currentLikes + 1 : Math.max(0, currentLikes - 1);
+            return {
+              ...fest,
+              likes: rolledBackLikes,
+              likeCount: rolledBackLikes,
+              like_count: rolledBackLikes,
+            };
+          }
+          return fest;
+        })
+      );
+      alert("찜 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setLikeLoading(false);
+    }
+  };
+
   const handleFestivalClick = async (contentId) => {
     try {
       if (festivalService.increaseViewCount) {
         await festivalService.increaseViewCount(contentId);
-      } else {
-        console.warn("festivalService에 increaseViewCount 메소드가 정의되어 있지 않습니다.");
       }
     } catch (error) {
       console.error("인기 축제 목록 조회수 상승 실패:", error);
@@ -117,7 +193,7 @@ const FestivalList = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {popularList.length > 0 ? (
           popularList.map((fest, index) => {
-            const contentId = fest.contentId || fest.content_id;
+            const contentId = Number(fest.contentId || fest.content_id);
             const title = fest.title;
             const region = fest.addr1;
             const startDate = fest.eventStartDate || fest.event_start_date;
@@ -150,20 +226,14 @@ const FestivalList = () => {
                     </span>
                   </div>
                   
-                  {/* 변경된 핵심 파트: 로그인한 유저(isLoggedIn === true)에게만 찜 버튼 렌더링 */}
                   {isLoggedIn && (
                     <button 
-                      className={`absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center transition-colors duration-300 shadow-sm active:scale-90 ${
-                        isLiked ? 'text-rose-500' : 'text-gray-400 hover:text-rose-500'
+                      className={`absolute top-4 right-4 w-9 h-9 bg-white/90 backdrop-blur rounded-full flex items-center justify-center transition-all duration-300 shadow-sm active:scale-90 ${
+                        isLiked ? 'bg-rose-50/90 text-rose-500' : 'text-gray-400 hover:text-rose-500'
                       }`}
-                      onClick={(e) => {
-                        e.stopPropagation(); 
-                        e.preventDefault();
-                      }}
+                      onClick={(e) => handleLikeToggle(e, contentId)}
                     >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001z" />
-                      </svg>
+                      <Heart className={`w-4 h-4 transition-all duration-300 ${isLiked ? 'fill-rose-500 text-rose-500 scale-110' : 'fill-transparent'}`} />
                     </button>
                   )}
                 </div>
