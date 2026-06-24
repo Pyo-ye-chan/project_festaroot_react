@@ -84,3 +84,28 @@ body {
 .inquiry-content p:last-child {
   margin-bottom: 0;
 }
+
+/* 얇고 세련된 커스텀 가로 스크롤바 */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px; /* 스크롤바 두께 */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.5); /* 슬라이드 트랙 배경 */
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(107, 70, 254, 0.3); /* 메인 테마 보라색 투명도 30% */
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 70, 254, 0.6); /* 마우스 호버 시 선명하게 */
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin; /* Firefox 호환성 */
+  scrollbar-color: rgba(107, 70, 254, 0.3) rgba(241, 245, 249, 0.5);
+}
