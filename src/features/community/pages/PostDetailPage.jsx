@@ -697,7 +697,7 @@ const PostDetailPage = () => {
                       key={file.attach_id || file.file_path}
                       type="button"
                       onClick={() => {
-                        window.location.href = `http://localhost/storage/download/${file.attach_id}`;
+                        window.location.href = `https://api.festaroute.site/storage/download/${file.attach_id}`;
                       }}
                       className="w-full flex items-center justify-between gap-4 rounded-xl bg-white border border-gray-200 px-4 py-3 hover:border-purple-200 hover:bg-purple-50/40 transition-colors"
                     >
