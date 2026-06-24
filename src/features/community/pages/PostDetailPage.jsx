@@ -1153,13 +1153,6 @@ const PostDetailPage = () => {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowShareModal(false)}
-                className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-              >
-                <MoreHorizontal className="w-5 h-5" />
-              </button>
             </div>
 
             <div className="space-y-3">
