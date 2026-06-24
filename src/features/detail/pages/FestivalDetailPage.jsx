@@ -23,6 +23,7 @@ import FestivalMapTab from '../components/FestivalMapTab';
 import FestivalReviewTab from '../components/FestivalReviewTab';
 import FestivalIntroTab from '../components/FestivalIntroTab';
 import FestivalNearbyTab from '../components/FestivalNearbyTab';
+import LoginMessage from '../../../components/LoginMessage';
 
 const FestivalDetailPage = () => {
   const { id } = useParams();
@@ -37,6 +38,7 @@ const FestivalDetailPage = () => {
   const [sortType, setSortType] = useState('최신순');
 
   const [showShareModal, setShowShareModal] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false); // 로그인 유도 모달 상태 추가
 
   const [festivalImages, setFestivalImages] = useState([]);
   const [nearbyTravel, setNearbyTravel] = useState([]);
@@ -67,7 +69,7 @@ const FestivalDetailPage = () => {
       } catch (error) {
         console.error('축제 상세 정보 불러오기 실패:', error);
       } finally {
-        setLoading(false);
+        loading && setLoading(false);
       }
     };
 
@@ -185,12 +187,11 @@ const FestivalDetailPage = () => {
   // 로그인 체크 후 모임 상세페이지 화면으로 바로 라우팅 전환
   const handleFestivalChatClick = () => {
     if (!isLoggedIn || !currentMemberId) {
-      alert('로그인 후 이용이 가능합니다.');
-      navigate('/login');
+      setIsLoginModalOpen(true);
       return;
     }
 
-    alert("축제 모임 페이지로 이동합니다! \n채팅방 참여를 원할 시 모임 참여를 눌러주세요!") 
+    alert("축제 모임 페이지로 이동합니다! \n채팅방 참여를 원할 시 모임 참여를 눌러주세요!");
     // 기본적으로 음수 식별자(-content_id)를 생성하여 모임 상세페이지로 화면만 전환
     const officialFestivalRoomId = -Math.abs(Number(id));
     navigate(`/community/gathering/${officialFestivalRoomId}`);
@@ -238,7 +239,7 @@ const FestivalDetailPage = () => {
 
   const handleLikeClick = async () => {
     if (!isLoggedIn || !currentMemberId) {
-      alert('로그인이 필요한 기능입니다.');
+      setIsLoginModalOpen(true);
       return;
     }
 
@@ -620,6 +621,12 @@ const FestivalDetailPage = () => {
           </div>
         )}
       </div>
+
+      {/* 로그인 유도 커스텀 모달 컴포넌트 추가 */}
+      <LoginMessage
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
     </>
   );
 };
