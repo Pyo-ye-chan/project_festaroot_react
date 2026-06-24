@@ -166,6 +166,7 @@ const GatheringDetailPage = () => {
 
       if (response && response.roomId) {
         const actualRoomId = response.roomId;
+        fetchDetailAndParticipants(actualRoomId);
         navigate(`/community/gathering/${actualRoomId}`, { replace: true });
       } else {
         await fetchDetailAndParticipants(gathering.room_id);
