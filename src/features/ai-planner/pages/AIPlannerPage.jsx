@@ -758,8 +758,8 @@ const AIPlannerPage = () => {
 
       <div className="max-w-6xl mx-auto px-4 -mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left: User Context Analysis */}
-        <aside className="lg:col-span-1 space-y-6">
-          <div className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 sticky top-24">
+        <aside className="lg:col-span-1 space-y-6 h-full">
+          <div className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 lg:sticky lg:top-24">
             <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
               <span className="text-2xl">🧠</span> 분석 데이터 소스
             </h3>
