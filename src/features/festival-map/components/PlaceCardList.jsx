@@ -46,7 +46,7 @@ function PlaceCardList() {
         </select> */}
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x h-full">
+      <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar snap-x h-full">
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3">
             <PulseLoader color="#6B46FE" size={10} />

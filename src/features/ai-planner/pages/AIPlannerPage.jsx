@@ -352,7 +352,10 @@ const AIPlannerPage = () => {
           ? '남성'
           : userDetails?.member?.gender === 'F'
             ? '여성'
-            : userDetails?.member?.gender || '성별 미정'
+            : userDetails?.member?.gender || '성별 미정',
+      residence: userDetails?.member?.addr_sido
+        ? `${userDetails.member.addr_sido} ${userDetails.member.addr_sigungu || ''}`.trim()
+        : '거주지 미등록'
     },
     interests: {
       regions: userDetails?.interestRegions?.map((r) => r.region_name) || [],
@@ -758,8 +761,8 @@ const AIPlannerPage = () => {
 
       <div className="max-w-6xl mx-auto px-4 -mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left: User Context Analysis */}
-        <aside className="lg:col-span-1 space-y-6">
-          <div className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 sticky top-24">
+        <aside className="lg:col-span-1 space-y-6 h-full">
+          <div className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 lg:sticky lg:top-24">
             <h3 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
               <span className="text-2xl">🧠</span> 분석 데이터 소스
             </h3>
@@ -769,9 +772,12 @@ const AIPlannerPage = () => {
                 <p className="text-xs font-black text-purple-600 uppercase tracking-wider mb-3">
                   사용자 프로필
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <span className="px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-bold rounded-lg border border-gray-100">
                     {userContext.profile.age} {userContext.profile.gender}
+                  </span>
+                  <span className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg border border-purple-100">
+                    🏠 {userContext.profile.residence}
                   </span>
                 </div>
               </div>
@@ -927,6 +933,9 @@ const AIPlannerPage = () => {
                   <p className="text-sm text-gray-500 font-medium mt-1">
                     AI가 선별한 취향 저격 축제들입니다.
                   </p>
+                  <p className="text-xs text-purple-600 font-semibold mt-1.5 flex items-center gap-1">
+                    <span>✨</span> 피드백(👍/👎)을 남겨주시면 AI가 취향을 학습해 더 정확한 축제를 추천합니다.
+                  </p>
                 </div>
 
                 {showRecommendations && (
@@ -1007,20 +1016,27 @@ const AIPlannerPage = () => {
 
                             {/* Feedback Buttons */}
                             <div className="flex gap-2 shrink-0 ml-4">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleFeedback(item.CONTENT_ID, 'LIKE');
-                                }}
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${feedbackMap[item.CONTENT_ID] === 'LIKE'
-                                  ? 'bg-blue-500 text-white shadow-lg'
-                                  : 'bg-white text-gray-400 hover:text-blue-500 border border-gray-100'
-                                  }`}
-                              >
-                                👍
-                              </button>
+                              <div className="relative group/like">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleFeedback(item.CONTENT_ID, 'LIKE');
+                                  }}
+                                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${feedbackMap[item.CONTENT_ID] === 'LIKE'
+                                    ? 'bg-blue-500 text-white shadow-lg'
+                                    : 'bg-white text-gray-400 hover:text-blue-500 border border-gray-100'
+                                    }`}
+                                >
+                                  👍
+                                </button>
+                                {/* Like Tooltip */}
+                                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-2 py-1.5 rounded-lg whitespace-nowrap opacity-0 pointer-events-none group-hover/like:opacity-100 transition-opacity duration-200 z-10 shadow-md">
+                                  유사한 축제 더 추천받기
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                                </div>
+                              </div>
 
-                              <div className="relative">
+                              <div className="relative group/dislike">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1035,6 +1051,14 @@ const AIPlannerPage = () => {
                                 >
                                   👎
                                 </button>
+
+                                {/* Dislike Tooltip */}
+                                {showDislikeReason !== item.CONTENT_ID && (
+                                  <div className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-2 py-1.5 rounded-lg whitespace-nowrap opacity-0 pointer-events-none group-hover/dislike:opacity-100 transition-opacity duration-200 z-10 shadow-md">
+                                    추천에서 제외/보완하기
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                                  </div>
+                                )}
 
                                 {/* Dislike Reason Modal */}
                                 {showDislikeReason === item.CONTENT_ID && (
