@@ -45,8 +45,10 @@ const CATEGORY_LABELS = {
   전체: '전체',
   자유: '자유',
   후기: '후기',
+  팁: '꿀팁',
   꿀팁: '꿀팁',
   공지: '공지',
+  공지사항: '공지',
 };
 
 const CATEGORY_KEY_MAP = {
@@ -59,8 +61,11 @@ const CATEGORY_KEY_MAP = {
   전체: 'all',
   자유: 'free',
   후기: 'review',
+  팁: 'tip',
   꿀팁: 'tip',
   공지: 'notice',
+  공지사항: 'notice',
+  정보: 'notice',
 
   전체게시판: 'all',
   자유게시판: 'free',
