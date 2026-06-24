@@ -61,6 +61,20 @@ const AIPlannerPage = () => {
   const [isLikesOpen, setIsLikesOpen] = useState(true);
   const plannerSectionRef = useRef(null);
 
+  const scrollToPlannerSection = () => {
+    const plannerSection = plannerSectionRef.current;
+
+    if (!plannerSection) {
+      return;
+    }
+
+    const top = plannerSection.getBoundingClientRect().top + window.scrollY - 24;
+    window.scrollTo({
+      top,
+      behavior: 'smooth'
+    });
+  };
+
   // 비로그인 접근 시 회원 전용 안내 모달 표시
   useEffect(() => {
     setShowLoginRequiredModal(!isMemberLoggedIn);
@@ -72,10 +86,7 @@ const AIPlannerPage = () => {
     }
 
     const timer = window.setTimeout(() => {
-      plannerSectionRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
+      scrollToPlannerSection();
     }, 150);
 
     return () => window.clearTimeout(timer);
@@ -209,6 +220,13 @@ const AIPlannerPage = () => {
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
       today.getDate()
     ).padStart(2, '0')}`;
+  };
+
+  const getMinPlannerVisitDate = (festival) => {
+    const { start } = getFestivalDateRange(festival);
+    const today = getTodayDateForInput();
+
+    return start && start > today ? start : today;
   };
 
   // 추천 장소 타입별 아이콘
@@ -447,9 +465,7 @@ const AIPlannerPage = () => {
   const handleSelectFestival = (festival) => {
     if (!requireLogin()) return;
 
-    const { start } = getFestivalDateRange(festival);
-    const today = getTodayDateForInput();
-    const defaultVisitDate = start && start > today ? start : today;
+    const defaultVisitDate = getMinPlannerVisitDate(festival);
 
     setSelectedFestival(festival);
 
@@ -591,6 +607,9 @@ const AIPlannerPage = () => {
         setShowPlannerModal(false);
         setShowItinerary(true);
         setIsPlannerSaved(false);
+        window.setTimeout(() => {
+          scrollToPlannerSection();
+        }, 250);
       } else {
         alert(data.message || '축제 하루 코스 생성에 실패했습니다.');
       }
@@ -653,28 +672,29 @@ const AIPlannerPage = () => {
       if (value === '') {
         setPlannerForm((prev) => ({
           ...prev,
-          [name]: value
+          [name]: '1'
         }));
         return;
       }
 
       if (Number(value) < 1) {
-        alert('동행 인원은 1명 이상만 입력할 수 있습니다.');
+        setPlannerForm((prev) => ({
+          ...prev,
+          [name]: '1'
+        }));
         return;
       }
     }
 
     if (name === 'visitDate' && selectedFestival) {
-      const { start, end } = getFestivalDateRange(selectedFestival);
-      const today = getTodayDateForInput();
+      const { end } = getFestivalDateRange(selectedFestival);
+      const minVisitDate = getMinPlannerVisitDate(selectedFestival);
 
-      if (value < today) {
-        alert(`오늘(${today}) 이전 날짜는 선택할 수 없습니다.`);
-        return;
-      }
-
-      if (start && value < start) {
-        alert(`축제 시작일(${start}) 이후 날짜만 선택할 수 있습니다.`);
+      if (value < minVisitDate) {
+        setPlannerForm((prev) => ({
+          ...prev,
+          [name]: minVisitDate
+        }));
         return;
       }
 
