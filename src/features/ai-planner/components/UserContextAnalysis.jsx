@@ -13,9 +13,12 @@ const UserContextAnalysis = ({ userContext, isLoadingContext, isRegionsOpen, set
             <p className="text-xs font-black text-purple-600 uppercase tracking-wider mb-3">
               사용자 프로필
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <span className="px-3 py-1.5 bg-gray-50 text-gray-600 text-xs font-bold rounded-lg border border-gray-100">
                 {userContext.profile.age} {userContext.profile.gender}
+              </span>
+              <span className="px-3 py-1.5 bg-purple-50 text-purple-600 text-xs font-bold rounded-lg border border-purple-100">
+                🏠 {userContext.profile.residence}
               </span>
             </div>
           </div>
