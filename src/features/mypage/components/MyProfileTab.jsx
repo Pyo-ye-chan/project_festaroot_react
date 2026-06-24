@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { updateMemberProfile } from '../../../api/memberApi';
+import { updateMemberProfile, checkNicknameDuplicate } from '../../../api/memberApi';
 import { getSidoList } from '../../../api/regionApi';
 import { getThemeList } from '../../../api/themeApi';
 import { toast } from 'react-toastify';
@@ -19,6 +19,12 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
   const [allSidos, setAllSidos] = useState([]);
   const [allThemes, setAllThemes] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  // 닉네임 중복확인 관련 상태 추가
+  const [isNicknameConfirmed, setIsNicknameConfirmed] = useState(true);
+  const [confirmedNicknameValue, setConfirmedNicknameValue] = useState('');
+  const [nicknameMessage, setNicknameMessage] = useState('');
+  const [isCheckingNickname, setIsCheckingNickname] = useState(false);
 
   // 모달 상태 추가
   const [isRegionModalOpen, setIsRegionModalOpen] = useState(false);
@@ -69,12 +75,18 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
     setEditThemes(interestThemes || []);
     setProfilePreview(member.profile_image_url);
     setIsEditing(true);
+    setIsNicknameConfirmed(true);
+    setConfirmedNicknameValue(member.nickname);
+    setNicknameMessage('');
   };
 
   const handleCancel = () => {
     setIsEditing(false);
     setProfilePreview(null);
     setProfileFile(null);
+    setIsNicknameConfirmed(true);
+    setConfirmedNicknameValue('');
+    setNicknameMessage('');
   };
 
   const handleImageChange = (e) => {
@@ -105,9 +117,62 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
     );
   };
 
+  // 닉네임 중복 확인
+  const handleCheckNicknameDuplicate = async () => {
+    if (!editNickname.trim()) {
+      setIsNicknameConfirmed(false);
+      setConfirmedNicknameValue('');
+      setNicknameMessage('닉네임을 입력해 주세요.');
+      return;
+    }
+
+    if (editNickname === member.nickname) {
+      setIsNicknameConfirmed(true);
+      setConfirmedNicknameValue(member.nickname);
+      setNicknameMessage('현재 사용 중인 본인의 닉네임입니다.');
+      return;
+    }
+
+    setIsCheckingNickname(true);
+    setNicknameMessage('');
+    setIsNicknameConfirmed(false);
+
+    try {
+      const response = await checkNicknameDuplicate(editNickname);
+      const data = response?.data ?? response;
+
+      const isAvailable =
+        data?.isAvailable === true ||
+        data?.available === true ||
+        data?.success === true;
+
+      if (isAvailable) {
+        setIsNicknameConfirmed(true);
+        setConfirmedNicknameValue(editNickname);
+        setNicknameMessage('사용 가능한 닉네임입니다.');
+      } else {
+        setIsNicknameConfirmed(false);
+        setConfirmedNicknameValue('');
+        setNicknameMessage(data?.message || '이미 사용 중인 닉네임입니다.');
+      }
+    } catch (error) {
+      console.error('닉네임 중복 확인 실패:', error);
+      setIsNicknameConfirmed(false);
+      setConfirmedNicknameValue('');
+      setNicknameMessage('닉네임 중복 확인 중 오류가 발생했습니다.');
+    } finally {
+      setIsCheckingNickname(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!editNickname.trim()) {
       toast.warn('닉네임을 입력해 주세요.');
+      return;
+    }
+
+    if (editNickname !== member.nickname && (!isNicknameConfirmed || confirmedNicknameValue !== editNickname)) {
+      toast.warn('닉네임 중복 확인을 완료해 주세요.');
       return;
     }
 
@@ -263,21 +328,58 @@ const MyProfileTab = ({ userDetails, onRefresh }) => {
 
         <div className="flex-grow text-center md:text-left space-y-4 w-full">
           <div>
-            <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2 sm:gap-3 mb-1 sm:mb-2">
+            <div className="flex flex-col md:flex-row items-center md:items-start justify-center md:justify-start gap-2 sm:gap-3 mb-1 sm:mb-2">
               {isEditing ? (
-                <input
-                  type="text"
-                  value={editNickname}
-                  onChange={(e) => setEditNickname(e.target.value)}
-                  className="text-xl sm:text-2xl font-black text-gray-800 border-b-2 border-purple-500 focus:outline-none bg-transparent px-1"
-                  placeholder="닉네임 입력"
-                />
+                <div className="flex flex-col gap-1 w-full max-w-sm">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editNickname}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditNickname(val);
+                        if (val === member.nickname) {
+                          setIsNicknameConfirmed(true);
+                          setConfirmedNicknameValue(member.nickname);
+                          setNicknameMessage('');
+                        } else {
+                          setIsNicknameConfirmed(false);
+                          setConfirmedNicknameValue('');
+                          setNicknameMessage('');
+                        }
+                      }}
+                      className="text-lg sm:text-xl font-black text-gray-800 border-b-2 border-purple-500 focus:outline-none bg-transparent px-1 flex-grow max-w-[200px]"
+                      placeholder="닉네임 입력"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCheckNicknameDuplicate}
+                      disabled={isCheckingNickname || editNickname === member.nickname}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm shrink-0 ${
+                        editNickname === member.nickname
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                          : 'bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-200'
+                      }`}
+                    >
+                      {isCheckingNickname ? '확인 중...' : '중복확인'}
+                    </button>
+                  </div>
+                  {nicknameMessage && (
+                    <p className={`text-[11px] font-bold text-center md:text-left ${
+                      isNicknameConfirmed 
+                        ? 'text-green-600' 
+                        : 'text-red-600'
+                    }`}>
+                      {nicknameMessage}
+                    </p>
+                  )}
+                </div>
               ) : (
                 <h2 className="text-xl sm:text-2xl font-black text-gray-800">
                   {member.nickname}
                 </h2>
               )}
-              <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 bg-yellow-100 text-yellow-700 text-[10px] sm:text-xs font-bold rounded-full border border-yellow-200">
+              <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 bg-yellow-100 text-yellow-700 text-[10px] sm:text-xs font-bold rounded-full border border-yellow-200 self-center">
                 ✨ {titleName}
               </span>
             </div>
