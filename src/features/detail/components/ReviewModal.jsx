@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Star, Camera } from 'lucide-react';
 
+const REVIEW_CONTENT_MAX_LENGTH = 500;
+
 const ReviewModal = ({ isOpen, onClose, onSubmit, initialReview, festivalId, memberId }) => {
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState('');
@@ -48,6 +50,11 @@ const ReviewModal = ({ isOpen, onClose, onSubmit, initialReview, festivalId, mem
     }
     if (!visitDate) {
       alert('방문일자를 입력해주세요.');
+      return;
+    }
+
+    if (content.length > REVIEW_CONTENT_MAX_LENGTH) {
+      alert(`후기 본문은 ${REVIEW_CONTENT_MAX_LENGTH}자까지 입력할 수 있습니다.`);
       return;
     }
 
@@ -128,12 +135,20 @@ const ReviewModal = ({ isOpen, onClose, onSubmit, initialReview, festivalId, mem
           </div>
 
           {/* 후기 내용 */}
-          <textarea
-            className="w-full h-36 p-4 border border-gray-200 rounded-2xl resize-none outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-base font-medium text-gray-700 placeholder:text-gray-400"
-            placeholder="생생한 후기를 남겨주세요! (선택사항)"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
+          <div>
+            <textarea
+              className="w-full h-36 p-4 border border-gray-200 rounded-2xl resize-none outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-base font-medium text-gray-700 placeholder:text-gray-400"
+              placeholder="생생한 후기를 남겨주세요! (선택사항)"
+              value={content}
+              onChange={(e) => setContent(e.target.value.slice(0, REVIEW_CONTENT_MAX_LENGTH))}
+              maxLength={REVIEW_CONTENT_MAX_LENGTH}
+            />
+            <div className="mt-2 flex justify-end">
+              <span className="text-xs font-bold text-gray-400">
+                {content.length} / {REVIEW_CONTENT_MAX_LENGTH}
+              </span>
+            </div>
+          </div>
 
           {/* 사진 첨부 */}
           <div className="mt-6">

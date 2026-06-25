@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import CommentDetailView from '../components/CommentDetailView';
 import {
   Search,
   RotateCcw,
   CalendarDays,
-  FileText,
+  MessageCircle,
   ShieldAlert,
   Eye,
   Trash2,
@@ -12,18 +13,19 @@ import {
   ChevronRight,
   CheckCircle2,
   ClipboardCheck,
+  CornerDownRight,
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
-import PostDetailView from '../components/PostDetailView';
 import {
-  getAdminPostSummary,
-  getWaitingPostReports,
-  getAdminPosts,
+  getAdminCommentSummary,
+  getWaitingCommentReports,
+  getAdminComments,
+  getAdminCommentDetail,
   getAdminPostDetail,
-  processAdminPostReport,
-  deleteAdminPost,
-  deleteAdminPosts,
+  processAdminCommentReport,
+  deleteAdminComment,
+  deleteAdminComments,
 } from '../../../api/adminApi';
 
 const CATEGORY_LABELS = {
@@ -35,9 +37,11 @@ const CATEGORY_LABELS = {
 };
 
 const SEARCH_TYPE_OPTIONS = [
-  { value: 'title', label: '제목' },
+  { value: 'content', label: '내용' },
   { value: 'author', label: '작성자' },
-  { value: 'id', label: '게시글 ID' },
+  { value: 'id', label: '댓글 ID' },
+  { value: 'postTitle', label: '게시글 제목' },
+  { value: 'postId', label: '게시글 ID' },
 ];
 
 const REPORT_RESULT_LABELS = {
@@ -52,56 +56,24 @@ const REPORT_RESULT_CLASSES = {
   REJECTED: 'bg-gray-100 text-gray-500',
 };
 
-const categoryClass = {
-  free: 'bg-slate-100 text-slate-600',
-  review: 'bg-purple-50 text-purple-600',
-  tip: 'bg-amber-50 text-amber-600',
-  notice: 'bg-blue-50 text-blue-600',
-};
-
-const VISIBLE_STATUS_OPTIONS = [
-  { value: 'all', label: '전체' },
-  { value: 'Y', label: '공개' },
-  { value: 'N', label: '비공개' },
-];
-
+const COMMENT_PAGE_SIZE = 5;
 const REPORT_PAGE_SIZE = 4;
-const POST_PAGE_SIZE = 5;
 
 const INITIAL_STATS = {
   total: 0,
   today: 0,
-  reportedPostCount: 0,
+  reportedCommentCount: 0,
   pendingReportCount: 0,
+};
+
+const commentTypeClass = {
+  COMMENT: 'bg-purple-50 text-purple-600',
+  REPLY: 'bg-blue-50 text-blue-600',
 };
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
 
 const normalizeCategory = (category) => String(category || '').toLowerCase();
-
-const normalizeVisibleStatus = (visibleStatus) => {
-  if (visibleStatus === 'Y' || visibleStatus === 'N') {
-    return visibleStatus;
-  }
-
-  return 'all';
-};
-
-const getPostCode = (post) => {
-  if (post?.postCode) return post.postCode;
-  return `POST-${String(post?.postId || 0).padStart(3, '0')}`;
-};
-
-const getReportCode = (report) => {
-  if (report?.reportCode) return report.reportCode;
-  return `RPT-${String(report?.reportId || 0).padStart(5, '0')}`;
-};
-
-const getSearchPlaceholder = (searchType) => {
-  if (searchType === 'author') return '작성자 ID를 입력해 주세요.';
-  if (searchType === 'id') return '게시글 ID를 입력해 주세요.';
-  return '게시글 제목을 입력해 주세요.';
-};
 
 const formatShortDate = (value) => {
   const text = String(value || '').trim();
@@ -109,22 +81,46 @@ const formatShortDate = (value) => {
   return text.split(' ')[0].replace(/\./g, '-');
 };
 
-const getVisibleBadge = (isVisible) => {
-  const isPublic = String(isVisible || '').toUpperCase() === 'Y';
+const getCommentType = (comment) => {
+  if (comment?.commentType) return comment.commentType;
+  return comment?.parentCommentId ? 'REPLY' : 'COMMENT';
+};
 
-  if (isPublic) {
-    return (
-      <span className="inline-flex h-7 max-w-full items-center justify-center rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-600">
-        <span className="truncate">공개</span>
-      </span>
-    );
-  }
+const getCommentTypeLabel = (comment) =>
+  getCommentType(comment) === 'REPLY' ? '대댓글' : '댓글';
 
-  return (
-    <span className="inline-flex h-7 max-w-full items-center justify-center rounded-full bg-rose-50 px-3 py-1.5 text-xs font-black text-rose-600">
-      <span className="truncate">비공개</span>
-    </span>
+const getCommentCode = (comment) => {
+  if (comment?.commentCode) return comment.commentCode;
+  return `CMT-${String(comment?.commentId || 0).padStart(5, '0')}`;
+};
+
+const getPostCode = (comment) => {
+  if (comment?.postCode) return comment.postCode;
+  return `POST-${String(comment?.postId || 0).padStart(3, '0')}`;
+};
+
+const getReportCode = (report) => {
+  if (report?.reportCode) return report.reportCode;
+  return `RPT-${String(report?.reportId || 0).padStart(5, '0')}`;
+};
+
+const getReportCount = (comment) =>
+  Number(comment?.reportCount ?? comment?.reportItems?.length ?? 0);
+
+const getPendingReportCount = (comment) =>
+  Number(
+    comment?.pendingReportCount ??
+    comment?.reportItems?.filter((report) => report.status === 'WAITING')
+      .length ??
+    0
   );
+
+const getSearchPlaceholder = (searchType) => {
+  if (searchType === 'author') return '작성자 ID를 입력해 주세요.';
+  if (searchType === 'id') return '댓글 ID를 입력해 주세요.';
+  if (searchType === 'postTitle') return '게시글 제목을 입력해 주세요.';
+  if (searchType === 'postId') return '게시글 ID를 입력해 주세요.';
+  return '댓글 내용을 입력해 주세요.';
 };
 
 const getErrorMessage = (error, fallback) => {
@@ -137,37 +133,38 @@ const getErrorMessage = (error, fallback) => {
   return responseData?.message || responseData?.error || fallback;
 };
 
-const PostManagementPage = () => {
+const CommentManagementPage = () => {
   const [stats, setStats] = useState(INITIAL_STATS);
   const [waitingReportRows, setWaitingReportRows] = useState([]);
-  const [posts, setPosts] = useState([]);
+  const [comments, setComments] = useState([]);
 
   const [keywordInput, setKeywordInput] = useState('');
-  const [searchType, setSearchType] = useState('title');
-  const [visibleStatus, setVisibleStatus] = useState('all');
+  const [searchType, setSearchType] = useState('content');
   const [searchCondition, setSearchCondition] = useState({
-    searchType: 'title',
+    searchType: 'content',
     keyword: '',
-    visibleStatus: 'all',
   });
-  const [category, setCategory] = useState('all');
 
-  const [selectedPostIds, setSelectedPostIds] = useState([]);
-  const [selectedPost, setSelectedPost] = useState(null);
+  const [category, setCategory] = useState('all');
+  const [commentType, setCommentType] = useState('all');
+
+  const [selectedCommentIds, setSelectedCommentIds] = useState([]);
+  const [selectedComment, setSelectedComment] = useState(null);
+  const [sourcePost, setSourcePost] = useState(null);
   const [selectedReportId, setSelectedReportId] = useState(null);
 
   const [reportPage, setReportPage] = useState(1);
   const [reportTotalPages, setReportTotalPages] = useState(1);
   const [reportTotalCount, setReportTotalCount] = useState(0);
 
-  const [postPage, setPostPage] = useState(1);
-  const [postTotalPages, setPostTotalPages] = useState(1);
-  const [postTotalCount, setPostTotalCount] = useState(0);
+  const [commentPage, setCommentPage] = useState(1);
+  const [commentTotalPages, setCommentTotalPages] = useState(1);
+  const [commentTotalCount, setCommentTotalCount] = useState(0);
 
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [reportsLoading, setReportsLoading] = useState(false);
-  const [postsLoading, setPostsLoading] = useState(false);
-  const [openingPostId, setOpeningPostId] = useState(null);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [openingCommentId, setOpeningCommentId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
 
@@ -175,19 +172,19 @@ const PostManagementPage = () => {
     setSummaryLoading(true);
 
     try {
-      const response = await getAdminPostSummary();
+      const response = await getAdminCommentSummary();
       const data = response.data || {};
 
       setStats({
         total: Number(data.total || 0),
         today: Number(data.today || 0),
-        reportedPostCount: Number(data.reportedPostCount || 0),
+        reportedCommentCount: Number(data.reportedCommentCount || 0),
         pendingReportCount: Number(data.pendingReportCount || 0),
       });
     } catch (error) {
-      console.error('게시글 관리자 통계 조회 실패:', error);
+      console.error('댓글 관리자 통계 조회 실패:', error);
       setLoadError(
-        getErrorMessage(error, '게시글 관리자 통계를 불러오지 못했습니다.')
+        getErrorMessage(error, '댓글 관리자 통계를 불러오지 못했습니다.')
       );
     } finally {
       setSummaryLoading(false);
@@ -198,10 +195,11 @@ const PostManagementPage = () => {
     setReportsLoading(true);
 
     try {
-      const response = await getWaitingPostReports({
+      const response = await getWaitingCommentReports({
         page: targetPage,
         size: REPORT_PAGE_SIZE,
       });
+
       const data = response.data || {};
       const totalCount = Math.max(Number(data.totalCount || 0), 0);
       const calculatedTotalPages = Math.max(
@@ -224,34 +222,38 @@ const PostManagementPage = () => {
 
       setWaitingReportRows(Array.isArray(data.list) ? data.list : []);
     } catch (error) {
-      console.error('처리 대기 게시글 신고 조회 실패:', error);
+      console.error('처리 대기 댓글 신고 조회 실패:', error);
       setWaitingReportRows([]);
       setLoadError(
-        getErrorMessage(error, '처리 대기 게시글 신고 목록을 불러오지 못했습니다.')
+        getErrorMessage(
+          error,
+          '처리 대기 댓글 신고 목록을 불러오지 못했습니다.'
+        )
       );
     } finally {
       setReportsLoading(false);
     }
   }, []);
 
-  const loadPosts = useCallback(
+  const loadComments = useCallback(
     async (targetPage) => {
-      setPostsLoading(true);
+      setCommentsLoading(true);
 
       try {
-        const response = await getAdminPosts({
+        const response = await getAdminComments({
           page: targetPage,
-          size: POST_PAGE_SIZE,
+          size: COMMENT_PAGE_SIZE,
           category,
+          commentType,
           searchType: searchCondition.searchType,
           keyword: searchCondition.keyword,
-          visibleStatus: normalizeVisibleStatus(searchCondition.visibleStatus),
         });
+
         const data = response.data || {};
         const totalCount = Math.max(Number(data.totalCount || 0), 0);
         const calculatedTotalPages = Math.max(
           1,
-          Math.ceil(totalCount / POST_PAGE_SIZE)
+          Math.ceil(totalCount / COMMENT_PAGE_SIZE)
         );
         const totalPages = Math.max(
           Number(data.totalPages || calculatedTotalPages),
@@ -259,26 +261,26 @@ const PostManagementPage = () => {
         );
         const safeTargetPage = Math.min(Math.max(targetPage, 1), totalPages);
 
-        setPostTotalPages(totalPages);
-        setPostTotalCount(totalCount);
+        setCommentTotalPages(totalPages);
+        setCommentTotalCount(totalCount);
 
         if (safeTargetPage !== targetPage) {
-          setPostPage(safeTargetPage);
+          setCommentPage(safeTargetPage);
           return;
         }
 
-        setPosts(Array.isArray(data.list) ? data.list : []);
+        setComments(Array.isArray(data.list) ? data.list : []);
       } catch (error) {
-        console.error('전체 게시글 조회 실패:', error);
-        setPosts([]);
+        console.error('전체 댓글 조회 실패:', error);
+        setComments([]);
         setLoadError(
-          getErrorMessage(error, '전체 게시글 목록을 불러오지 못했습니다.')
+          getErrorMessage(error, '전체 댓글 목록을 불러오지 못했습니다.')
         );
       } finally {
-        setPostsLoading(false);
+        setCommentsLoading(false);
       }
     },
-    [category, searchCondition]
+    [category, commentType, searchCondition]
   );
 
   useEffect(() => {
@@ -290,21 +292,23 @@ const PostManagementPage = () => {
   }, [loadWaitingReports, reportPage]);
 
   useEffect(() => {
-    loadPosts(postPage);
-  }, [loadPosts, postPage]);
+    loadComments(commentPage);
+  }, [loadComments, commentPage]);
 
   const isAllChecked = useMemo(() => {
     return (
-      posts.length > 0 &&
-      posts.every((post) => selectedPostIds.includes(post.postId))
+      comments.length > 0 &&
+      comments.every((comment) =>
+        selectedCommentIds.includes(comment.commentId)
+      )
     );
-  }, [posts, selectedPostIds]);
+  }, [comments, selectedCommentIds]);
 
   const refreshOverview = async () => {
     await Promise.allSettled([
       loadSummary(),
       loadWaitingReports(reportPage),
-      loadPosts(postPage),
+      loadComments(commentPage),
     ]);
   };
 
@@ -317,10 +321,9 @@ const PostManagementPage = () => {
     setSearchCondition({
       searchType,
       keyword: keywordInput.trim(),
-      visibleStatus,
     });
-    setSelectedPostIds([]);
-    setPostPage(1);
+    setSelectedCommentIds([]);
+    setCommentPage(1);
   };
 
   const handleSearchKeyDown = (event) => {
@@ -331,102 +334,118 @@ const PostManagementPage = () => {
 
   const handleReset = () => {
     setKeywordInput('');
-    setSearchType('title');
-    setVisibleStatus('all');
+    setSearchType('content');
     setSearchCondition({
-      searchType: 'title',
+      searchType: 'content',
       keyword: '',
-      visibleStatus: 'all',
     });
     setCategory('all');
-    setSelectedPostIds([]);
-    setPostPage(1);
+    setCommentType('all');
+    setSelectedCommentIds([]);
+    setCommentPage(1);
   };
 
   const handleChangeCategory = (nextCategory) => {
     setCategory(nextCategory);
-    setSelectedPostIds([]);
-    setPostPage(1);
+    setSelectedCommentIds([]);
+    setCommentPage(1);
   };
 
-  const handleChangeVisibleStatus = (nextVisibleStatus) => {
-    setVisibleStatus(nextVisibleStatus);
-    setSearchCondition((prev) => ({
-      ...prev,
-      visibleStatus: nextVisibleStatus,
-    }));
-    setSelectedPostIds([]);
-    setPostPage(1);
+  const handleChangeCommentType = (nextType) => {
+    setCommentType(nextType);
+    setSelectedCommentIds([]);
+    setCommentPage(1);
   };
 
   const handleChangeSearchType = (nextSearchType) => {
     setSearchType(nextSearchType);
   };
 
-  const handleOpenDetail = async (postId, reportId = null) => {
-    if (openingPostId !== null) return;
+  const handleOpenDetail = async (commentId, reportId = null) => {
+    if (openingCommentId !== null) return;
 
-    setOpeningPostId(postId);
+    setOpeningCommentId(commentId);
     setSelectedReportId(reportId);
+    setSourcePost(null);
 
     try {
-      const response = await getAdminPostDetail(postId);
-      setSelectedPost(response.data);
+      const commentResponse = await getAdminCommentDetail(commentId);
+      const commentData = commentResponse.data || null;
+
+      if (!commentData) {
+        throw new Error('댓글 상세 응답이 비어 있습니다.');
+      }
+
+      let postData = null;
+
+      if (commentData.postId) {
+        try {
+          const postResponse = await getAdminPostDetail(commentData.postId);
+          postData = postResponse.data || null;
+        } catch (postError) {
+          console.error('원 게시글 상세 조회 실패:', postError);
+        }
+      }
+
+      setSourcePost(postData);
+      setSelectedComment(commentData);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-      console.error('게시글 상세 조회 실패:', error);
+      console.error('댓글 상세 조회 실패:', error);
       window.alert(
-        getErrorMessage(error, '게시글 상세 정보를 불러오지 못했습니다.')
+        getErrorMessage(error, '댓글 상세 정보를 불러오지 못했습니다.')
       );
     } finally {
-      setOpeningPostId(null);
+      setOpeningCommentId(null);
     }
   };
 
   const handleBackToList = () => {
-    setSelectedPost(null);
+    setSelectedComment(null);
+    setSourcePost(null);
     setSelectedReportId(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleToggleAll = () => {
-    const currentPageIds = posts.map((post) => post.postId);
+    const currentPageIds = comments.map((comment) => comment.commentId);
 
     if (isAllChecked) {
-      setSelectedPostIds((prev) =>
+      setSelectedCommentIds((prev) =>
         prev.filter((id) => !currentPageIds.includes(id))
       );
       return;
     }
 
-    setSelectedPostIds((prev) =>
+    setSelectedCommentIds((prev) =>
       Array.from(new Set([...prev, ...currentPageIds]))
     );
   };
 
-  const handleTogglePost = (postId) => {
-    setSelectedPostIds((prev) => {
-      if (prev.includes(postId)) {
-        return prev.filter((id) => id !== postId);
+  const handleToggleComment = (commentId) => {
+    setSelectedCommentIds((prev) => {
+      if (prev.includes(commentId)) {
+        return prev.filter((id) => id !== commentId);
       }
 
-      return [...prev, postId];
+      return [...prev, commentId];
     });
   };
 
-  const handleDeletePost = async (postId) => {
+  const handleDeleteComment = async (commentId) => {
     if (actionLoading) return;
 
     const target =
-      selectedPost?.postId === postId
-        ? selectedPost
-        : posts.find((post) => post.postId === postId);
+      selectedComment?.commentId === commentId
+        ? selectedComment
+        : comments.find((comment) => comment.commentId === commentId);
 
-    const titleText = target?.title ? `\n\n제목: ${target.title}` : '';
+    const contentText = target?.content ? `\n\n내용: ${target.content}` : '';
+
     const isConfirmed = window.confirm(
-      `선택한 게시글을 완전 삭제할까요?\n\n게시글 ID: ${getPostCode(
-        target || { postId }
-      )}${titleText}\n\n게시글과 연결된 신고 및 댓글 데이터가 함께 삭제됩니다.`
+      `선택한 댓글을 삭제할까요?\n\n댓글 ID: ${getCommentCode(
+        target || { commentId }
+      )}${contentText}\n\n댓글과 연결된 좋아요 및 신고 데이터가 함께 삭제됩니다. 부모 댓글인 경우 대댓글도 함께 삭제됩니다.`
     );
 
     if (!isConfirmed) return;
@@ -434,37 +453,38 @@ const PostManagementPage = () => {
     setActionLoading(true);
 
     try {
-      await deleteAdminPost(postId);
+      await deleteAdminComment(commentId);
 
-      setSelectedPostIds((prev) => prev.filter((id) => id !== postId));
+      setSelectedCommentIds((prev) =>
+        prev.filter((id) => id !== commentId)
+      );
 
-      if (selectedPost?.postId === postId) {
-        setSelectedPost(null);
+      if (selectedComment?.commentId === commentId) {
+        setSelectedComment(null);
+        setSourcePost(null);
         setSelectedReportId(null);
       }
 
       await refreshOverview();
-      window.alert('게시글이 완전 삭제되었습니다.');
+      window.alert('댓글이 삭제되었습니다.');
     } catch (error) {
-      console.error('게시글 삭제 실패:', error);
-      window.alert(
-        getErrorMessage(error, '게시글 삭제 중 오류가 발생했습니다.')
-      );
+      console.error('댓글 삭제 실패:', error);
+      window.alert(getErrorMessage(error, '댓글 삭제 중 오류가 발생했습니다.'));
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleDeleteSelectedPosts = async () => {
+  const handleDeleteSelectedComments = async () => {
     if (actionLoading) return;
 
-    if (selectedPostIds.length === 0) {
-      window.alert('삭제할 게시글을 선택해 주세요.');
+    if (selectedCommentIds.length === 0) {
+      window.alert('삭제할 댓글을 선택해 주세요.');
       return;
     }
 
     const isConfirmed = window.confirm(
-      `선택한 게시글 ${selectedPostIds.length}건을 완전 삭제할까요?\n\n게시글과 연결된 신고 및 댓글 데이터가 함께 삭제되며, 삭제한 원본 데이터는 복구할 수 없습니다.`
+      `선택한 댓글 ${selectedCommentIds.length}건을 삭제할까요?\n\n댓글과 연결된 좋아요 및 신고 데이터가 함께 삭제되며, 부모 댓글인 경우 대댓글도 함께 삭제됩니다.`
     );
 
     if (!isConfirmed) return;
@@ -472,22 +492,22 @@ const PostManagementPage = () => {
     setActionLoading(true);
 
     try {
-      await deleteAdminPosts(selectedPostIds);
-      setSelectedPostIds([]);
+      await deleteAdminComments(selectedCommentIds);
+      setSelectedCommentIds([]);
       await refreshOverview();
-      window.alert('선택한 게시글이 완전 삭제되었습니다.');
+      window.alert('선택한 댓글이 삭제되었습니다.');
     } catch (error) {
-      console.error('선택 게시글 삭제 실패:', error);
+      console.error('선택 댓글 삭제 실패:', error);
       window.alert(
-        getErrorMessage(error, '선택 게시글 삭제 중 오류가 발생했습니다.')
+        getErrorMessage(error, '선택 댓글 삭제 중 오류가 발생했습니다.')
       );
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleProcessReports = async ({
-    postId,
+  const handleProcessReport = async ({
+    commentId,
     reportId,
     resultStatus,
     adminMemo,
@@ -495,8 +515,9 @@ const PostManagementPage = () => {
     if (actionLoading) return;
 
     const resultLabel = REPORT_RESULT_LABELS[resultStatus] || resultStatus;
+
     const isConfirmed = window.confirm(
-      `신고 ${getReportCode({ reportId })}을(를) '${resultLabel}' 처리할까요?\n\n해당 신고 내역 한 건만 처리합니다.`
+      `신고 ${getReportCode({ reportId })}을(를) '${resultLabel}' 처리할까요?\n\n선택한 댓글 신고 내역 한 건만 처리됩니다.`
     );
 
     if (!isConfirmed) return;
@@ -504,28 +525,28 @@ const PostManagementPage = () => {
     setActionLoading(true);
 
     try {
-      await processAdminPostReport({
-        postId,
+      await processAdminCommentReport({
+        commentId,
         reportId,
         resultStatus,
         adminMemo,
       });
 
-      const detailResponse = await getAdminPostDetail(postId);
-      setSelectedPost(detailResponse.data);
+      const detailResponse = await getAdminCommentDetail(commentId);
+      setSelectedComment(detailResponse.data);
       setSelectedReportId(reportId);
 
       await refreshOverview();
 
       window.alert(
         resultStatus === 'ACCEPTED'
-          ? '게시글 신고를 인정 처리했습니다.'
-          : '게시글 신고를 반려 처리했습니다.'
+          ? '댓글 신고를 인정 처리했습니다.'
+          : '댓글 신고를 반려 처리했습니다.'
       );
     } catch (error) {
-      console.error('게시글 신고 처리 실패:', error);
+      console.error('댓글 신고 처리 실패:', error);
       window.alert(
-        getErrorMessage(error, '게시글 신고 처리 중 오류가 발생했습니다.')
+        getErrorMessage(error, '댓글 신고 처리 중 오류가 발생했습니다.')
       );
     } finally {
       setActionLoading(false);
@@ -546,29 +567,31 @@ const PostManagementPage = () => {
     setReportPage(safeNextPage);
   };
 
-  const handlePostPageChange = (nextPage) => {
-    if (postsLoading) return;
+  const handleCommentPageChange = (nextPage) => {
+    if (commentsLoading) return;
 
     const safeNextPage = Math.min(
       Math.max(Number(nextPage) || 1, 1),
-      Math.max(postTotalPages, 1)
+      Math.max(commentTotalPages, 1)
     );
 
-    if (safeNextPage === postPage) return;
+    if (safeNextPage === commentPage) return;
 
     setLoadError('');
-    setSelectedPostIds([]);
-    setPostPage(safeNextPage);
+    setSelectedCommentIds([]);
+    setCommentPage(safeNextPage);
   };
 
-  if (selectedPost) {
+  if (selectedComment) {
     return (
-      <PostDetailView
-        post={selectedPost}
+      <CommentDetailView
+        comment={selectedComment}
+        post={sourcePost}
         initialReportId={selectedReportId}
         onBack={handleBackToList}
-        onDelete={handleDeletePost}
-        onProcessReports={handleProcessReports}
+        onDelete={handleDeleteComment}
+        onProcessReport={handleProcessReport}
+        actionLoading={actionLoading}
       />
     );
   }
@@ -577,17 +600,20 @@ const PostManagementPage = () => {
     <div className="space-y-6">
       <section>
         <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-950 md:text-3xl">
-          게시글 관리
+          댓글 관리
         </h1>
         <p className="mt-2 text-sm font-medium text-gray-500">
-          게시글 본문과 첨부 자료를 확인하고, 접수된 신고를 신고 내역 단위로 인정 또는 반려 처리합니다.
+          댓글 원문과 연결 게시글을 확인하고, 접수된 댓글 신고를 신고 내역 단위로 인정 또는 반려 처리합니다.
         </p>
       </section>
 
       {loadError && (
         <section className="flex flex-col gap-3 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={20} className="mt-0.5 shrink-0 text-red-500" />
+            <AlertTriangle
+              size={20}
+              className="mt-0.5 shrink-0 text-red-500"
+            />
             <p className="text-sm font-bold text-red-600">{loadError}</p>
           </div>
 
@@ -604,29 +630,29 @@ const PostManagementPage = () => {
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
-          icon={FileText}
-          title="전체 게시글"
+          icon={MessageCircle}
+          title="전체 댓글"
           value={stats.total}
           unit="개"
-          description="게시판 전체 게시글"
+          description="게시판 전체 댓글과 대댓글"
           iconClass="bg-purple-50 text-[#6d3df2]"
           loading={summaryLoading}
         />
         <SummaryCard
           icon={CalendarDays}
-          title="오늘 작성"
+          title="오늘 등록"
           value={stats.today}
           unit="개"
-          description="오늘 새로 작성된 게시글"
+          description="오늘 새로 등록된 댓글"
           iconClass="bg-blue-50 text-blue-600"
           loading={summaryLoading}
         />
         <SummaryCard
           icon={ShieldAlert}
-          title="신고 게시글"
-          value={stats.reportedPostCount}
+          title="신고 댓글"
+          value={stats.reportedCommentCount}
           unit="개"
-          description="신고가 1회 이상 접수된 게시글"
+          description="신고가 1회 이상 접수된 댓글"
           iconClass="bg-red-50 text-red-500"
           loading={summaryLoading}
         />
@@ -646,7 +672,7 @@ const PostManagementPage = () => {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-black text-gray-900">
-                신고 접수 게시글
+                신고 접수 댓글
               </h2>
               <span className="inline-flex h-7 items-center rounded-full bg-red-50 px-3 text-xs font-black text-red-500">
                 {formatNumber(reportTotalCount)}건
@@ -656,7 +682,7 @@ const PostManagementPage = () => {
               </span>
             </div>
             <p className="mt-1 text-xs font-bold text-gray-400">
-              처리 대기 중인 게시글 신고 단위로 상세 화면으로 이동합니다.
+              처리 대기 중인 댓글 신고 단위로 상세 화면으로 이동합니다.
             </p>
           </div>
         </div>
@@ -664,14 +690,14 @@ const PostManagementPage = () => {
         <div className="overflow-x-auto">
           <table className="w-full table-fixed text-left">
             <colgroup>
-              <col className="w-[105px]" />
-              <col className="w-[110px]" />
-              <col className="w-[150px]" />
-              <col className="w-[260px]" />
-              <col className="w-[120px]" />
-              <col className="w-[120px]" />
               <col className="w-[95px]" />
+              <col className="w-[100px]" />
+              <col className="w-[130px]" />
+              <col className="w-[230px]" />
+              <col className="w-[105px]" />
+              <col className="w-[105px]" />
               <col className="w-[85px]" />
+              <col className="w-[75px]" />
             </colgroup>
 
             <thead>
@@ -679,7 +705,7 @@ const PostManagementPage = () => {
                 <th className="px-4 py-4">접수 번호</th>
                 <th className="px-4 py-4">접수 일자</th>
                 <th className="px-4 py-4">신고 사유</th>
-                <th className="px-4 py-4">게시글 제목</th>
+                <th className="px-4 py-4">댓글 내용</th>
                 <th className="px-4 py-4">신고자</th>
                 <th className="px-4 py-4">작성자</th>
                 <th className="px-4 py-4">상태</th>
@@ -691,24 +717,13 @@ const PostManagementPage = () => {
               {reportsLoading ? (
                 <LoadingTableRow
                   colSpan={8}
-                  text="처리 대기 게시글 신고를 불러오는 중입니다."
+                  text="처리 대기 댓글 신고를 불러오는 중입니다."
                 />
               ) : waitingReportRows.length > 0 ? (
                 waitingReportRows.map((row) => {
-                  const report = row?.report || row;
-                  const post = row?.post || row || {};
-                  const isOpening = openingPostId === (post.postId || report.postId);
-
-                  const categoryName =
-                    CATEGORY_LABELS[
-                      normalizeCategory(
-                        report.postCategory || post.postCategory || post.category
-                      )
-                    ] ||
-                    report.postCategory ||
-                    post.postCategory ||
-                    post.category ||
-                    '-';
+                  const comment = row?.comment || row || {};
+                  const report = row?.report || row || {};
+                  const isOpening = openingCommentId === comment.commentId;
 
                   return (
                     <tr
@@ -718,40 +733,47 @@ const PostManagementPage = () => {
                       <td className="px-4 py-4 text-center align-middle font-black text-gray-700">
                         {getReportCode(report)}
                       </td>
+
                       <td className="px-4 py-4 text-center align-middle text-xs font-bold leading-5 text-gray-500">
                         {formatShortDate(report.createdAt)}
                       </td>
+
                       <td className="px-4 py-4 text-center align-middle">
                         <span className="inline-flex max-w-full items-center justify-center rounded-full bg-red-50 px-3 py-1.5 text-xs font-black text-red-500">
                           <span className="truncate">{report.reason || '-'}</span>
                         </span>
                       </td>
+
                       <td className="px-4 py-4 align-middle">
                         <button
                           type="button"
                           disabled={isOpening}
                           onClick={() =>
                             handleOpenDetail(
-                              post.postId || report.postId,
+                              comment.commentId || report.commentId,
                               report.reportId
                             )
                           }
                           className="block w-full text-left disabled:cursor-wait"
                         >
                           <p className="line-clamp-1 break-keep text-sm font-black text-gray-800">
-                            {report.title || post.title || '-'}
+                            {comment.content || report.content || '-'}
                           </p>
                           <p className="mt-1 truncate text-xs font-semibold text-gray-400">
-                            {post.postCode || getPostCode(post)} · {categoryName}
+                            {getCommentCode(comment)} · {getPostCode(comment)} ·{' '}
+                            {comment.postTitle || report.postTitle || '-'}
                           </p>
                         </button>
                       </td>
+
                       <td className="px-4 py-4 text-center align-middle font-bold text-gray-600">
                         {report.reporter || report.reporterMemberId || '-'}
                       </td>
+
                       <td className="px-4 py-4 text-center align-middle font-bold text-gray-600">
-                        {post.author || report.author || '-'}
+                        {comment.author || comment.memberId || report.author || '-'}
                       </td>
+
                       <td className="px-4 py-4 text-center align-middle">
                         <StatusBadge
                           className={
@@ -759,20 +781,23 @@ const PostManagementPage = () => {
                             'bg-gray-100 text-gray-500'
                           }
                         >
-                          {REPORT_RESULT_LABELS[report.status] || report.status || '-'}
+                          {REPORT_RESULT_LABELS[report.status] ||
+                            report.status ||
+                            '-'}
                         </StatusBadge>
                       </td>
+
                       <td className="px-4 py-4 text-center align-middle">
                         <button
                           type="button"
                           disabled={isOpening}
                           onClick={() =>
                             handleOpenDetail(
-                              post.postId || report.postId,
+                              comment.commentId || report.commentId,
                               report.reportId
                             )
                           }
-                          title="게시글 확인"
+                          title="댓글 확인"
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-[#6d3df2] transition hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
                         >
                           {isOpening ? (
@@ -788,9 +813,12 @@ const PostManagementPage = () => {
               ) : (
                 <tr>
                   <td colSpan={8} className="px-5 py-12 text-center">
-                    <CheckCircle2 size={28} className="mx-auto text-emerald-500" />
+                    <CheckCircle2
+                      size={28}
+                      className="mx-auto text-emerald-500"
+                    />
                     <p className="mt-3 text-sm font-black text-gray-700">
-                      처리 대기 중인 게시글 신고가 없습니다.
+                      처리 대기 중인 댓글 신고가 없습니다.
                     </p>
                     <p className="mt-1 text-xs font-bold text-gray-400">
                       신규 신고가 접수되면 이 영역에 표시됩니다.
@@ -815,9 +843,9 @@ const PostManagementPage = () => {
       <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 className="text-lg font-black text-gray-900">전체 게시글 조회</h2>
+            <h2 className="text-lg font-black text-gray-900">전체 댓글 조회</h2>
             <p className="mt-1 text-xs font-bold text-gray-400">
-              게시글 카테고리와 공개 상태를 선택한 뒤 제목, 작성자, ID를 검색합니다.
+              게시글 카테고리와 댓글 유형을 선택한 뒤 댓글 내용, 작성자, ID를 검색합니다.
             </p>
           </div>
 
@@ -843,10 +871,14 @@ const PostManagementPage = () => {
           />
 
           <FilterSelect
-            label="공개 상태"
-            value={visibleStatus}
-            onChange={handleChangeVisibleStatus}
-            options={VISIBLE_STATUS_OPTIONS}
+            label="댓글 유형"
+            value={commentType}
+            onChange={handleChangeCommentType}
+            options={[
+              { value: 'all', label: '전체' },
+              { value: 'COMMENT', label: '댓글' },
+              { value: 'REPLY', label: '대댓글' },
+            ]}
           />
 
           <FilterSelect
@@ -878,10 +910,10 @@ const PostManagementPage = () => {
               <button
                 type="button"
                 onClick={handleSearch}
-                disabled={postsLoading}
+                disabled={commentsLoading}
                 className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#6d3df2] px-5 text-sm font-black text-white shadow-sm transition hover:bg-[#5b2ed8] disabled:cursor-wait disabled:bg-purple-300"
               >
-                {postsLoading ? (
+                {commentsLoading ? (
                   <Loader2 size={17} className="animate-spin" />
                 ) : (
                   <Search size={17} />
@@ -897,25 +929,24 @@ const PostManagementPage = () => {
         <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-black text-gray-900">게시글 목록</h2>
+              <h2 className="text-base font-black text-gray-900">댓글 목록</h2>
               <span className="inline-flex h-6 items-center rounded-full bg-purple-50 px-2.5 text-[11px] font-black text-[#6d3df2]">
-                {formatNumber(postTotalCount)}개
+                {formatNumber(commentTotalCount)}개
               </span>
             </div>
             <p className="mt-0.5 text-[11px] font-bold text-gray-400">
-              검색 조건에 맞는 게시글을 페이지 단위로 확인합니다.
+              검색 조건에 맞는 댓글과 대댓글을 페이지 단위로 확인합니다.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={handleDeleteSelectedPosts}
-            disabled={selectedPostIds.length === 0 || actionLoading}
-            className={`inline-flex h-8 w-fit items-center gap-1.5 rounded-lg px-3 text-xs font-black transition ${
-              selectedPostIds.length === 0 || actionLoading
+            onClick={handleDeleteSelectedComments}
+            disabled={selectedCommentIds.length === 0 || actionLoading}
+            className={`inline-flex h-8 w-fit items-center gap-1.5 rounded-lg px-3 text-xs font-black transition ${selectedCommentIds.length === 0 || actionLoading
                 ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
                 : 'border border-red-100 bg-red-50 text-red-500 hover:bg-red-100'
-            }`}
+              }`}
           >
             {actionLoading ? (
               <Loader2 size={14} className="animate-spin" />
@@ -923,7 +954,7 @@ const PostManagementPage = () => {
               <Trash2 size={14} />
             )}
             선택 삭제
-            {selectedPostIds.length > 0 && ` ${selectedPostIds.length}`}
+            {selectedCommentIds.length > 0 && ` ${selectedCommentIds.length}`}
           </button>
         </div>
 
@@ -932,9 +963,9 @@ const PostManagementPage = () => {
             <colgroup>
               <col className="w-[52px]" />
               <col className="w-[120px]" />
-              <col className="w-[260px]" />
+              <col className="w-[300px]" />
+              <col className="w-[245px]" />
               <col className="w-[95px]" />
-              <col className="w-[105px]" />
               <col className="w-[125px]" />
               <col className="w-[145px]" />
               <col className="w-[75px]" />
@@ -944,39 +975,50 @@ const PostManagementPage = () => {
 
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-[11px] font-black text-gray-500">
-                <th className="px-3 py-2.5 text-center"> </th>
-                <th className="px-3 py-2.5 text-center">게시글 ID</th>
-                <th className="px-3 py-2.5">제목</th>
-                <th className="px-3 py-2.5 text-center">카테고리</th>
-                <th className="px-3 py-2.5 text-center">공개상태</th>
+                <th className="px-3 py-2.5 text-center">
+                  <input
+                    type="checkbox"
+                    checked={isAllChecked}
+                    onChange={handleToggleAll}
+                    disabled={commentsLoading || comments.length === 0}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                </th>
+                <th className="px-3 py-2.5 text-center">댓글 ID</th>
+                <th className="px-3 py-2.5">댓글 내용</th>
+                <th className="px-3 py-2.5">게시글 제목</th>
+                <th className="px-3 py-2.5 text-center">유형</th>
                 <th className="px-3 py-2.5 text-center">작성자</th>
-                <th className="px-3 py-2.5 text-center whitespace-nowrap">작성일</th>
-                <th className="px-3 py-2.5 text-right">조회</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">
+                  작성일
+                </th>
+                <th className="px-3 py-2.5 text-right">추천</th>
                 <th className="px-3 py-2.5 text-right">신고</th>
                 <th className="px-3 py-2.5 text-center">관리</th>
               </tr>
             </thead>
 
             <tbody>
-              {postsLoading ? (
+              {commentsLoading ? (
                 <LoadingTableRow
                   colSpan={10}
-                  text="게시글 목록을 불러오는 중입니다."
+                  text="댓글 목록을 불러오는 중입니다."
                   compact
                 />
-              ) : posts.length > 0 ? (
-                posts.map((post) => {
-                  const postCategory = normalizeCategory(
-                    post.postCategory || post.category
+              ) : comments.length > 0 ? (
+                comments.map((comment) => {
+                  const currentType = getCommentType(comment);
+                  const reportCount = getReportCount(comment);
+                  const pendingCount = getPendingReportCount(comment);
+                  const isChecked = selectedCommentIds.includes(
+                    comment.commentId
                   );
-                  const reportCount = Number(post.reportCount || 0);
-                  const isChecked = selectedPostIds.includes(post.postId);
-                  const isOpening = openingPostId === post.postId;
+                  const isOpening = openingCommentId === comment.commentId;
 
                   return (
                     <tr
-                      key={post.postId}
-                      onClick={() => handleOpenDetail(post.postId)}
+                      key={comment.commentId}
+                      onClick={() => handleOpenDetail(comment.commentId)}
                       className="h-10 cursor-pointer border-b border-gray-50 text-[13px] transition hover:bg-purple-50/40"
                     >
                       <td className="px-3 py-1.5 text-center align-middle">
@@ -984,66 +1026,94 @@ const PostManagementPage = () => {
                           type="checkbox"
                           checked={isChecked}
                           onClick={(event) => event.stopPropagation()}
-                          onChange={() => handleTogglePost(post.postId)}
+                          onChange={() =>
+                            handleToggleComment(comment.commentId)
+                          }
                           className="h-4 w-4 rounded border-gray-300"
                         />
                       </td>
 
                       <td className="px-3 py-1.5 text-center align-middle text-xs font-black text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">
-                        {getPostCode(post)}
+                        {getCommentCode(comment)}
                       </td>
 
                       <td className="px-3 py-1.5 align-middle">
-                        <p className="truncate text-[13px] font-black leading-4 text-gray-800">
-                          {post.title || '-'}
+                        <div className={comment.parentCommentId ? 'pl-4' : ''}>
+                          {comment.parentCommentId && (
+                            <span className="mb-0.5 flex items-center gap-1 text-[11px] font-black text-gray-300">
+                              <CornerDownRight size={12} /> 대댓글
+                            </span>
+                          )}
+                          <p className="line-clamp-1 break-keep text-[13px] font-black leading-4 text-gray-800">
+                            {comment.content || '-'}
+                          </p>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-1.5 align-middle">
+                        <p className="truncate text-[13px] font-bold leading-4 text-gray-700">
+                          {comment.postTitle || '-'}
+                        </p>
+                        <p className="mt-1 truncate text-[11px] font-semibold text-gray-400">
+                          {getPostCode(comment)} ·{' '}
+                          {CATEGORY_LABELS[
+                            normalizeCategory(comment.postCategory)
+                          ] ||
+                            comment.postCategory ||
+                            '-'}
                         </p>
                       </td>
 
                       <td className="px-3 py-1.5 text-center align-middle">
                         <StatusBadge
                           className={
-                            categoryClass[postCategory] || 'bg-gray-100 text-gray-500'
+                            commentTypeClass[currentType] ||
+                            'bg-gray-100 text-gray-500'
                           }
                         >
-                          {CATEGORY_LABELS[postCategory] || post.category || '-'}
+                          {getCommentTypeLabel(comment)}
                         </StatusBadge>
                       </td>
 
                       <td className="px-3 py-1.5 text-center align-middle">
-                        {getVisibleBadge(post.isVisible || post.is_visible)}
-                      </td>
-
-                      <td className="px-3 py-1.5 text-center align-middle">
                         <p className="truncate text-[13px] font-black leading-4 text-gray-700">
-                          {post.author || '-'}
+                          {comment.author || comment.memberId || '-'}
                         </p>
                       </td>
 
                       <td className="px-3 py-1.5 text-center align-middle whitespace-nowrap overflow-hidden text-ellipsis">
                         <p className="whitespace-nowrap text-[11px] font-bold leading-4 text-gray-600">
-                          {formatShortDate(post.createdAt)}
+                          {formatShortDate(comment.createdAt)}
                         </p>
                       </td>
 
                       <td className="px-3 py-1.5 text-right align-middle font-bold text-gray-600">
-                        {formatNumber(post.views)}
+                        {formatNumber(comment.likeCount)}
                       </td>
 
                       <td className="px-3 py-1.5 text-right align-middle">
-                        <span className="font-black text-red-500">
-                          {formatNumber(reportCount)}
-                        </span>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span
+                            className={
+                              reportCount > 0
+                                ? 'font-black text-red-500'
+                                : 'font-bold text-gray-300'
+                            }
+                          >
+                            {formatNumber(reportCount)}
+                          </span>
+                        </div>
                       </td>
 
                       <td className="px-3 py-1.5 align-middle">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
-                            title="게시글 보기"
+                            title="댓글 보기"
                             disabled={isOpening}
                             onClick={(event) => {
                               event.stopPropagation();
-                              handleOpenDetail(post.postId);
+                              handleOpenDetail(comment.commentId);
                             }}
                             className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-[#6d3df2] transition hover:bg-purple-50 disabled:cursor-wait disabled:text-gray-300"
                           >
@@ -1056,11 +1126,11 @@ const PostManagementPage = () => {
 
                           <button
                             type="button"
-                            title="완전 삭제"
+                            title="삭제"
                             disabled={actionLoading}
                             onClick={(event) => {
                               event.stopPropagation();
-                              handleDeletePost(post.postId);
+                              handleDeleteComment(comment.commentId);
                             }}
                             className="flex h-7 w-7 items-center justify-center rounded-lg border border-red-100 bg-white text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:text-gray-300"
                           >
@@ -1075,10 +1145,10 @@ const PostManagementPage = () => {
                 <tr>
                   <td colSpan={10} className="px-5 py-10 text-center">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-gray-400">
-                      <FileText size={24} />
+                      <MessageCircle size={24} />
                     </div>
                     <p className="mt-3 text-sm font-black text-gray-700">
-                      조회된 게시글이 없습니다.
+                      조회된 댓글이 없습니다.
                     </p>
                     <p className="mt-1 text-sm font-semibold text-gray-400">
                       검색어나 필터 조건을 다시 확인해 주세요.
@@ -1092,10 +1162,10 @@ const PostManagementPage = () => {
 
         <div className="border-t border-gray-100 px-4 py-2.5">
           <Pagination
-            page={postPage}
-            totalPages={postTotalPages}
-            onChange={handlePostPageChange}
-            disabled={postsLoading}
+            page={commentPage}
+            totalPages={commentTotalPages}
+            onChange={handleCommentPageChange}
+            disabled={commentsLoading}
             compact
           />
         </div>
@@ -1148,19 +1218,18 @@ const Pagination = ({
 
   return (
     <div
-      className={`flex items-center justify-center ${compact ? 'gap-1.5' : 'gap-2'}`}
+      className={`flex items-center justify-center ${compact ? 'gap-1.5' : 'gap-2'
+        }`}
     >
       <button
         type="button"
         onClick={handlePrev}
         disabled={disabled || safePage <= 1}
-        className={`flex items-center justify-center border transition ${
-          compact ? 'h-8 w-8 rounded-lg' : 'h-9 w-9 rounded-xl'
-        } ${
-          disabled || safePage <= 1
+        className={`flex items-center justify-center border transition ${compact ? 'h-8 w-8 rounded-lg' : 'h-9 w-9 rounded-xl'
+          } ${disabled || safePage <= 1
             ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
             : 'border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
-        }`}
+          }`}
       >
         <ChevronLeft size={17} />
       </button>
@@ -1171,17 +1240,15 @@ const Pagination = ({
           type="button"
           disabled={disabled}
           onClick={() => onChange(pageNumber)}
-          className={`flex items-center justify-center font-black transition ${
-            compact
+          className={`flex items-center justify-center font-black transition ${compact
               ? 'h-8 min-w-8 rounded-lg px-2.5 text-xs'
               : 'h-9 min-w-9 rounded-xl px-3 text-sm'
-          } ${
-            pageNumber === safePage
+            } ${pageNumber === safePage
               ? 'bg-[#6d3df2] text-white shadow-sm'
               : disabled
                 ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
                 : 'border border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
-          }`}
+            }`}
         >
           {pageNumber}
         </button>
@@ -1191,13 +1258,11 @@ const Pagination = ({
         type="button"
         onClick={handleNext}
         disabled={disabled || safePage >= safeTotalPages}
-        className={`flex items-center justify-center border transition ${
-          compact ? 'h-8 w-8 rounded-lg' : 'h-9 w-9 rounded-xl'
-        } ${
-          disabled || safePage >= safeTotalPages
+        className={`flex items-center justify-center border transition ${compact ? 'h-8 w-8 rounded-lg' : 'h-9 w-9 rounded-xl'
+          } ${disabled || safePage >= safeTotalPages
             ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
             : 'border-gray-200 bg-white text-gray-500 hover:border-[#6d3df2]/30 hover:text-[#6d3df2]'
-        }`}
+          }`}
       >
         <ChevronRight size={17} />
       </button>
@@ -1219,15 +1284,22 @@ const SummaryCard = ({
       <div
         className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${iconClass}`}
       >
-        {loading ? <Loader2 size={24} className="animate-spin" /> : <Icon size={24} />}
+        {loading ? (
+          <Loader2 size={24} className="animate-spin" />
+        ) : (
+          <Icon size={24} />
+        )}
       </div>
+
       <div className="mt-5">
         <p className="text-sm font-black text-gray-500">{title}</p>
         <div className="mt-2 flex items-end gap-1">
           <strong className="text-2xl font-black tracking-tight text-gray-950">
             {loading ? '-' : formatNumber(value)}
           </strong>
-          <span className="pb-0.5 text-sm font-black text-gray-700">{unit}</span>
+          <span className="pb-0.5 text-sm font-black text-gray-700">
+            {unit}
+          </span>
         </div>
         <p className="mt-2 truncate text-xs font-bold text-gray-400">
           {description}
@@ -1243,6 +1315,7 @@ const FilterSelect = ({ label, value, onChange, options }) => {
       <label className="mb-2 block text-xs font-black text-gray-500">
         {label}
       </label>
+
       <div className="relative">
         <select
           value={value}
@@ -1255,6 +1328,7 @@ const FilterSelect = ({ label, value, onChange, options }) => {
             </option>
           ))}
         </select>
+
         <ChevronDown
           size={17}
           className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -1291,4 +1365,4 @@ const LoadingTableRow = ({ colSpan, text, compact = false }) => {
   );
 };
 
-export default PostManagementPage;
+export default CommentManagementPage;

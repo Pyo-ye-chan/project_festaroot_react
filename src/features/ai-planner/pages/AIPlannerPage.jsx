@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { maxios } from '../../../api/axiosApi';
 import useAuthStore from '../../../store/useAuthStore';
@@ -6,6 +6,7 @@ import { getMemberProfile } from '../../../api/memberApi';
 import { saveActivityLog } from '../../../api/activityApi';
 import { previewAIPlanner, saveAIPlanner } from '../../../api/aiApi';
 import LoginMessage from '../../../components/LoginMessage';
+import PlannerSetupModal from '../components/PlannerSetupModal';
 
 const AIPlannerPage = () => {
   const navigate = useNavigate();
@@ -58,11 +59,38 @@ const AIPlannerPage = () => {
   const [isRegionsOpen, setIsRegionsOpen] = useState(true);
   const [isThemesOpen, setIsThemesOpen] = useState(true);
   const [isLikesOpen, setIsLikesOpen] = useState(true);
+  const plannerSectionRef = useRef(null);
+
+  const scrollToPlannerSection = () => {
+    const plannerSection = plannerSectionRef.current;
+
+    if (!plannerSection) {
+      return;
+    }
+
+    const top = plannerSection.getBoundingClientRect().top + window.scrollY - 24;
+    window.scrollTo({
+      top,
+      behavior: 'smooth'
+    });
+  };
 
   // 비로그인 접근 시 회원 전용 안내 모달 표시
   useEffect(() => {
     setShowLoginRequiredModal(!isMemberLoggedIn);
   }, [isMemberLoggedIn]);
+
+  useEffect(() => {
+    if (!showItinerary || itineraryList.length === 0) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      scrollToPlannerSection();
+    }, 150);
+
+    return () => window.clearTimeout(timer);
+  }, [showItinerary, itineraryList.length]);
 
   const handleLoginRequiredBack = () => {
     if (window.history.length > 1) {
@@ -184,6 +212,21 @@ const AIPlannerPage = () => {
       startLabel: formatDateForDisplay(getFestivalStartDate(festival)),
       endLabel: formatDateForDisplay(getFestivalEndDate(festival))
     };
+  };
+
+  const getTodayDateForInput = () => {
+    const today = new Date();
+
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+      today.getDate()
+    ).padStart(2, '0')}`;
+  };
+
+  const getMinPlannerVisitDate = (festival) => {
+    const { start } = getFestivalDateRange(festival);
+    const today = getTodayDateForInput();
+
+    return start && start > today ? start : today;
   };
 
   // 추천 장소 타입별 아이콘
@@ -425,6 +468,8 @@ const AIPlannerPage = () => {
   const handleSelectFestival = (festival) => {
     if (!requireLogin()) return;
 
+    const defaultVisitDate = getMinPlannerVisitDate(festival);
+
     setSelectedFestival(festival);
 
     // 기존 결과 초기화
@@ -445,7 +490,7 @@ const AIPlannerPage = () => {
 
     // 설정 기본값 초기화
     setPlannerForm({
-      visitDate: festival.EVENT_START_DATE || '',
+      visitDate: defaultVisitDate,
       peopleCount: 2,
       companionType: 'FRIEND',
       courseStyle: 'RELAXED',
@@ -478,7 +523,18 @@ const AIPlannerPage = () => {
       return;
     }
 
+    if (Number(plannerForm.peopleCount) < 1) {
+      alert('동행 인원은 1명 이상이어야 합니다.');
+      return;
+    }
+
     const { start, end } = getFestivalDateRange(selectedFestival);
+    const today = getTodayDateForInput();
+
+    if (plannerForm.visitDate < today) {
+      alert(`방문 날짜는 오늘(${today}) 이후여야 합니다.`);
+      return;
+    }
 
     if (start && plannerForm.visitDate < start) {
       alert(`방문 날짜는 축제 시작일(${start}) 이후여야 합니다.`);
@@ -554,6 +610,9 @@ const AIPlannerPage = () => {
         setShowPlannerModal(false);
         setShowItinerary(true);
         setIsPlannerSaved(false);
+        window.setTimeout(() => {
+          scrollToPlannerSection();
+        }, 250);
       } else {
         alert(data.message || '축제 하루 코스 생성에 실패했습니다.');
       }
@@ -612,11 +671,33 @@ const AIPlannerPage = () => {
   const handlePlannerFormChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === 'visitDate' && selectedFestival) {
-      const { start, end } = getFestivalDateRange(selectedFestival);
+    if (name === 'peopleCount') {
+      if (value === '') {
+        setPlannerForm((prev) => ({
+          ...prev,
+          [name]: '1'
+        }));
+        return;
+      }
 
-      if (start && value < start) {
-        alert(`축제 시작일(${start}) 이후 날짜만 선택할 수 있습니다.`);
+      if (Number(value) < 1) {
+        setPlannerForm((prev) => ({
+          ...prev,
+          [name]: '1'
+        }));
+        return;
+      }
+    }
+
+    if (name === 'visitDate' && selectedFestival) {
+      const { end } = getFestivalDateRange(selectedFestival);
+      const minVisitDate = getMinPlannerVisitDate(selectedFestival);
+
+      if (value < minVisitDate) {
+        setPlannerForm((prev) => ({
+          ...prev,
+          [name]: minVisitDate
+        }));
         return;
       }
 
@@ -1133,7 +1214,10 @@ const AIPlannerPage = () => {
 
           {/* Step 2: 축제 하루 코스 Result */}
           {(isGenerating || showItinerary) && (
-            <section className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 animate-in fade-in slide-in-from-top-8 duration-700">
+            <section
+              ref={plannerSectionRef}
+              className="bg-white rounded-[32px] p-8 shadow-xl shadow-purple-900/5 border border-purple-50 animate-in fade-in slide-in-from-top-8 duration-700"
+            >
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="text-2xl font-black text-gray-800">
@@ -1298,114 +1382,134 @@ const AIPlannerPage = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent pt-4">
-                      {itineraryList.map((step, idx) => {
-                        const nextStep = itineraryList[idx + 1];
-                        const directionUrl = nextStep ? getKakaoDirectionUrl(step, nextStep) : null;
-                        const searchUrl = getKakaoSearchUrl(step);
+                    <>
+                      <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent pt-4">
+                        {itineraryList.map((step, idx) => {
+                          const nextStep = itineraryList[idx + 1];
+                          const directionUrl = nextStep ? getKakaoDirectionUrl(step, nextStep) : null;
+                          const searchUrl = getKakaoSearchUrl(step);
 
-                        return (
-                          <div
-                            key={idx}
-                            className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group"
-                          >
-                            <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-purple-600 text-white shadow-lg shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 font-bold">
-                              <span className="text-xs">{getStepIcon(step.type)}</span>
-                            </div>
-
-                            <div className="w-[calc(100%-4rem)] md:w-[45%] p-5 rounded-3xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-xl hover:border-purple-200">
-                              <div className="flex items-center justify-between space-x-2 mb-2">
-                                <h4 className="font-black text-gray-800">{step.title}</h4>
-                                <time className="font-black text-[10px] text-purple-600 bg-purple-50 px-2 py-1 rounded-md shrink-0">
-                                  {step.time}
-                                </time>
+                          return (
+                            <div
+                              key={idx}
+                              className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group"
+                            >
+                              <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white bg-purple-600 text-white shadow-lg shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 font-bold">
+                                <span className="text-xs">{getStepIcon(step.type)}</span>
                               </div>
 
-                              <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                                {step.description}
-                              </p>
+                              <div className="w-[calc(100%-4rem)] md:w-[45%] p-5 rounded-3xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-xl hover:border-purple-200">
+                                <div className="flex items-center justify-between space-x-2 mb-2">
+                                  <h4 className="font-black text-gray-800">{step.title}</h4>
+                                  <time className="font-black text-[10px] text-purple-600 bg-purple-50 px-2 py-1 rounded-md shrink-0">
+                                    {step.time}
+                                  </time>
+                                </div>
 
-                              {step.placeName && (
-                                <p className="text-xs text-gray-400 font-bold mt-2">
-                                  📍 {step.placeName}
+                                <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                                  {step.description}
                                 </p>
-                              )}
 
-                              {step.address && (
-                                <p className="text-xs text-gray-400 font-bold">
-                                  {step.address}
-                                </p>
-                              )}
+                                {step.placeName && (
+                                  <p className="text-xs text-gray-400 font-bold mt-2">
+                                    📍 {step.placeName}
+                                  </p>
+                                )}
 
-                              {step.distance != null && (
-                                <p className="text-xs text-emerald-600 font-bold mt-2">
-                                  📏 축제장 기준 약 {Math.round(Number(step.distance))}m
-                                </p>
-                              )}
+                                {step.address && (
+                                  <p className="text-xs text-gray-400 font-bold">
+                                    {step.address}
+                                  </p>
+                                )}
 
-                              {step.reason && (
-                                <p className="text-xs text-purple-700 font-bold mt-2">
-                                  💡 {step.reason}
-                                </p>
-                              )}
+                                {step.distance != null && (
+                                  <p className="text-xs text-emerald-600 font-bold mt-2">
+                                    📏 축제장 기준 약 {Math.round(Number(step.distance))}m
+                                  </p>
+                                )}
 
-                              {step.sourceApi && (
-                                <p className="text-[10px] text-gray-400 font-bold mt-1">
-                                  출처: {step.sourceApi === 'TOUR_API' ? 'TourAPI 주변정보' : step.sourceApi}
-                                </p>
-                              )}
+                                {step.reason && (
+                                  <p className="text-xs text-purple-700 font-bold mt-2">
+                                    💡 {step.reason}
+                                  </p>
+                                )}
 
-                              <div className="mt-3 p-3 rounded-2xl bg-purple-50 border border-purple-100">
-                                <p className="text-[10px] font-black text-purple-500 mb-1">
-                                  AI 동선 포인트
-                                </p>
-                                <p className="text-xs text-purple-800 font-bold leading-relaxed">
-                                  {getStepOrderReason(idx, step)}
-                                </p>
-                              </div>
+                                {step.sourceApi && (
+                                  <p className="text-[10px] text-gray-400 font-bold mt-1">
+                                    출처: {step.sourceApi === 'TOUR_API' ? 'TourAPI 주변정보' : step.sourceApi}
+                                  </p>
+                                )}
 
-                              <div className="mt-4 flex flex-col sm:flex-row gap-2">
-                                {step.kakaoPlaceUrl ? (
-                                  <a
-                                    href={step.kakaoPlaceUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-black hover:bg-gray-200 transition-colors"
-                                  >
-                                    지도에서 보기
-                                  </a>
-                                ) : (
-                                  searchUrl && (
+                                <div className="mt-3 p-3 rounded-2xl bg-purple-50 border border-purple-100">
+                                  <p className="text-[10px] font-black text-purple-500 mb-1">
+                                    AI 동선 포인트
+                                  </p>
+                                  <p className="text-xs text-purple-800 font-bold leading-relaxed">
+                                    {getStepOrderReason(idx, step)}
+                                  </p>
+                                </div>
+
+                                <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                                  {step.kakaoPlaceUrl ? (
                                     <a
-                                      href={searchUrl}
+                                      href={step.kakaoPlaceUrl}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       onClick={(e) => e.stopPropagation()}
                                       className="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-black hover:bg-gray-200 transition-colors"
                                     >
-                                      장소 검색하기
+                                      지도에서 보기
                                     </a>
-                                  )
-                                )}
+                                  ) : (
+                                    searchUrl && (
+                                      <a
+                                        href={searchUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-xs font-black hover:bg-gray-200 transition-colors"
+                                      >
+                                        장소 검색하기
+                                      </a>
+                                    )
+                                  )}
 
-                                {directionUrl && (
-                                  <a
-                                    href={directionUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-yellow-300 text-gray-900 text-xs font-black hover:bg-yellow-400 transition-colors"
-                                  >
-                                    다음 장소 길찾기
-                                  </a>
-                                )}
+                                  {directionUrl && (
+                                    <a
+                                      href={directionUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-yellow-300 text-gray-900 text-xs font-black hover:bg-yellow-400 transition-colors"
+                                    >
+                                      다음 장소 길찾기
+                                    </a>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-10 pt-6 border-t border-slate-100 flex justify-center">
+                        <button
+                          onClick={handleSavePlanner}
+                          disabled={isSavingPlanner || isPlannerSaved}
+                          className={`w-full sm:w-auto sm:min-w-[220px] px-6 py-3 rounded-xl text-sm font-black transition-colors ${
+                            isPlannerSaved
+                              ? 'bg-emerald-100 text-emerald-700 cursor-default'
+                              : 'bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50'
+                          }`}
+                        >
+                          {isPlannerSaved
+                            ? '마이페이지에 저장 완료'
+                            : isSavingPlanner
+                              ? '저장 중...'
+                              : '마이페이지에 저장하기'}
+                        </button>
+                      </div>
+                    </>
                   )}
                 </>
               )}
@@ -1569,153 +1673,16 @@ const AIPlannerPage = () => {
         </div>
       )}
 
-      {/* 축제 하루 코스 설정 모달 */}
-      {showPlannerModal && selectedFestival && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-gray-700/40 backdrop-blur-[2px]">
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto scrollbar-hide p-5 sm:p-8 relative">
-            <h3 className="text-2xl font-black text-gray-800 mb-2">
-              축제 하루 코스 만들기
-            </h3>
-            <p className="text-sm text-gray-500 mb-6">
-              <span className="font-bold text-purple-600">[{selectedFestival.TITLE}]</span>을 중심으로
-              방문 일정과 주변 장소를 묶어 하루 코스를 만들어드릴게요.
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="visitDate" className="block text-sm font-bold text-gray-700 mb-1">
-                  언제 축제를 즐길까요?
-                </label>
-
-                {(() => {
-                  const { start, end, startLabel, endLabel } = getFestivalDateRange(selectedFestival);
-
-                  return (
-                    <>
-                      <div className="mb-2 p-3 rounded-2xl bg-purple-50 border border-purple-100">
-                        <p className="text-[11px] font-black text-purple-600 mb-1">
-                          선택 가능한 축제 기간
-                        </p>
-                        <p className="text-sm font-bold text-purple-800">
-                          {startLabel} ~ {endLabel}
-                        </p>
-                        <p className="text-[11px] text-purple-500 font-bold mt-1">
-                          축제 기간 안에서만 하루 코스를 만들 수 있어요.
-                        </p>
-                      </div>
-
-                      <input
-                        type="date"
-                        id="visitDate"
-                        name="visitDate"
-                        value={plannerForm.visitDate}
-                        min={start || undefined}
-                        max={end || undefined}
-                        onChange={handlePlannerFormChange}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-
-                      {plannerForm.visitDate && (
-                        <p className="mt-2 text-xs font-bold text-gray-500">
-                          선택한 방문일: <span className="text-purple-600">{plannerForm.visitDate}</span>
-                        </p>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-
-              <div>
-                <label htmlFor="peopleCount" className="block text-sm font-bold text-gray-700 mb-1">
-                  몇 명이 함께 가나요?
-                </label>
-                <input
-                  type="number"
-                  id="peopleCount"
-                  name="peopleCount"
-                  value={plannerForm.peopleCount}
-                  onChange={handlePlannerFormChange}
-                  min="1"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="companionType" className="block text-sm font-bold text-gray-700 mb-1">
-                  누구와 함께 가나요?
-                </label>
-                <select
-                  id="companionType"
-                  name="companionType"
-                  value={plannerForm.companionType}
-                  onChange={handlePlannerFormChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                >
-                  <option value="ALONE">혼자</option>
-                  <option value="FRIEND">친구와</option>
-                  <option value="COUPLE">연인과</option>
-                  <option value="FAMILY">가족과</option>
-                  <option value="CHILD">아이와 함께</option>
-                  <option value="PARENT">부모님과</option>
-                  <option value="PET">반려동물과</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="courseStyle" className="block text-sm font-bold text-gray-700 mb-1">
-                  오늘 코스의 분위기를 골라주세요
-                </label>
-                <select
-                  id="courseStyle"
-                  name="courseStyle"
-                  value={plannerForm.courseStyle}
-                  onChange={handlePlannerFormChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                >
-                  <option value="RELAXED">느긋하게 쉬엄쉬엄</option>
-                  <option value="FOOD">맛집은 꼭 챙기기</option>
-                  <option value="TOUR">주변 명소까지 알차게</option>
-                  <option value="CULTURE">전시·문화 감성으로</option>
-                  <option value="INDOOR">날씨 걱정 없는 실내 위주</option>
-                  <option value="PHOTO">사진 남기기 좋은 곳 위주</option>
-                  <option value="FAMILY">가족이 편한 동선으로</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="extraRequest" className="block text-sm font-bold text-gray-700 mb-1">
-                  꼭 반영하고 싶은 요청이 있나요?
-                </label>
-                <textarea
-                  id="extraRequest"
-                  name="extraRequest"
-                  value={plannerForm.extraRequest}
-                  onChange={handlePlannerFormChange}
-                  rows="3"
-                  placeholder="예: 너무 빡빡하지 않게, 실내 위주로, 맛집을 꼭 포함해주세요."
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                ></textarea>
-              </div>
-            </div>
-
-            <div className="mt-8 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
-              <button
-                onClick={() => setShowPlannerModal(false)}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleCreatePlanner}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors disabled:opacity-50"
-                disabled={isGenerating}
-              >
-                {isGenerating ? '코스 만드는 중...' : '축제 하루 코스 만들기'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PlannerSetupModal
+        showPlannerModal={showPlannerModal}
+        selectedFestival={selectedFestival}
+        plannerForm={plannerForm}
+        handlePlannerFormChange={handlePlannerFormChange}
+        handleCreatePlanner={handleCreatePlanner}
+        setShowPlannerModal={setShowPlannerModal}
+        isGenerating={isGenerating}
+        getFestivalDateRange={getFestivalDateRange}
+      />
     </div>
   );
 };
