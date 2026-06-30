@@ -122,6 +122,15 @@ const gatheringApi = {
         return response.data;
     },
 
+    // 모임 신고하기
+    reportGathering: async (room_id, reporter_id, report_reason) => {
+        const response = await maxios.post(`${BASE_PATH}/${room_id}/report`, {
+            reporter_id,
+            report_reason
+        });
+        return response.data;
+    },
+
 };
 
 export default gatheringApi;
