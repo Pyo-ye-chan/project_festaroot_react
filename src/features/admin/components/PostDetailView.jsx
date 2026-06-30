@@ -471,7 +471,7 @@ const PostDetailView = ({
             className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-6 text-sm font-black text-red-500 transition hover:bg-red-100 sm:w-[170px]"
           >
             <Trash2 size={17} />
-            완전 삭제
+            삭제
           </button>
         </div>
       </footer>

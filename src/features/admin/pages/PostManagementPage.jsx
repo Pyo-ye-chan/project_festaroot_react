@@ -480,7 +480,7 @@ const PostManagementPage = () => {
 
     const titleText = target?.title ? `\n\n제목: ${target.title}` : '';
     const isConfirmed = window.confirm(
-      `선택한 게시글을 완전 삭제할까요?\n\n게시글 ID: ${getPostCode(
+      `선택한 게시글을 삭제할까요?\n\n게시글 ID: ${getPostCode(
         target || { postId }
       )}${titleText}\n\n게시글과 연결된 신고 및 댓글 데이터가 함께 삭제됩니다.`
     );
@@ -500,7 +500,7 @@ const PostManagementPage = () => {
       }
 
       await refreshOverview();
-      window.alert('게시글이 완전 삭제되었습니다.');
+      window.alert('게시글이 삭제되었습니다.');
     } catch (error) {
       console.error('게시글 삭제 실패:', error);
       window.alert(
@@ -520,7 +520,7 @@ const PostManagementPage = () => {
     }
 
     const isConfirmed = window.confirm(
-      `선택한 게시글 ${selectedPostIds.length}건을 완전 삭제할까요?\n\n게시글과 연결된 신고 및 댓글 데이터가 함께 삭제되며, 삭제한 원본 데이터는 복구할 수 없습니다.`
+      `선택한 게시글 ${selectedPostIds.length}건을 삭제할까요?\n\n게시글과 연결된 신고 및 댓글 데이터가 함께 삭제되며, 삭제한 원본 데이터는 복구할 수 없습니다.`
     );
 
     if (!isConfirmed) return;
@@ -531,7 +531,7 @@ const PostManagementPage = () => {
       await deleteAdminPosts(selectedPostIds);
       setSelectedPostIds([]);
       await refreshOverview();
-      window.alert('선택한 게시글이 완전 삭제되었습니다.');
+      window.alert('선택한 게시글이 삭제되었습니다.');
     } catch (error) {
       console.error('선택 게시글 삭제 실패:', error);
       window.alert(
@@ -1109,7 +1109,7 @@ const PostManagementPage = () => {
 
                           <button
                             type="button"
-                            title="완전 삭제"
+                            title="삭제"
                             disabled={actionLoading}
                             onClick={(event) => {
                               event.stopPropagation();

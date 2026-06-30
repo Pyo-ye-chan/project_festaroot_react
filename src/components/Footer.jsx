@@ -10,13 +10,13 @@ const Footer = () => {
             축제로
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-[12px] font-bold text-gray-600">
-            <Link to="/privacy" className="transition-colors hover:text-[#6B46FE]">
-              개인정보처리방침
-            </Link>
-            <Link to="/terms" className="transition-colors hover:text-[#6B46FE]">
+            <Link to="/legal/terms" className="transition-colors hover:text-[#6B46FE]">
               이용약관
             </Link>
-            <Link to="/location-terms" className="transition-colors hover:text-[#6B46FE]">
+            <Link to="/legal/privacy" className="transition-colors hover:text-[#6B46FE]">
+              개인정보처리방침
+            </Link>
+            <Link to="/legal/location" className="transition-colors hover:text-[#6B46FE]">
               위치기반서비스 이용약관
             </Link>
           </div>

@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  ClipboardList, 
-  Users, 
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Users,
   MessageCircle,
   ChevronRight
 } from 'lucide-react';
@@ -33,16 +33,15 @@ const CommunitySidebar = () => {
         {menuItems.map((item) => {
           const ActiveIcon = item.icon;
           const active = isActive(item.path);
-          
+
           return (
-            <Link 
+            <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center justify-between px-5 py-4 rounded-2xl transition-all duration-300 group ${
-                active 
-                ? 'bg-[var(--festival-purple)] text-white shadow-lg shadow-[var(--festival-purple)]/20' 
-                : 'text-gray-500 hover:bg-[var(--festival-purple-soft)]/20 hover:text-[var(--festival-purple)]'
-              }`}
+              className={`flex items-center justify-between px-5 py-4 rounded-2xl transition-all duration-300 group ${active
+                  ? 'bg-[var(--festival-purple)] text-white shadow-lg shadow-[var(--festival-purple)]/20'
+                  : 'text-gray-500 hover:bg-[var(--festival-purple-soft)]/20 hover:text-[var(--festival-purple)]'
+                }`}
             >
               <div className="flex items-center gap-4">
                 <ActiveIcon className={`w-5 h-5 ${active ? 'text-white' : 'text-gray-400 group-hover:text-[var(--festival-purple)]'}`} />
@@ -58,13 +57,17 @@ const CommunitySidebar = () => {
       <div className="mt-8 p-6 bg-gray-50 rounded-[1.5rem] border border-gray-100 relative overflow-hidden group cursor-pointer">
         <p className="text-[10px] font-black text-[var(--festival-purple)] mb-1 uppercase tracking-tighter">New Update</p>
         <p className="text-xs font-bold text-gray-700 leading-snug">
-          이제 모임 기능에서 <br/>
-          채팅방을 바로 <br/>
+          이제 모임 기능에서 <br />
+          채팅방을 바로 <br />
           개설할 수 있어요!
         </p>
-        <div className="mt-4 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm group-hover:translate-x-1 transition-transform">
+        <Link
+          to="/community/gathering"
+          aria-label="모임 페이지로 이동"
+          className="mt-4 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm group-hover:translate-x-1 transition-transform"
+        >
           <ChevronRight className="w-4 h-4 text-[var(--festival-purple)]" />
-        </div>
+        </Link>
       </div>
     </div>
   );

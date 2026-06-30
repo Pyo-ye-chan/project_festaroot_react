@@ -36,6 +36,8 @@ import { getMemberProfile } from '../../../api/memberApi';
 import useAuthStore from '../../../store/useAuthStore';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 
+const COMMENT_MAX_LENGTH = 300;
+
 // API가 영문 또는 한글 카테고리를 내려줘도 화면에는 한글만 표시합니다.
 const CATEGORY_LABELS = {
   all: '전체',
@@ -285,59 +287,95 @@ const PostDetailPage = () => {
       alert('좋아요 처리에 실패했습니다.');
     }
   };
-  
 
-  // 링크 복사
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      alert('게시글 링크가 복사되었습니다.');
-      setShowShareModal(false);
-    } catch (error) {
-      console.error('링크 복사 실패:', error);
-      alert('링크 복사에 실패했습니다.');
-    }
+
+
+  // 공유 URL 생성
+  const getShareUrl = () => {
+    const postId = post?.post_id || post?.postId || id;
+
+    return `${window.location.origin}/community/post/${postId}`;
   };
 
   // 카카오톡 공유
+  // 카카오톡 공유
   const handleKakaoShare = () => {
-    if (!window.Kakao) {
-      alert('카카오 공유 기능을 불러오지 못했습니다.');
-      return;
-    }
+    try {
+      if (!window.Kakao) {
+        alert('카카오 공유 기능을 불러오지 못했습니다.');
+        return;
+      }
 
-    if (!window.Kakao.isInitialized()) {
-      window.Kakao.init(import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY);
-    }
+      const kakaoKey = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY;
 
-    window.Kakao.Share.sendDefault({
-      objectType: 'feed',
-      content: {
-        title: post.title,
-        description:
-          post.content
-            ?.replace(/<[^>]+>/g, '')
-            ?.slice(0, 100) || '축제로 커뮤니티 게시글을 확인해보세요.',
-        imageUrl: 'https://festaroute.site/logo.png',
-        link: {
-          mobileWebUrl: window.location.href,
-          webUrl: window.location.href,
-        },
-      },
-      buttons: [
-        {
-          title: '게시글 보기',
+      if (!kakaoKey) {
+        alert('카카오 JavaScript 키가 설정되지 않았습니다.');
+        return;
+      }
+
+      if (!window.Kakao.isInitialized()) {
+        window.Kakao.init(kakaoKey);
+      }
+
+      const shareUrl = getShareUrl();
+
+      const plainContent =
+        post?.content
+          ?.replace(/<[^>]+>/g, '')
+          ?.slice(0, 80) || '축제로 커뮤니티 게시글을 확인해보세요.';
+
+      window.Kakao.Share.sendDefault({
+        objectType: 'feed',
+        content: {
+          title: post?.title || '게시글 공유',
+          description: `${shareUrl}\n\n${plainContent}`,
+          imageUrl: 'https://festaroute.site/logo.png',
           link: {
-            mobileWebUrl: window.location.href,
-            webUrl: window.location.href,
+            mobileWebUrl: shareUrl,
+            webUrl: shareUrl,
           },
         },
-      ],
-    });
+        buttons: [
+          {
+            title: '게시글 보러가기',
+            link: {
+              mobileWebUrl: shareUrl,
+              webUrl: shareUrl,
+            },
+          },
+        ],
+      });
 
-    setShowShareModal(false);
+      setShowShareModal(false);
+    } catch (error) {
+      console.error('카카오 공유 실패:', error);
+      alert('카카오 공유에 실패했습니다. 콘솔을 확인해주세요.');
+    }
   };
 
+  // 링크 복사
+  const handleCopyLink = async () => {
+    const shareUrl = getShareUrl();
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      alert('링크가 복사되었습니다.');
+      setShowShareModal(false);
+    } catch (error) {
+      console.error('링크 복사 실패:', error);
+
+      // clipboard API가 막히는 환경 대비
+      const textarea = document.createElement('textarea');
+      textarea.value = shareUrl;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      alert('링크가 복사되었습니다.');
+      setShowShareModal(false);
+    }
+  };
   // 댓글 작성
   const handleAddComment = async () => {
     // 비회원은 댓글 입력창이 보이지 않지만, 혹시 직접 호출되는 경우도 한 번 더 막습니다.
@@ -347,6 +385,11 @@ const PostDetailPage = () => {
     }
 
     if (!commentText.trim()) return;
+
+    if (commentText.trim().length > COMMENT_MAX_LENGTH) {
+      alert(`댓글은 ${COMMENT_MAX_LENGTH}자까지 입력할 수 있습니다.`);
+      return;
+    }
 
     try {
       await addComment(id, commentText);
@@ -367,6 +410,11 @@ const PostDetailPage = () => {
     }
 
     if (!replyText.trim()) return;
+
+    if (replyText.trim().length > COMMENT_MAX_LENGTH) {
+      alert(`댓글은 ${COMMENT_MAX_LENGTH}자까지 입력할 수 있습니다.`);
+      return;
+    }
 
     try {
       await addComment(id, replyText, parentCommentId);
@@ -408,6 +456,11 @@ const PostDetailPage = () => {
   const handleSaveEditedComment = async (commentId) => {
     if (!editedCommentText.trim()) {
       alert('수정할 내용을 입력해 주세요.');
+      return;
+    }
+
+    if (editedCommentText.trim().length > COMMENT_MAX_LENGTH) {
+      alert(`댓글은 ${COMMENT_MAX_LENGTH}자까지 입력할 수 있습니다.`);
       return;
     }
 
@@ -644,7 +697,7 @@ const PostDetailPage = () => {
                       key={file.attach_id || file.file_path}
                       type="button"
                       onClick={() => {
-                        window.location.href = `http://localhost/storage/download/${file.attach_id}`;
+                        window.location.href = `https://api.festaroute.site/storage/download/${file.attach_id}`;
                       }}
                       className="w-full flex items-center justify-between gap-4 rounded-xl bg-white border border-gray-200 px-4 py-3 hover:border-purple-200 hover:bg-purple-50/40 transition-colors"
                     >
@@ -772,12 +825,16 @@ const PostDetailPage = () => {
                     <div className="flex-1">
                       <textarea
                         value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
+                        onChange={(e) => setCommentText(e.target.value.slice(0, COMMENT_MAX_LENGTH))}
                         placeholder="댓글을 남겨보세요."
+                        maxLength={COMMENT_MAX_LENGTH}
                         className="w-full min-h-[96px] rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm resize-none outline-none focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
                       />
 
-                      <div className="flex justify-end mt-3">
+                      <div className="flex items-center justify-between mt-3 gap-3">
+                        <span className="text-xs font-bold text-gray-400">
+                          {commentText.length} / {COMMENT_MAX_LENGTH}
+                        </span>
                         <button
                           type="button"
                           onClick={handleAddComment}
@@ -900,8 +957,9 @@ const PostDetailPage = () => {
                               <div className="mt-3">
                                 <textarea
                                   value={editedCommentText}
-                                  onChange={(e) => setEditedCommentText(e.target.value)}
+                                  onChange={(e) => setEditedCommentText(e.target.value.slice(0, COMMENT_MAX_LENGTH))}
                                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm resize-none outline-none focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
+                                  maxLength={COMMENT_MAX_LENGTH}
                                   rows="3"
                                 />
 
@@ -949,8 +1007,9 @@ const PostDetailPage = () => {
                               <div className="mt-4 flex flex-col sm:flex-row gap-2">
                                 <input
                                   value={replyText}
-                                  onChange={(e) => setReplyText(e.target.value)}
+                                  onChange={(e) => setReplyText(e.target.value.slice(0, COMMENT_MAX_LENGTH))}
                                   placeholder="답글을 입력하세요."
+                                  maxLength={COMMENT_MAX_LENGTH}
                                   className="flex-1 h-10 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm outline-none focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
                                 />
 
@@ -1079,8 +1138,9 @@ const PostDetailPage = () => {
                                           <div className="mt-3">
                                             <textarea
                                               value={editedCommentText}
-                                              onChange={(e) => setEditedCommentText(e.target.value)}
+                                              onChange={(e) => setEditedCommentText(e.target.value.slice(0, COMMENT_MAX_LENGTH))}
                                               className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm resize-none outline-none focus:bg-white focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
+                                              maxLength={COMMENT_MAX_LENGTH}
                                               rows="2"
                                             />
 
@@ -1153,13 +1213,6 @@ const PostDetailPage = () => {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowShareModal(false)}
-                className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-              >
-                <MoreHorizontal className="w-5 h-5" />
-              </button>
             </div>
 
             <div className="space-y-3">
