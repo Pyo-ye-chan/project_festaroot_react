@@ -33,7 +33,7 @@ const FestivalGridCard = ({ item }) => {
   return (
     <Link 
       to={`/community/gathering/${roomId}`}
-      className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl hover:shadow-purple-100/50 transition-all flex flex-col"
+      className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl hover:shadow-purple-100/50 transition-all flex flex-col flex-shrink-0 w-[240px] md:w-auto snap-start"
     >
       <div className="relative h-32 overflow-hidden">
         <img 
