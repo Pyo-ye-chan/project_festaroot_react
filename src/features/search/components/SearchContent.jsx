@@ -106,15 +106,15 @@ const SearchContent = ({
           ))}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="w-full space-y-4">
           {festivals.map(fest => (
             <div
               onClick={() => handleFestivalClick(fest.content_id)}
               key={fest.content_id}
-              className="cursor-pointer group flex gap-3 sm:gap-0 bg-white rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500 p-3 sm:p-0"
+              className="cursor-pointer group flex w-full max-w-full gap-3 bg-white rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500 p-3 sm:p-0 items-center sm:items-stretch"
             >
-              {/* 이미지 영역 */}
-              <div className="w-24 h-24 sm:w-48 sm:h-48 shrink-0 overflow-hidden rounded-2xl sm:rounded-none bg-gray-100">
+              {/* 이미지 영역: 고정 크기 유지 */}
+              <div className="w-24 h-24 sm:w-48 sm:h-48 shrink-0 overflow-hidden rounded-xl sm:rounded-none bg-gray-100">
                 <img
                   src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'}
                   alt={fest.title}
@@ -122,41 +122,43 @@ const SearchContent = ({
                 />
               </div>
 
-              {/* 텍스트 세부정보 영역 */}
-              <div className="flex-grow min-w-0 sm:p-6 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              {/* 텍스트 세부정보 영역: w-0 flex-grow 조합으로 가로폭 팽창을 원천 차단 */}
+              <div className="w-0 flex-grow sm:p-6 flex flex-col justify-between py-0.5 min-w-0">
+                <div className="w-full min-w-0">
+                  <div className="flex items-center justify-between mb-1 sm:mb-2 w-full min-w-0">
+                    <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black shrink-0 ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
                       {getDDay(fest.event_start_date, fest.event_end_date)}
                     </span>
 
                     {isLoggedIn && (
-                      <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`transition-all duration-300 active:scale-95 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'text-rose-500' : 'text-gray-300 hover:text-rose-500'}`}>
-                        <Heart className={`w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'fill-rose-500 scale-110' : 'fill-transparent'}`} />
+                      <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`transition-all duration-300 active:scale-95 shrink-0 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'text-rose-500' : 'text-gray-300 hover:text-rose-500'}`}>
+                        <Heart className={`w-3.5 h-3.5 sm:w-5 sm:h-5 transition-all duration-300 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'fill-rose-500 scale-110' : 'fill-transparent'}`} />
                       </button>
                     )}
                   </div>
 
-                  <h4 className="text-sm sm:text-xl font-black text-gray-900 group-hover:text-[#5821B6] transition-colors truncate">
+                  {/* 제목: 공간 부족 시 확실하게 말줄임 처리 */}
+                  <h4 className="text-xs sm:text-xl font-black text-gray-900 group-hover:text-[#5821B6] transition-colors truncate w-full block">
                     {fest.title}
                   </h4>
 
-                  <div className="mt-1.5 sm:mt-3 flex flex-col sm:flex-row sm:gap-4 gap-1">
-                    <p className="text-[10px] sm:text-xs text-gray-500 font-bold flex items-center gap-1.5 min-w-0">
-                      <MapPin className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                      <span className="truncate">{fest.addr1 || '상세 주소 정보 없음'}</span>
+                  {/* 주소 및 일정: w-full과 truncate block 설정으로 내부 글자 무조건 압축 */}
+                  <div className="mt-1 sm:mt-3 flex flex-col sm:flex-row sm:gap-4 gap-0.5 w-full min-w-0">
+                    <p className="text-[10px] sm:text-xs text-gray-500 font-bold flex items-center gap-1 w-full min-w-0">
+                      <MapPin className="w-3 h-3 text-purple-400 shrink-0" />
+                      <span className="truncate block flex-1 min-w-0">{fest.addr1 || '상세 주소 정보 없음'}</span>
                     </p>
-                    <p className="text-[10px] sm:text-xs text-gray-400 font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                      <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                      <span>{formatDate(fest.event_start_date)} ~ {formatDate(fest.event_end_date)}</span>
+                    <p className="text-[10px] sm:text-xs text-gray-400 font-bold flex items-center gap-1 w-full min-w-0">
+                      <Calendar className="w-3 h-3 text-gray-400 shrink-0" />
+                      <span className="truncate block flex-1 min-w-0">{formatDate(fest.event_start_date)} ~ {formatDate(fest.event_end_date)}</span>
                     </p>
                   </div>
 
-                  {/* 테마 정보 출력 (리스트 뷰) */}
+                  {/* 테마 정보 출력 */}
                   {fest.themes && fest.themes.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
+                    <div className="flex flex-wrap gap-1 mt-1 sm:mt-2 w-full min-w-0">
                       {fest.themes.map((theme, idx) => (
-                        <span key={idx} className="px-2 py-0.5 bg-purple-50 text-purple-600 text-[8px] sm:text-[9px] font-black rounded-md">
+                        <span key={idx} className="px-1.5 py-0.5 bg-purple-50 text-purple-600 text-[8px] sm:text-[9px] font-black rounded-md whitespace-nowrap">
                           #{theme.theme_name}
                         </span>
                       ))}
@@ -164,20 +166,21 @@ const SearchContent = ({
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-2 sm:pt-4 border-t border-gray-50 mt-2 sm:mt-0">
-                  <div className="flex gap-3 sm:gap-4">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 text-[#FFD23F] fill-current" />
+                {/* 하단 아이콘 정보 영역 */}
+                <div className="flex items-center justify-between pt-1 sm:pt-4 border-t border-gray-50 mt-1.5 sm:mt-0 w-full min-w-0">
+                  <div className="flex gap-2 sm:gap-4 flex-wrap min-w-0">
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <Star className="w-3 h-3 text-[#FFD23F] fill-current" />
                       <span className="text-[10px] sm:text-xs font-black text-gray-700">
                         {Number(fest.avg_rating || fest.rating_avg || 0).toFixed(1)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 text-gray-500">
-                      <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <div className="flex items-center gap-0.5 text-gray-500 shrink-0">
+                      <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span className="text-[10px] sm:text-sm font-black">{fest.view_count || 0}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-rose-500 font-black">
-                      <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+                    <div className="flex items-center gap-0.5 text-rose-500 font-black shrink-0">
+                      <Heart className="w-3 h-3 sm:w-4 sm:h-4 fill-current" />
                       <span className="text-[10px] sm:text-sm">{fest.like_count || 0}</span>
                     </div>
                   </div>
