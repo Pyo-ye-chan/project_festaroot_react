@@ -66,8 +66,8 @@ const TopFestivalsByRegion = () => {
       {/* 타이틀 및 지역 선택 탭 섹션 */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
         <div>
-          <h3 className="text-3xl text-gray-900 font-black">지역별 인기 축제 TOP 3</h3>
-          <p className="text-gray-500 mt-2 font-bold text-sm">지금 가장 주목받는 지역별 축제를 확인하세요.</p>
+          <h3 className="text-2xl sm:text-3xl text-gray-900 font-black">지역별 인기 축제 TOP 3</h3>
+          <p className="text-gray-500 mt-1 sm:mt-2 font-bold text-xs sm:text-sm">지금 가장 주목받는 지역별 축제를 확인하세요.</p>
         </div>
 
         <div className="flex items-center gap-1 max-w-full md:max-w-xl self-center">
@@ -122,7 +122,7 @@ const TopFestivalsByRegion = () => {
       ) : festivals.length === 0 ? (
         <div className="text-center py-12 text-gray-400 font-bold">해당 지역에 등록된 축제 정보가 없습니다.</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="flex overflow-x-auto pb-4 md:pb-0 gap-6 md:grid md:grid-cols-3 scrollbar-hide snap-x snap-mandatory">
           {festivals.map((fest, index) => {
             const viewCount = fest.view_count || fest.viewCount || fest.views || 0;
 
@@ -131,7 +131,7 @@ const TopFestivalsByRegion = () => {
                 to={`/festival/${fest.content_id}`}
                 key={fest.content_id}
                 onClick={() => handleFestivalClick(fest.content_id)}
-                className="bg-white p-5 rounded-3xl border border-gray-100 flex items-center gap-5 hover:shadow-xl hover:border-purple-100 transition-all duration-500 group cursor-pointer"
+                className="bg-white p-5 rounded-3xl border border-gray-100 flex items-center gap-5 hover:shadow-xl hover:border-purple-100 transition-all duration-500 group cursor-pointer flex-shrink-0 w-[260px] md:w-auto snap-start"
               >
                 <div className="relative flex-shrink-0">
                   <div className="w-20 h-20 rounded-2xl overflow-hidden border border-gray-100">

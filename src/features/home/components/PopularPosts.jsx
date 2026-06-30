@@ -76,9 +76,13 @@ const PopularPosts = () => {
               {/* 본문 제목 내용과 통계 상태 노출 */}
               <div className="flex-grow min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-6">
                 <div className="flex-grow min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
+                  <div className="flex items-center gap-1.5 mb-0.5 sm:mb-1">
                     <span className="text-[10px] sm:text-xs font-bold text-purple-600/70 group-hover:text-purple-600 transition-colors duration-500">
                       {post.nickname || '익명'}
+                    </span>
+                    <span className="text-[9px] sm:text-xs text-gray-300">•</span>
+                    <span className="text-[9px] sm:text-xs text-gray-400 font-medium">
+                      {post.created_at}
                     </span>
                   </div>
                   <h4 className="text-sm sm:text-lg font-bold text-gray-900 truncate group-hover:text-purple-600 transition-colors duration-500">
@@ -96,9 +100,6 @@ const PopularPosts = () => {
                     <span className="text-xs sm:text-lg">❤️</span>
                     <span>{Number(post.like_count || 0).toLocaleString()}</span>
                   </div>
-                  <span className="hidden md:inline text-gray-300 font-medium ml-2">
-                    {post.created_at}
-                  </span>
                 </div>
               </div>
             </div>
