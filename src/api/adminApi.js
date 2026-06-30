@@ -192,8 +192,8 @@ export const updateGatheringStatus = (roomId, status) => {
   return maxios.put(`/admin/gatherings/${roomId}/status`, { status });
 };
 
-export const acceptGatheringReports = (roomId, adminMemo) => {
-  return maxios.post(`/admin/gatherings/${roomId}/reports/accept`, { adminMemo });
+export const acceptGatheringReports = (roomId, reportIds, adminMemo) => {
+  return maxios.post(`/admin/gatherings/${roomId}/reports/accept`, { reportIds, adminMemo });
 };
 
 export const saveGatheringAdminMemo = (roomId, adminMemo) => {
@@ -206,5 +206,9 @@ export const deleteGatheringByAdmin = (roomId) => {
 
 export const getGatheringReports = (roomId) => {
   return maxios.get(`/admin/gatherings/${roomId}/reports`);
+};
+
+export const rejectGatheringReports = (roomId, reportIds) => {
+  return maxios.post(`/admin/gatherings/${roomId}/reports/reject`, { reportIds });
 };
 

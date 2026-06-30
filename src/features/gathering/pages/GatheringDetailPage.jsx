@@ -250,6 +250,10 @@ const GatheringDetailPage = () => {
       alert("모임 참여를 완료한 뒤 채팅방 입장이 가능합니다.");
       return;
     }
+    if (gathering.status === 'BLIND') {
+      alert("신고 승인(블라인드) 처리된 모임은 채팅방 이용 및 입장이 불가능합니다.");
+      return;
+    }
     navigate(`/community/chat/${gathering.room_id}`);
   };
 
@@ -528,7 +532,7 @@ const GatheringDetailPage = () => {
                         편집하기
                       </button>
                     )}
-                    {!isFestival && !isOwner && !isDelegating && (
+                    {!isFestival && !isOwner && !isDelegating && gathering.status !== 'BLIND' && (
                       <button
                         onClick={handleReportClick}
                         className="flex items-center justify-center p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all border border-transparent hover:border-red-100 ml-4 shrink-0 shadow-sm"
@@ -538,6 +542,13 @@ const GatheringDetailPage = () => {
                       </button>
                     )}
                   </div>
+
+                  {gathering.status === 'BLIND' && (
+                    <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 font-black text-sm flex items-center gap-2 select-none">
+                      <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
+                      신고된 모임으로 참여가 불가능 합니다.
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap items-center gap-4 text-gray-600 text-lg mb-6">
                     <span className="flex items-center gap-1">
@@ -721,7 +732,14 @@ const GatheringDetailPage = () => {
                   </div>
                   {loggedInUserId && !isDelegating && (
                     <div className="flex justify-end gap-3">
-                      {isJoined ? (
+                      {gathering.status === 'BLIND' ? (
+                        <button
+                          disabled
+                          className="inline-flex items-center px-10 py-4 rounded-full bg-gray-200 text-gray-400 border border-gray-300/50 font-black text-lg cursor-not-allowed select-none"
+                        >
+                          참여 불가능한 모임입니다
+                        </button>
+                      ) : isJoined ? (
                         <>
                           <button
                             onClick={handleLeaveClick}

@@ -22,6 +22,7 @@ import {
   deleteGatheringByAdmin,
   getGatheringReports
 } from '../../../api/adminApi';
+import GatheringDetailView from '../components/GatheringDetailView';
 
 const STATUS_LABELS = {
   all: '전체 상태',
@@ -48,6 +49,7 @@ const GatheringManagementPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [selectedGathering, setSelectedGathering] = useState(null);
 
   // 메모 모달 상태
   const [memoModal, setMemoModal] = useState({
@@ -63,21 +65,12 @@ const GatheringManagementPage = () => {
     reports: [],
   });
 
-  // 검색어 디바운싱 처리
-  const [debouncedKeyword, setDebouncedKeyword] = useState(keyword);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedKeyword(keyword);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [keyword]);
-
   // 실시간 모임 목록 로드
   const fetchGatherings = async () => {
     try {
       const response = await getAdminGatherings({
         status,
-        keyword: debouncedKeyword,
+        keyword: keyword.trim(),
         sortBy,
         reportedOnly,
         page: currentPage,
@@ -102,11 +95,11 @@ const GatheringManagementPage = () => {
   // 필터 조건 변경 시 페이지 번호 1로 초기화
   useEffect(() => {
     setCurrentPage(1);
-  }, [status, sortBy, debouncedKeyword, reportedOnly]);
+  }, [status, sortBy, keyword, reportedOnly]);
 
   useEffect(() => {
     fetchGatherings();
-  }, [status, sortBy, debouncedKeyword, reportedOnly, currentPage]);
+  }, [status, sortBy, keyword, reportedOnly, currentPage]);
 
   const filteredGatherings = gatherings;
 
@@ -233,6 +226,19 @@ const GatheringManagementPage = () => {
     return pages;
   }, [currentPage, totalPages]);
 
+  if (selectedGathering) {
+    return (
+      <GatheringDetailView
+        gathering={selectedGathering}
+        onBack={() => {
+          setSelectedGathering(null);
+          fetchGatherings();
+        }}
+        onStatusChange={fetchGatherings}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* 상단 제목 */}
@@ -245,7 +251,7 @@ const GatheringManagementPage = () => {
 
       {/* 요약 카드 */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard icon={Layers} title="전체 모임" value={stats.total} unit="개" iconClass="bg-purple-50 text-[#6d3df2]" />
+        <SummaryCard icon={Layers} title="전체 모임" value={totalCount} unit="개" iconClass="bg-purple-50 text-[#6d3df2]" />
         <SummaryCard icon={Flag} title="신고된 모임" value={stats.reported} unit="개" iconClass="bg-orange-50 text-orange-600" />
         <SummaryCard icon={EyeOff} title="숨김 처리" value={stats.hidden} unit="개" iconClass="bg-slate-100 text-slate-600" />
         <SummaryCard icon={ShieldAlert} title="중점 관리" value={stats.highRisk} unit="개" iconClass="bg-red-50 text-red-500" />
@@ -304,20 +310,20 @@ const GatheringManagementPage = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] table-fixed text-left">
+          <table className="w-full min-w-[900px] table-fixed text-left">
             <colgroup>
-              <col className="w-[150px]" />
-              <col className="w-[310px]" />
-              <col className="w-[120px]" />
-              <col className="w-[100px]" />
-              <col className="w-[100px]" />
-              <col className="w-[120px]" />
-              <col className="w-[80px]" />
-              <col className="w-[120px]" />
+              <col className="w-[70px]" />
+              <col className="w-[260px]" />
+              <col className="w-[110px]" />
+              <col className="w-[95px]" />
+              <col className="w-[95px]" />
+              <col className="w-[110px]" />
+              <col className="w-[85px]" />
+              <col className="w-[95px]" />
             </colgroup>
             <thead>
               <tr className="bg-gray-50/50 text-[11px] font-black text-gray-400 uppercase tracking-wider">
-                <th className="px-6 py-4">ID</th>
+                <th className="px-6 py-4 text-center">ID</th>
                 <th className="px-4 py-4">모임 구분 / 제목</th>
                 <th className="px-4 py-4 text-center">호스트</th>
                 <th className="px-4 py-4 text-center">참여현황</th>
@@ -330,9 +336,13 @@ const GatheringManagementPage = () => {
             <tbody className="divide-y divide-gray-50">
               {filteredGatherings.length > 0 ? (
                 filteredGatherings.map((gat) => (
-                  <tr key={gat.id} className="text-sm hover:bg-gray-50/50 transition">
-                    <td className="px-6 py-4">
-                      <p className="text-[11px] font-bold text-gray-400">{gat.id}</p>
+                  <tr 
+                    key={gat.id} 
+                    onClick={() => setSelectedGathering(gat)} 
+                    className="text-sm hover:bg-gray-50/50 transition cursor-pointer"
+                  >
+                    <td className="px-6 py-4 text-center text-xs font-bold text-gray-400">
+                      {gat.id}
                     </td>
                     <td className="px-4 py-4 font-bold text-gray-700 truncate">
                       <div className="flex items-center gap-2 min-w-0">
@@ -350,13 +360,25 @@ const GatheringManagementPage = () => {
                     </td>
                     <td className="px-4 py-4 text-center font-bold text-gray-600">{gat.hostNickname}</td>
                     <td className="px-4 py-4 text-center text-xs font-bold text-gray-500">{gat.participants}</td>
-                    <td className="px-4 py-4 text-center">
-                      <span className={`inline-flex px-2.5 py-1 rounded-lg text-[10px] font-black ${statusClass[gat.status]}`}>
-                        {STATUS_LABELS[gat.status]}
-                      </span>
+                    <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex flex-col items-center justify-center">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="sr-only peer" 
+                            checked={gat.status === 'ACTIVE'} 
+                            onChange={() => handleToggleHide(gat.id)}
+                            disabled={gat.status === 'BLIND'}
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#6d3df2] peer-disabled:bg-rose-100 peer-disabled:after:bg-rose-300"></div>
+                        </label>
+                        <div className="mt-1 text-[10px] font-black text-gray-400">
+                          {gat.status === 'ACTIVE' ? '노출중' : (gat.status === 'BLIND' ? '블라인드' : '숨김')}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-4 text-center text-xs font-bold text-gray-400">{gat.createdAt}</td>
-                    <td className="px-4 py-4 text-right font-black">
+                    <td className="px-4 py-4 text-right font-black" onClick={(e) => e.stopPropagation()}>
                       {Number(gat.reports) > 0 ? (
                         <button 
                           onClick={() => handleOpenReportsModal(gat.id)}
@@ -373,38 +395,15 @@ const GatheringManagementPage = () => {
                         <span className="text-gray-400 text-xs">0건</span>
                       )}
                     </td>
-                    <td className="px-4 py-4 text-center">
+                    <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-2">
                         <button 
-                          onClick={() => navigate(`/community/gathering/${gat.id}`)}
+                          onClick={() => setSelectedGathering(gat)}
                           title="상세보기" 
                           className="p-1.5 rounded-lg border border-gray-100 hover:bg-white text-[#6d3df2] transition"
                         >
                           <Eye size={14} />
                         </button>
-                        
-                        <button 
-                          onClick={() => handleToggleHide(gat.id)}
-                          title={gat.status === 'HIDDEN' ? '노출 처리' : '목록 숨김'}
-                          className={`flex h-7 w-11 items-center rounded-full p-1 transition-colors duration-200 ${
-                            gat.status === 'HIDDEN' ? 'bg-orange-500' : 'bg-gray-200'
-                          }`}
-                          disabled={gat.status === 'BLIND'}
-                        >
-                          <div className={`h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                            gat.status === 'HIDDEN' ? 'translate-x-4' : 'translate-x-0'
-                          }`} />
-                        </button>
-
-                        {Number(gat.reports) > 0 && gat.status !== 'BLIND' && (
-                          <button 
-                            onClick={() => handleAcceptReports(gat.id)}
-                            title="신고 승인(블라인드)" 
-                            className="p-1.5 rounded-lg border border-gray-100 hover:bg-red-50 text-red-600 transition"
-                          >
-                            <Flag size={14} />
-                          </button>
-                        )}
 
                         <button 
                           onClick={() => handleDeleteGathering(gat)}
