@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle, Settings, Save, X, Trash2, Camera } from 'lucide-react';
+import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle, Settings, Save, X, Trash2, Camera, ShieldAlert } from 'lucide-react';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import gatheringApi from '../../../api/gatheringApi';
 import useAuthStore from '../../../store/useAuthStore';
@@ -27,6 +27,11 @@ const GatheringDetailPage = () => {
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+
+  // 신고 기능 관련 상태
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   const [editForm, setEditForm] = useState({
     room_title: '',
@@ -141,6 +146,7 @@ const GatheringDetailPage = () => {
   const isOwner = loggedInUserId && String(loggedInUserId) === String(ownerId);
   const isJoined = loggedInUserId && (isOwner || participants.some(p => String(p.member_id || p.MEMBER_ID || p.id) === String(loggedInUserId)));
   const isFull = gathering.current_count >= gathering.max_capacity;
+  const isFestival = (gathering.room_type && gathering.room_type.toUpperCase() === 'FESTIVAL') || Number(gathering.room_id) <= 0;
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -328,6 +334,38 @@ const GatheringDetailPage = () => {
     }
   };
 
+  const handleReportClick = () => {
+    if (!loggedInUserId) {
+      setIsLoginModalOpen(true);
+      return;
+    }
+    setIsReportModalOpen(true);
+  };
+
+  const handleReportSubmit = async () => {
+    if (!reportReason.trim()) {
+      alert("신고 사유를 입력해 주세요.");
+      return;
+    }
+    if (reportReason.length > 1000) {
+      alert("신고 사유는 1000자 이내로 입력해 주세요.");
+      return;
+    }
+
+    setIsSubmittingReport(true);
+    try {
+      await gatheringApi.reportGathering(gathering.room_id, loggedInUserId, reportReason.trim());
+      alert("신고가 정상적으로 접수되었습니다.");
+      setIsReportModalOpen(false);
+      setReportReason('');
+    } catch (error) {
+      console.error("모임 신고 중 오류 발생:", error);
+      alert(error.response?.data?.message || "신고 처리에 실패했습니다. 다시 시도해 주세요.");
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[var(--warm-white)] font-['Pretendard'] pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -488,6 +526,15 @@ const GatheringDetailPage = () => {
                       >
                         <Settings className="w-4 h-4" />
                         편집하기
+                      </button>
+                    )}
+                    {!isFestival && !isOwner && !isDelegating && (
+                      <button
+                        onClick={handleReportClick}
+                        className="flex items-center justify-center p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all border border-transparent hover:border-red-100 ml-4 shrink-0 shadow-sm"
+                        title="모임 신고하기"
+                      >
+                        <ShieldAlert className="w-6 h-6" />
                       </button>
                     )}
                   </div>
@@ -672,7 +719,6 @@ const GatheringDetailPage = () => {
                       })}
                     </div>
                   </div>
-
                   {loggedInUserId && !isDelegating && (
                     <div className="flex justify-end gap-3">
                       {isJoined ? (
@@ -711,6 +757,73 @@ const GatheringDetailPage = () => {
           </main>
         </div>
       </div>
+
+      {/* 신고하기 모달 */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+              <h3 className="text-xl font-bold text-gray-900">모임 신고하기</h3>
+              <button
+                onClick={() => {
+                  setIsReportModalOpen(false);
+                  setReportReason('');
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-orange-50 text-orange-800 p-3.5 rounded-2xl text-xs leading-relaxed font-medium">
+                ⚠️ 허위 신고 시 이용 제한 등의 불이익을 받을 수 있습니다. 모임의 신중한 검토 후 신고해 주시기 바랍니다.
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">신고 사유</label>
+                <textarea
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  rows="5"
+                  maxLength="1000"
+                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none resize-none text-sm text-gray-800"
+                  placeholder="모임을 신고하는 이유를 구체적으로 적어주세요. (최대 1000자)"
+                />
+                <div className="text-right text-xs text-gray-400 mt-1 font-medium">
+                  {reportReason.length} / 1000자
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setIsReportModalOpen(false);
+                  setReportReason('');
+                }}
+                className="px-5 py-2.5 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full transition-colors font-bold text-sm"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleReportSubmit}
+                disabled={isSubmittingReport}
+                className="px-6 py-2.5 bg-orange-500 text-white hover:bg-orange-600 disabled:bg-orange-300 rounded-full transition-colors font-bold text-sm shadow-md shadow-orange-100 flex items-center gap-1.5"
+              >
+                {isSubmittingReport ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    제출 중...
+                  </>
+                ) : (
+                  '신고 제출'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <LoginMessage
         isOpen={isLoginModalOpen}
