@@ -148,6 +148,7 @@ const GatheringDetailPage = () => {
   const isFull = gathering.current_count >= gathering.max_capacity;
   const isFestival = (gathering.room_type && gathering.room_type.toUpperCase() === 'FESTIVAL') || Number(gathering.room_id) <= 0;
 
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -550,6 +551,26 @@ const GatheringDetailPage = () => {
                     </div>
                   )}
 
+                  {gathering.status === 'HIDDEN' && (
+                    isJoined ? (
+                      <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-100 text-amber-700 font-black text-sm flex items-center gap-2 select-none">
+                        <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0" />
+                        {isFull 
+                          ? "이 모임은 모집이 마감되어 숨김 처리되었습니다. 기존 멤버 간의 채팅은 정상적으로 가능합니다." 
+                          : "이 모임은 현재 관리자에 의해 숨김 처리되었습니다. 기존 멤버 간의 채팅은 정상적으로 가능합니다."
+                        }
+                      </div>
+                    ) : (
+                      <div className="mb-6 p-4 rounded-2xl bg-gray-50 border border-gray-200 text-gray-500 font-black text-sm flex items-center gap-2 select-none">
+                        <ShieldAlert className="w-5 h-5 text-gray-400 shrink-0" />
+                        {isFull 
+                          ? "모집이 마감되어 숨김 처리된 모임입니다. 기존 멤버 외에는 접근할 수 없습니다." 
+                          : "관리자에 의해 숨김 처리된 모임입니다. 기존 멤버 외에는 접근할 수 없습니다."
+                        }
+                      </div>
+                    )
+                  )}
+
                   <div className="flex flex-wrap items-center gap-4 text-gray-600 text-lg mb-6">
                     <span className="flex items-center gap-1">
                       <CalendarDays className="w-5 h-5 text-[var(--festival-purple)]" /> {gathering.free_date ? gathering.free_date.replace(/-/g, '.') : ''}
@@ -733,12 +754,46 @@ const GatheringDetailPage = () => {
                   {loggedInUserId && !isDelegating && (
                     <div className="flex justify-end gap-3">
                       {gathering.status === 'BLIND' ? (
-                        <button
-                          disabled
-                          className="inline-flex items-center px-10 py-4 rounded-full bg-gray-200 text-gray-400 border border-gray-300/50 font-black text-lg cursor-not-allowed select-none"
-                        >
-                          참여 불가능한 모임입니다
-                        </button>
+                        isJoined ? (
+                          <button
+                            onClick={handleLeaveClick}
+                            className="inline-flex items-center px-8 py-3.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-full transition-colors font-bold"
+                          >
+                            모임 나가기
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="inline-flex items-center px-10 py-4 rounded-full bg-gray-200 text-gray-400 border border-gray-300/50 font-black text-lg cursor-not-allowed select-none"
+                          >
+                            참여 불가능한 모임입니다
+                          </button>
+                        )
+                      ) : gathering.status === 'HIDDEN' ? (
+                        isJoined ? (
+                          <>
+                            <button
+                              onClick={handleLeaveClick}
+                              className="inline-flex items-center px-8 py-3.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-full transition-colors font-bold"
+                            >
+                              모임 나가기
+                            </button>
+                            <button
+                              onClick={handleChatClick}
+                              className="inline-flex items-center gap-2 px-8 py-3.5 bg-[var(--festival-purple)] text-white hover:bg-[var(--festival-purple-soft)] rounded-full transition-colors font-bold shadow-lg shadow-purple-100"
+                            >
+                              <MessageCircle className="w-5 h-5" />
+                              채팅방 입장하기
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            disabled
+                            className="inline-flex items-center px-10 py-4 rounded-full bg-gray-200 text-gray-400 border border-gray-300/50 font-black text-lg cursor-not-allowed select-none"
+                          >
+                            {isFull ? "모집 마감 및 숨김 처리된 모임입니다" : "관리자에 의해 숨김 처리된 모임입니다"}
+                          </button>
+                        )
                       ) : isJoined ? (
                         <>
                           <button

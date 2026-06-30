@@ -44,7 +44,7 @@ const GatheringManagementPage = () => {
   const [gatherings, setGatherings] = useState([]);
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('latest');
+  const [sortBy, setSortBy] = useState('popular');
   const [reportedOnly, setReportedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -115,7 +115,7 @@ const GatheringManagementPage = () => {
   const handleReset = () => {
     setKeyword('');
     setStatus('all');
-    setSortBy('latest');
+    setSortBy('popular');
     setReportedOnly(false);
     setCurrentPage(1);
   };
@@ -281,6 +281,7 @@ const GatheringManagementPage = () => {
           </div>
           <FilterSelect label="노출 상태" value={status} onChange={setStatus} options={Object.entries(STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))} />
           <FilterSelect label="정렬 기준" value={sortBy} onChange={setSortBy} options={[
+            { value: 'popular', label: '많은 참여자순' },
             { value: 'latest', label: '최근 개설순' },
             { value: 'oldest', label: '오래된 가입순' },
             { value: 'reports', label: '신고 많은순' },
