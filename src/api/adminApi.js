@@ -182,3 +182,29 @@ export const deleteAdminComments = (commentIds) => {
     data: commentIds,
   });
 };
+
+// 모임 관리
+export const getAdminGatherings = (params) => {
+  return maxios.get('/admin/gatherings', { params });
+};
+
+export const updateGatheringStatus = (roomId, status) => {
+  return maxios.put(`/admin/gatherings/${roomId}/status`, { status });
+};
+
+export const acceptGatheringReports = (roomId, adminMemo) => {
+  return maxios.post(`/admin/gatherings/${roomId}/reports/accept`, { adminMemo });
+};
+
+export const saveGatheringAdminMemo = (roomId, adminMemo) => {
+  return maxios.put(`/admin/gatherings/${roomId}/memo`, { adminMemo });
+};
+
+export const deleteGatheringByAdmin = (roomId) => {
+  return maxios.delete(`/admin/gatherings/${roomId}`);
+};
+
+export const getGatheringReports = (roomId) => {
+  return maxios.get(`/admin/gatherings/${roomId}/reports`);
+};
+
