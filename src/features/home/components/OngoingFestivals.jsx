@@ -71,25 +71,25 @@ const OngoingFestivals = () => {
   }
 
   return (
-    <section className="max-w-7xl mx-auto py-20 px-4 sm:px-6 lg:px-8 bg-gray-50/50 rounded-[3rem] my-12 text-left transition-all duration-500 hover:bg-gray-100/50 border border-gray-100/50">
-      <div className="flex justify-between items-end mb-10 px-4">
+    <section className="max-w-7xl mx-auto py-12 sm:py-20 px-4 sm:px-6 lg:px-8 bg-gray-50/50 rounded-[3rem] my-12 text-left transition-all duration-500 hover:bg-gray-100/50 border border-gray-100/50">
+      <div className="flex justify-between items-center sm:items-end gap-4 mb-8 sm:mb-10 px-4">
         <div>
-          <h3 className="text-3xl font-black text-gray-900 tracking-tight">지금 진행 중인 축제</h3>
-          <p className="text-gray-500 mt-2 font-bold text-sm">오늘 바로 즐길 수 있는 축제들을 확인해 보세요.</p>
+          <h3 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">지금 진행 중인 축제</h3>
+          <p className="text-gray-500 mt-1 sm:mt-2 font-bold text-xs sm:text-sm">오늘 바로 즐길 수 있는 축제들을 확인해 보세요.</p>
         </div>
         <Link 
           to="/search" 
           state={{ ongoingOnly: true, sort: 'date' }}
-          className="flex items-center gap-1 px-4 py-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 hover:text-green-600 transition-all duration-300 text-sm shadow-sm active:scale-95"
+          className="flex items-center gap-1 px-3 sm:px-4 py-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 hover:text-green-600 transition-all duration-300 text-xs sm:text-sm shadow-sm active:scale-95 whitespace-nowrap shrink-0"
         >
-          전체보기
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          더보기
+          <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
+      <div className="flex overflow-x-auto pb-4 md:pb-0 gap-6 md:grid md:grid-cols-2 lg:grid-cols-4 scrollbar-hide snap-x snap-mandatory px-4">
         {ongoingList.length > 0 ? (
           ongoingList.map((fest) => {
             const contentId = fest.contentId || fest.content_id;
@@ -104,7 +104,7 @@ const OngoingFestivals = () => {
                 to={`/festival/${contentId}`} 
                 key={contentId} 
                 onClick={() => handleFestivalClick(contentId)}
-                className="group cursor-pointer bg-white p-4 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100"
+                className="group cursor-pointer bg-white p-4 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 flex-shrink-0 w-[260px] md:w-auto snap-start"
               >
                 <div className="relative aspect-square rounded-[2rem] overflow-hidden mb-4 bg-gray-100 border border-gray-50">
                   <img 
