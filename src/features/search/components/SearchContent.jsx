@@ -36,6 +36,9 @@ const SearchContent = ({
   handleFestivalClick,
   handleLikeToggle
 }) => {
+  const isPopulationDeclineFestival = (festival) =>
+    String(festival?.is_population_decline_yn || '').toUpperCase() === 'Y';
+
   if (festivals.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm">
@@ -54,10 +57,17 @@ const SearchContent = ({
             <div onClick={() => handleFestivalClick(fest.content_id)} key={fest.content_id} className="cursor-pointer group bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500">
               <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                 <img src={fest.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&q=80&w=400'} alt={fest.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                <div className="absolute top-4 left-4">
+                <div className="absolute top-4 left-4 flex flex-wrap items-center gap-1.5 max-w-[calc(100%-5rem)]">
                   <span className={`px-3 py-1.5 rounded-full text-[10px] font-black shadow-sm ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-green-500 text-white' : 'bg-white text-gray-900'}`}>
                     {getDDay(fest.event_start_date, fest.event_end_date)}
                   </span>
+
+                  {isPopulationDeclineFestival(fest) && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-100/95 px-2.5 py-1 text-[10px] font-black text-amber-950 shadow-sm backdrop-blur-md">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      인구감소지역
+                    </span>
+                  )}
                 </div>
 
                 {isLoggedIn && (
@@ -125,10 +135,19 @@ const SearchContent = ({
               {/* 텍스트 세부정보 영역: w-0 flex-grow 조합으로 가로폭 팽창을 원천 차단 */}
               <div className="w-0 flex-grow sm:p-6 flex flex-col justify-between py-0.5 min-w-0">
                 <div className="w-full min-w-0">
-                  <div className="flex items-center justify-between mb-1 sm:mb-2 w-full min-w-0">
-                    <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black shrink-0 ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                      {getDDay(fest.event_start_date, fest.event_end_date)}
-                    </span>
+                  <div className="flex items-center justify-between gap-2 mb-1 sm:mb-2 w-full min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                      <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black shrink-0 ${getDDay(fest.event_start_date, fest.event_end_date) === '진행중' ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                        {getDDay(fest.event_start_date, fest.event_end_date)}
+                      </span>
+
+                      {isPopulationDeclineFestival(fest) && (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[8px] sm:text-[9px] font-black text-amber-700 whitespace-nowrap">
+                          <span className="h-1 w-1 rounded-full bg-amber-500" />
+                          인구감소지역
+                        </span>
+                      )}
+                    </div>
 
                     {isLoggedIn && (
                       <button onClick={(e) => handleLikeToggle(e, fest.content_id)} className={`transition-all duration-300 active:scale-95 shrink-0 ${likedFestivals?.has?.(Number(fest.content_id)) ? 'text-rose-500' : 'text-gray-300 hover:text-rose-500'}`}>
