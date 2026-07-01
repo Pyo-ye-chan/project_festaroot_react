@@ -672,18 +672,10 @@ const AIPlannerPage = () => {
     const { name, value } = e.target;
 
     if (name === 'peopleCount') {
-      if (value === '') {
+      if (value === '' || Number(value) >= 0) {
         setPlannerForm((prev) => ({
           ...prev,
-          [name]: '1'
-        }));
-        return;
-      }
-
-      if (Number(value) < 1) {
-        setPlannerForm((prev) => ({
-          ...prev,
-          [name]: '1'
+          [name]: value
         }));
         return;
       }
@@ -710,6 +702,16 @@ const AIPlannerPage = () => {
     setPlannerForm((prev) => ({
       ...prev,
       [name]: value
+    }));
+  };
+
+  const handlePlannerPeopleCountBlur = () => {
+    setPlannerForm((prev) => ({
+      ...prev,
+      peopleCount:
+        prev.peopleCount === '' || Number(prev.peopleCount) < 1
+          ? '1'
+          : prev.peopleCount
     }));
   };
 
@@ -1678,6 +1680,7 @@ const AIPlannerPage = () => {
         selectedFestival={selectedFestival}
         plannerForm={plannerForm}
         handlePlannerFormChange={handlePlannerFormChange}
+        handlePlannerPeopleCountBlur={handlePlannerPeopleCountBlur}
         handleCreatePlanner={handleCreatePlanner}
         setShowPlannerModal={setShowPlannerModal}
         isGenerating={isGenerating}

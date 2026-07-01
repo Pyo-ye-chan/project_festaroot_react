@@ -1,8 +1,30 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Carousel = ({ items, title, renderItem, onItemClick }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(() => {
+    if (typeof window === 'undefined') {
+      return 3;
+    }
+
+    return window.innerWidth < 1024 ? 1 : 3;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setItemsPerPage(window.innerWidth < 1024 ? 1 : 3);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [itemsPerPage, items.length]);
 
   if (!items || items.length === 0) {
     return (
@@ -15,7 +37,6 @@ const Carousel = ({ items, title, renderItem, onItemClick }) => {
     );
   }
 
-  const itemsPerPage = 3;
   const maxIndex = Math.max(items.length - itemsPerPage, 0);
 
   const handlePrev = () => {
@@ -46,13 +67,13 @@ const Carousel = ({ items, title, renderItem, onItemClick }) => {
         <div
           className="flex gap-5 transition-transform duration-300"
           style={{
-            transform: `translateX(calc(-${currentIndex} * ((100% - 40px) / 3 + 20px)))`,
+            transform: `translateX(calc(-${currentIndex} * ((100% - ${20 * (itemsPerPage - 1)}px) / ${itemsPerPage} + 20px)))`,
           }}
         >
           {items.map((item, index) => (
             <div
               key={item.contentid || item.content_id || index}
-              className="shrink-0 basis-[calc((100%-40px)/3)]"
+              className={`shrink-0 ${itemsPerPage === 1 ? 'basis-full' : 'basis-[calc((100%-40px)/3)]'}`}
               onClick={() => onItemClick(item)}
             >
               {renderItem(item)}

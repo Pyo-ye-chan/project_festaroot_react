@@ -11,7 +11,7 @@ function MapCategoryTab() {
   ];
 
   return (
-    <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2 max-w-[calc(100%-32px)]">
+    <div className="flex w-full max-w-full gap-2 overflow-x-auto whitespace-nowrap pb-1 sm:flex-wrap sm:overflow-visible sm:whitespace-normal">
       {tabs.map((tab, idx) => (
         <button 
           key={idx} 

@@ -6,7 +6,7 @@ import {useNavigate} from 'react-router-dom'
 import festivalService from '../../../api/festivalService';
 
 
-function SidebarFilter() {
+function SidebarFilter({ onSearchComplete }) {
   const {increaseViewCount} = festivalService;
   const [isModalOpen, setIsModalOpen] = useState(false);
   // Zustand store에서 상태와 액션 가져오기
@@ -27,6 +27,7 @@ function SidebarFilter() {
       return;
     }
     fetchNearbyPlaces();
+    onSearchComplete?.();
   };
   const navi = useNavigate();
   return (
@@ -168,7 +169,7 @@ function SidebarFilter() {
       </div>
 
       {/* 하단 푸터 안내문구 */}
-      <div className="mt-6 p-3 bg-blue-50/50 rounded-lg text-[10px] text-blue-400/80 leading-relaxed border border-blue-100/50">
+      <div className="hidden sm:block mt-6 p-3 bg-blue-50/50 rounded-lg text-[10px] text-blue-400/80 leading-relaxed border border-blue-100/50">
         💡 한국관광공사 관광정보 API를 활용합니다.
       </div>
 
