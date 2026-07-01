@@ -36,27 +36,32 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
       className="flex items-center gap-4 py-4 px-6 hover:bg-gray-50 transition-all group border-b border-gray-50 last:border-none"
     >
       <div className="w-16 h-16 flex-shrink-0">
-        <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50">
+        <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-100 shadow-sm bg-gray-50 relative">
           <img 
             src={gatheringImage} 
             alt={roomTitle} 
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
           />
+          {isJoined && (
+            <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-green-50/95 text-green-600 text-[8px] font-black rounded border border-green-200 shadow-sm select-none whitespace-nowrap z-10">
+              참여중
+            </span>
+          )}
         </div>
       </div>
 
       <div className="flex-grow min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           {showTypeBadge && (
             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${
               isFestival ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
             }`}>
-              {isFestival ? 'Festival' : 'Free'}
+              {isFestival ? 'Festival' : 'PUBLIC'}
             </span>
           )}
           {isFestival ? (
             activeTab !== '참여중인 모임' && (
-              <span className="text-xs font-black text-[var(--festival-purple)] bg-purple-50 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-black text-[var(--festival-purple)] bg-purple-50 px-2 py-0.5 rounded-md whitespace-nowrap" title={festivalName}>
                 {festivalName}
               </span>
             )
@@ -65,38 +70,43 @@ const GatheringListItem = ({ item, isFestival, showTypeBadge = false, activeTab 
               {nickname}
             </span>
           )}
-          {isJoined && activeTab !== '참여중인 모임' && (
-            <span className="px-1.5 py-0.5 bg-green-100 text-green-600 text-[9px] font-black rounded-md border border-green-200">
-              참여 중
-            </span>
-          )}
         </div>
         <h4 className={`font-bold text-gray-900 truncate transition-colors text-base ${
           isFestival ? 'group-hover:text-[var(--festival-purple)]' : 'group-hover:text-blue-600'
         }`}>
           {roomTitle}
         </h4>
-        <div className="flex items-center gap-4 mt-1.5">
-          <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
-            <CalendarDays className="w-3.5 h-3.5" /> {formattedDate}
+        <div className="flex flex-col gap-1.5 mt-1.5">
+          <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 whitespace-nowrap shrink-0">
+            <CalendarDays className="w-3.5 h-3.5 shrink-0" /> {formattedDate}
           </div>
           {freeLocation && (
-            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 overflow-hidden">
+            <div className="flex items-center gap-1 text-[11px] font-bold text-gray-400 min-w-0">
               <MapPin className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{freeLocation}</span>
             </div>
           )}
-          <div className={`flex items-center gap-1 text-[11px] font-black ${
+          {/* 모바일 전용 인원수 표시 */}
+          <div className={`flex sm:hidden items-center gap-1 text-[11px] font-black whitespace-nowrap shrink-0 ${
             isFull ? 'text-red-500' : (isFestival ? 'text-purple-600' : 'text-blue-600')
           }`}>
-            <Users className="w-3.5 h-3.5" /> {currentCount}/{maxCapacity}명
+            <Users className="w-3.5 h-3.5 shrink-0" /> {currentCount}/{maxCapacity}명
           </div>
         </div>
       </div>
 
-      <ChevronRight className={`w-5 h-5 text-gray-300 transition-all flex-shrink-0 ${
-        isFestival ? 'group-hover:text-[var(--festival-purple)]' : 'group-hover:text-blue-600'
-      } group-hover:translate-x-1`} />
+      <div className="flex items-center gap-3 shrink-0 ml-auto">
+        {/* 데스크톱 전용 인원수 표시 */}
+        <div className={`hidden sm:flex items-center gap-1 text-xs font-black whitespace-nowrap ${
+          isFull ? 'text-red-500' : (isFestival ? 'text-purple-600' : 'text-blue-600')
+        }`}>
+          <Users className="w-4 h-4 shrink-0" /> {currentCount}/{maxCapacity}명
+        </div>
+        
+        <ChevronRight className={`w-5 h-5 text-gray-300 transition-all flex-shrink-0 ${
+          isFestival ? 'group-hover:text-[var(--festival-purple)]' : 'group-hover:text-blue-600'
+        } group-hover:translate-x-1`} />
+      </div>
     </Link>
   );
 };
