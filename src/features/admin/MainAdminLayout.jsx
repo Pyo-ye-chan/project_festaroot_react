@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -15,12 +15,15 @@ import {
   CircleUser,
   UsersRound, 
   LogOut,
+  Menu,
+  X,
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 
 const MainAdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { user, logout } = useAuthStore();
 
@@ -130,9 +133,18 @@ const MainAdminLayout = () => {
       </aside>
 
       {/* 모바일 헤더 */}
-      <header className="sticky top-0 z-20 flex h-[70px] items-center justify-between border-b border-gray-100 bg-white/90 px-5 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-40 flex h-[70px] items-center justify-between border-b border-gray-100 bg-white/90 px-5 backdrop-blur lg:hidden">
         <div className="flex items-center gap-3">
-          <svg className="w-10 h-10 select-none flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-50 active:scale-95 transition"
+            title="메뉴 열기/닫기"
+          >
+            {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+
+          <svg className="w-9 h-9 select-none flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="16" cy="16" r="16" fill="#f3eeff"/>
             <path d="M16,3 C11,3 7,7 7,12 C7,18 16,29 16,29 C16,29 25,18 25,12 C25,7 21,3 16,3 Z" fill="#6d3df2"/>
             <rect x="13" y="9" width="2.5" height="2.5" rx="0.5" fill="#ffd000"/>
@@ -141,28 +153,94 @@ const MainAdminLayout = () => {
             <rect x="16.5" y="12.5" width="2.5" height="2.5" rx="0.5" fill="#ffd000"/>
           </svg>
 
-          <p className="text-lg font-black">
+          <p className="text-base font-black">
             <span className="text-[#6d3df2]">축제로</span> 관리자
           </p>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <Bell size={22} className="text-gray-500" />
-            <span className="absolute -right-1 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-yellow-400 text-[10px] font-black text-yellow-900">
-              8
-            </span>
-          </div>
-
           <button
             type="button"
             onClick={handleLogout}
-            className="text-gray-500 transition hover:text-red-600"
+            className="text-gray-500 transition hover:text-red-600 active:scale-95"
+            title="로그아웃"
           >
             <LogOut size={22} />
           </button>
         </div>
       </header>
+
+      {/* 모바일 사이드바 서랍 메뉴 */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-30 lg:hidden">
+          {/* 어두운 반투명 배경 */}
+          <div
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
+          />
+
+          {/* 서랍 내용 영역 */}
+          <div className="fixed left-0 top-[70px] bottom-0 w-[260px] bg-white border-r border-gray-100 flex flex-col z-40 animate-in slide-in-from-left duration-300">
+            {/* 메뉴 영역 */}
+            <nav className="flex-1 overflow-y-auto px-5 py-5">
+              <ul className="space-y-1.5">
+                {menus.map((menu) => {
+                  const Icon = menu.icon;
+
+                  const isActive =
+                    menu.path === '/admin'
+                      ? location.pathname === '/admin' || location.pathname === '/admin/dashboard'
+                      : location.pathname.startsWith(menu.path);
+
+                  return (
+                    <li key={menu.name}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigate(menu.path);
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-all ${isActive
+                          ? 'bg-gradient-to-r from-[#6d3df2] to-[#7c3aed] text-white shadow-lg shadow-purple-100'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-[#6d3df2]'
+                          }`}
+                      >
+                        <Icon
+                          size={18}
+                          className={isActive ? 'text-white' : 'text-gray-500 group-hover:text-[#6d3df2]'}
+                        />
+
+                        <span className="flex-1 text-left">{menu.name}</span>
+
+                        {menu.badge && (
+                          <span className="rounded-full bg-yellow-300 px-2 py-0.5 text-xs font-black text-yellow-900">
+                            {menu.badge}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+
+            {/* 하단 고정 로그아웃 영역 */}
+            <div className="p-5 border-t border-gray-100 bg-white flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-gray-500 transition-all hover:bg-red-50 hover:text-red-600"
+              >
+                <LogOut size={18} className="text-gray-400 group-hover:text-red-600" />
+                <span className="flex-1 text-left">로그아웃</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 오른쪽 메인 영역 */}
       <div className="lg:pl-[260px]">
