@@ -239,56 +239,62 @@ const ChatWindow = ({
 
       {/* 하단 입력 폼 영역 */}
       <div className="p-6 border-t border-gray-100 bg-white flex-shrink-0">
-        <form onSubmit={handleSendMessage} className="flex items-center gap-3">
-          <label className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl cursor-pointer transition-all">
-
-            {/* GCS 서버 API 비동기 연동 반영 - 오브젝트 버그 수정 */}
-            <input
-              type="file"
-              accept="image/*, .pdf, .doc, .docx, .xls, .xlsx, .txt"
-              className="hidden"
-              onChange={async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                try {
-                  const isImage = file.type.startsWith('image/');
-                  if (isImage) {
-                    // 1. GCS 백엔드 서버에서 { success: true, imageUrl: "..." } 객체를 받아옴
-                    const res = await chatApi.uploadChatImage(file);
-
-                    // 객체에서 순수한 문자열 URL만 추출하여 STOMP 발행 🌟
-                    if (res && res.imageUrl) {
-                      sendMessage(currentRoomId, res.imageUrl, 'IMAGE');
-                    } else {
-                      console.error("이미지 URL을 가져오지 못했습니다.", res);
-                    }
-                  } else {
-                    // 일반 파일 처리 규격 유지
-                    sendMessage(currentRoomId, file.name, 'file');
-                  }
-                } catch (error) {
-                  console.error("파일 업로드 도중 에러 발생:", error);
-                } finally {
-                  e.target.value = ''; // 동일 파일 재선택 가능하도록 초기화
-                }
-              }}
-            />
-            <Paperclip className="w-7 h-7" />
-          </label>
-          <div className="relative flex-grow flex items-center">
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="메시지를 입력하세요..."
-              className="w-full bg-gray-50 rounded-2xl py-4 px-6 font-medium text-base focus:ring-2 focus:ring-purple-600/20"
-            />
+        {selectedChat?.status === 'BLIND' || selectedChat?.STATUS === 'BLIND' ? (
+          <div className="flex items-center justify-center p-5 bg-red-50 text-red-600 rounded-2xl font-bold border border-red-100 select-none text-sm gap-2">
+            <span>⚠️ 신고 누적으로 인해 관리자에 의해 이용이 정지된 모임방입니다.</span>
           </div>
-          <button type="submit" className="p-4 rounded-2xl bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200">
-            <Send className="w-6 h-6" />
-          </button>
-        </form>
+        ) : (
+          <form onSubmit={handleSendMessage} className="flex items-center gap-3">
+            <label className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl cursor-pointer transition-all">
+
+              {/* GCS 서버 API 비동기 연동 반영 - 오브젝트 버그 수정 */}
+              <input
+                type="file"
+                accept="image/*, .pdf, .doc, .docx, .xls, .xlsx, .txt"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+
+                  try {
+                    const isImage = file.type.startsWith('image/');
+                    if (isImage) {
+                      // 1. GCS 백엔드 서버에서 { success: true, imageUrl: "..." } 객체를 받아옴
+                      const res = await chatApi.uploadChatImage(file);
+
+                      // 객체에서 순수한 문자열 URL만 추출하여 STOMP 발행 🌟
+                      if (res && res.imageUrl) {
+                        sendMessage(currentRoomId, res.imageUrl, 'IMAGE');
+                      } else {
+                        console.error("이미지 URL을 가져오지 못했습니다.", res);
+                      }
+                    } else {
+                      // 일반 파일 처리 규격 유지
+                      sendMessage(currentRoomId, file.name, 'file');
+                    }
+                  } catch (error) {
+                    console.error("파일 업로드 도중 에러 발생:", error);
+                  } finally {
+                    e.target.value = ''; // 동일 파일 재선택 가능하도록 초기화
+                  }
+                }}
+              />
+              <Paperclip className="w-7 h-7" />
+            </label>
+            <div className="relative flex-grow flex items-center">
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="메시지를 입력하세요..."
+                className="w-full bg-gray-50 rounded-2xl py-4 px-6 font-medium text-base focus:ring-2 focus:ring-purple-600/20"
+              />
+            </div>
+            <button type="submit" className="p-4 rounded-2xl bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-lg shadow-purple-200">
+              <Send className="w-6 h-6" />
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

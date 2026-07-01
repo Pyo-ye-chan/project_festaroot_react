@@ -3,11 +3,11 @@ import { Map, MapMarker, Circle, MarkerClusterer, CustomOverlayMap } from "react
 import useMapStore from "../../store/useMapStore";
 
 function KakaoMapContainer() {
-  const { searchParams, activeCategory, places, selectedPlace, setSelectedPlace, fetchPlaceDetail } = useMapStore();
+  const { searchParams, activeCategory, places, festivals, selectedPlace, setSelectedPlace, fetchPlaceDetail, setSelectedFestival } = useMapStore();
   const { radius, selectedFestival } = searchParams;
 
-  // 1. 초기 레벨 설정 및 상태 관리
-  const initialLevel = radius > 15 ? 8 : radius > 10 ? 7 : radius > 5 ? 6 : 5;
+  // 1. 초기 레벨 설정 및 상태 관리 (선택된 기준 축제가 없을 때는 전국이 잘 보이기 위해 10레벨로 설정)
+  const initialLevel = selectedFestival ? (radius > 15 ? 8 : radius > 10 ? 7 : radius > 5 ? 6 : 5) : 10;
   const [level, setLevel] = useState(initialLevel);
 
   // radius나 selectedPlace가 변경될 때마다 레벨 업데이트 (상세 정보 볼 때는 줌인)
@@ -17,9 +17,9 @@ function KakaoMapContainer() {
     } else {
       setLevel(initialLevel);
     }
-  }, [radius, selectedPlace]);
+  }, [radius, selectedPlace, selectedFestival]);
 
-  // 2. 기준 좌표 설정
+  // 2. 기준 좌표 설정 (기준 축제가 없으면 대전 등 대한민국의 중앙 부근을 바라보도록 설정)
   const getCenter = () => {
     // 선택된 상세 장소가 있으면 그곳을 중심으로
     if (selectedPlace && selectedPlace.lat && selectedPlace.lng) {
@@ -37,20 +37,52 @@ function KakaoMapContainer() {
         return { lat, lng };
       }
     }
-    // 값이 없거나 유효하지 않으면 서울시청
-    return { lat: 37.5665, lng: 126.9780 };
+    // 값이 없거나 유효하지 않으면 대전을 중심으로 설정해 전국 마커가 고루 보이게 유도
+    return { lat: 36.3504, lng: 127.3845 };
   };
 
   const center = getCenter();
 
-  // 3. 카테고리에 따른 마커 필터링
-  const filteredMarkers = places.filter(place => {
-    if (activeCategory === '전체') return true;
-    if (activeCategory === '음식점') return place.type === 'food';
-    if (activeCategory === '관광지') return place.type === 'tour';
-    if (activeCategory === '축제/행사') return place.type === 'festival';
-    return true;
-  });
+  // 3. 카테고리에 따른 마커 필터링 (선택된 축제가 없을 때는 현재 진행 중인 모든 축제를 마커로 매핑)
+  const getFilteredMarkers = () => {
+    if (selectedFestival) {
+      return places.filter(place => {
+        if (activeCategory === '전체') return true;
+        if (activeCategory === '음식점') return place.type === 'food';
+        if (activeCategory === '관광지') return place.type === 'tour';
+        if (activeCategory === '문화시설') return place.type === 'culture';
+        return true;
+      });
+    } else {
+      // 오늘 날짜 구하기 (YYYYMMDD 형식 문자열)
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}${month}${day}`;
+
+      const ongoing = festivals.filter(f => {
+        const start = f.event_start_date;
+        const end = f.event_end_date;
+        return start && end && start <= todayStr && end >= todayStr;
+      });
+
+      return ongoing.map(f => ({
+        id: f.content_id,
+        title: f.title,
+        lat: parseFloat(f.map_y),
+        lng: parseFloat(f.map_x),
+        type: 'festival',
+        img: f.first_image || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=300&q=80',
+        addr: f.addr1,
+        startDate: f.event_start_date,
+        endDate: f.event_end_date,
+        originalFestival: f
+      }));
+    }
+  };
+
+  const filteredMarkers = getFilteredMarkers();
 
   // 4. 원의 반지름 유효성 확인
   const isValidRadius = !isNaN(radius) && radius > 0;
@@ -59,8 +91,13 @@ function KakaoMapContainer() {
   const isClustered = level >= 6;
 
   const handleMarkerClick = (marker) => {
-    setSelectedPlace(marker);
-    fetchPlaceDetail(marker.id, marker.contentTypeId);
+    if (marker.type === 'festival') {
+      // 진행 중인 축제 마커 클릭 시 해당 축제를 바로 기준 축제로 지정하여 주변 탐색 활성화
+      setSelectedFestival(marker.originalFestival);
+    } else {
+      setSelectedPlace(marker);
+      fetchPlaceDetail(marker.id, marker.contentTypeId);
+    }
   };
 
   return (

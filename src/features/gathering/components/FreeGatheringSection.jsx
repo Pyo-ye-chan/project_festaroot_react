@@ -37,7 +37,7 @@ const FreeGatheringSection = ({ activeTab, freeGatherings, onTabChange, keyword 
         </p>
       </div>
     ) : activeTab === '전체 모임' ? (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 pt-4">
+      <div className="flex overflow-x-auto pb-6 md:pb-0 gap-6 p-8 pt-4 scrollbar-hide snap-x snap-mandatory md:grid md:grid-cols-2">
         {freeGatherings.slice(0, 2).map(gathering => (
           <FreeGridCard key={gathering.room_id} item={gathering} />
         ))}

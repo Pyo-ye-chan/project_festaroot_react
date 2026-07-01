@@ -49,7 +49,8 @@ const REPORT_STATUS_LABELS = {
 const REPORT_TYPE_LABELS = {
   POST: '게시글',
   COMMENT: '댓글',
-  REVIEW: '리뷰'
+  REVIEW: '리뷰',
+  CHAT: '모임'
 };
 
 const REASON_LABELS = {
@@ -355,9 +356,6 @@ const MemberManagementPage = () => {
       <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-50">
           <h2 className="text-lg font-black text-gray-900">회원 목록 <span className="ml-1 text-[#6d3df2]">{totalCount}</span> 명</h2>
-          <div className="text-xs font-bold text-gray-400 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100">
-            한 페이지에 10명씩 표시됩니다
-          </div>
         </div>
 
         <div className="overflow-x-auto">

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle, Settings, Save, X, Trash2, Camera } from 'lucide-react';
+import { MapPin, CalendarDays, Users, ChevronLeft, MessageCircle, Settings, Save, X, Trash2, Camera, ShieldAlert } from 'lucide-react';
 import CommunitySidebar from '../../community/components/CommunitySidebar';
 import gatheringApi from '../../../api/gatheringApi';
 import useAuthStore from '../../../store/useAuthStore';
@@ -27,6 +27,11 @@ const GatheringDetailPage = () => {
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+
+  // 신고 기능 관련 상태
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   const [editForm, setEditForm] = useState({
     room_title: '',
@@ -141,6 +146,8 @@ const GatheringDetailPage = () => {
   const isOwner = loggedInUserId && String(loggedInUserId) === String(ownerId);
   const isJoined = loggedInUserId && (isOwner || participants.some(p => String(p.member_id || p.MEMBER_ID || p.id) === String(loggedInUserId)));
   const isFull = gathering.current_count >= gathering.max_capacity;
+  const isFestival = (gathering.room_type && gathering.room_type.toUpperCase() === 'FESTIVAL') || Number(gathering.room_id) <= 0;
+
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -244,6 +251,10 @@ const GatheringDetailPage = () => {
       alert("모임 참여를 완료한 뒤 채팅방 입장이 가능합니다.");
       return;
     }
+    if (gathering.status === 'BLIND') {
+      alert("신고 승인(블라인드) 처리된 모임은 채팅방 이용 및 입장이 불가능합니다.");
+      return;
+    }
     navigate(`/community/chat/${gathering.room_id}`);
   };
 
@@ -325,6 +336,38 @@ const GatheringDetailPage = () => {
     } catch (error) {
       console.error("모임 삭제 중 오류 발생:", error);
       alert("모임 삭제에 실패했습니다.");
+    }
+  };
+
+  const handleReportClick = () => {
+    if (!loggedInUserId) {
+      setIsLoginModalOpen(true);
+      return;
+    }
+    setIsReportModalOpen(true);
+  };
+
+  const handleReportSubmit = async () => {
+    if (!reportReason.trim()) {
+      alert("신고 사유를 입력해 주세요.");
+      return;
+    }
+    if (reportReason.length > 1000) {
+      alert("신고 사유는 1000자 이내로 입력해 주세요.");
+      return;
+    }
+
+    setIsSubmittingReport(true);
+    try {
+      await gatheringApi.reportGathering(gathering.room_id, loggedInUserId, reportReason.trim());
+      alert("신고가 정상적으로 접수되었습니다.");
+      setIsReportModalOpen(false);
+      setReportReason('');
+    } catch (error) {
+      console.error("모임 신고 중 오류 발생:", error);
+      alert(error.response?.data?.message || "신고 처리에 실패했습니다. 다시 시도해 주세요.");
+    } finally {
+      setIsSubmittingReport(false);
     }
   };
 
@@ -490,7 +533,43 @@ const GatheringDetailPage = () => {
                         편집하기
                       </button>
                     )}
+                    {!isFestival && !isOwner && !isDelegating && gathering.status !== 'BLIND' && (
+                      <button
+                        onClick={handleReportClick}
+                        className="flex items-center justify-center p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all border border-transparent hover:border-red-100 ml-4 shrink-0 shadow-sm"
+                        title="모임 신고하기"
+                      >
+                        <ShieldAlert className="w-6 h-6" />
+                      </button>
+                    )}
                   </div>
+
+                  {gathering.status === 'BLIND' && (
+                    <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-100 text-red-600 font-black text-sm flex items-center gap-2 select-none">
+                      <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
+                      신고된 모임으로 참여가 불가능 합니다.
+                    </div>
+                  )}
+
+                  {gathering.status === 'HIDDEN' && (
+                    isJoined ? (
+                      <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-100 text-amber-700 font-black text-sm flex items-center gap-2 select-none">
+                        <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0" />
+                        {isFull 
+                          ? "이 모임은 모집이 마감되어 숨김 처리되었습니다. 기존 멤버 간의 채팅은 정상적으로 가능합니다." 
+                          : "이 모임은 현재 관리자에 의해 숨김 처리되었습니다. 기존 멤버 간의 채팅은 정상적으로 가능합니다."
+                        }
+                      </div>
+                    ) : (
+                      <div className="mb-6 p-4 rounded-2xl bg-gray-50 border border-gray-200 text-gray-500 font-black text-sm flex items-center gap-2 select-none">
+                        <ShieldAlert className="w-5 h-5 text-gray-400 shrink-0" />
+                        {isFull 
+                          ? "모집이 마감되어 숨김 처리된 모임입니다. 기존 멤버 외에는 접근할 수 없습니다." 
+                          : "관리자에 의해 숨김 처리된 모임입니다. 기존 멤버 외에는 접근할 수 없습니다."
+                        }
+                      </div>
+                    )
+                  )}
 
                   <div className="flex flex-wrap items-center gap-4 text-gray-600 text-lg mb-6">
                     <span className="flex items-center gap-1">
@@ -672,10 +751,50 @@ const GatheringDetailPage = () => {
                       })}
                     </div>
                   </div>
-
                   {loggedInUserId && !isDelegating && (
                     <div className="flex justify-end gap-3">
-                      {isJoined ? (
+                      {gathering.status === 'BLIND' ? (
+                        isJoined ? (
+                          <button
+                            onClick={handleLeaveClick}
+                            className="inline-flex items-center px-8 py-3.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-full transition-colors font-bold"
+                          >
+                            모임 나가기
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="inline-flex items-center px-10 py-4 rounded-full bg-gray-200 text-gray-400 border border-gray-300/50 font-black text-lg cursor-not-allowed select-none"
+                          >
+                            참여 불가능한 모임입니다
+                          </button>
+                        )
+                      ) : gathering.status === 'HIDDEN' ? (
+                        isJoined ? (
+                          <>
+                            <button
+                              onClick={handleLeaveClick}
+                              className="inline-flex items-center px-8 py-3.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-full transition-colors font-bold"
+                            >
+                              모임 나가기
+                            </button>
+                            <button
+                              onClick={handleChatClick}
+                              className="inline-flex items-center gap-2 px-8 py-3.5 bg-[var(--festival-purple)] text-white hover:bg-[var(--festival-purple-soft)] rounded-full transition-colors font-bold shadow-lg shadow-purple-100"
+                            >
+                              <MessageCircle className="w-5 h-5" />
+                              채팅방 입장하기
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            disabled
+                            className="inline-flex items-center px-10 py-4 rounded-full bg-gray-200 text-gray-400 border border-gray-300/50 font-black text-lg cursor-not-allowed select-none"
+                          >
+                            {isFull ? "모집 마감 및 숨김 처리된 모임입니다" : "관리자에 의해 숨김 처리된 모임입니다"}
+                          </button>
+                        )
+                      ) : isJoined ? (
                         <>
                           <button
                             onClick={handleLeaveClick}
@@ -711,6 +830,73 @@ const GatheringDetailPage = () => {
           </main>
         </div>
       </div>
+
+      {/* 신고하기 모달 */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+              <h3 className="text-xl font-bold text-gray-900">모임 신고하기</h3>
+              <button
+                onClick={() => {
+                  setIsReportModalOpen(false);
+                  setReportReason('');
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-orange-50 text-orange-800 p-3.5 rounded-2xl text-xs leading-relaxed font-medium">
+                ⚠️ 허위 신고 시 이용 제한 등의 불이익을 받을 수 있습니다. 모임의 신중한 검토 후 신고해 주시기 바랍니다.
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">신고 사유</label>
+                <textarea
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  rows="5"
+                  maxLength="1000"
+                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none resize-none text-sm text-gray-800"
+                  placeholder="모임을 신고하는 이유를 구체적으로 적어주세요. (최대 1000자)"
+                />
+                <div className="text-right text-xs text-gray-400 mt-1 font-medium">
+                  {reportReason.length} / 1000자
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setIsReportModalOpen(false);
+                  setReportReason('');
+                }}
+                className="px-5 py-2.5 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full transition-colors font-bold text-sm"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleReportSubmit}
+                disabled={isSubmittingReport}
+                className="px-6 py-2.5 bg-orange-500 text-white hover:bg-orange-600 disabled:bg-orange-300 rounded-full transition-colors font-bold text-sm shadow-md shadow-orange-100 flex items-center gap-1.5"
+              >
+                {isSubmittingReport ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    제출 중...
+                  </>
+                ) : (
+                  '신고 제출'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <LoginMessage
         isOpen={isLoginModalOpen}
