@@ -37,7 +37,7 @@ const MainAdminLayout = () => {
     { name: '축제 관리', path: '/admin/festivals', icon: CalendarDays },
     { name: '게시글 관리', path: '/admin/posts', icon: Newspaper },
     { name: '댓글 관리', path: '/admin/comments', icon: MessageSquare },
-     // { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound }, // 추후 기능 추가 가능성 대비 주석함
+    { name: '모임 관리', path: '/admin/gatherings', icon: UsersRound },
     { name: '공지사항 관리', path: '/admin/notices', icon: Megaphone },
     { name: '문의 관리', path: '/admin/inquiries', icon: ShieldAlert },
   ];

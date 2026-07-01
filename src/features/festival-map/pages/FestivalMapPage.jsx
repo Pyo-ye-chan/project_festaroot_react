@@ -1,14 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, List, Map as MapIcon, Filter } from 'lucide-react';
 import KakaoMapContainer from "../../../components/map/KakaoMapContainer";
 import MapCategoryTab from "../components/MapCategoryTab";
 import PlaceCardList from "../components/PlaceCardList";
 import SidebarFilter from "../components/SidebarFilter";
 import PlaceDetailDrawer from "../components/PlaceDetailDrawer";
+import useMapStore from "../../../store/useMapStore";
 
 function FestivalMapPage() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isListVisible, setIsListVisible] = useState(true);
+    const { fetchAllFestivals } = useMapStore();
+
+    useEffect(() => {
+        fetchAllFestivals();
+    }, [fetchAllFestivals]);
 
     return (
         <div className="relative flex w-full h-[calc(100vh-64px)] md:h-[calc(100vh-140px)] bg-slate-50 font-sans overflow-hidden">
