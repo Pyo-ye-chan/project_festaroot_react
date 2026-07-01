@@ -16,6 +16,7 @@ import { // 모임 신고 기능 없어서, 현재는 쓰지 않으나, 나중�
 } from 'lucide-react';
 import {
   getAdminGatherings,
+  getCautionGatherings,
   updateGatheringStatus,
   acceptGatheringReports,
   saveGatheringAdminMemo,
@@ -50,6 +51,7 @@ const GatheringManagementPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedGathering, setSelectedGathering] = useState(null);
+  const [cautionGatherings, setCautionGatherings] = useState([]);
 
   // 메모 모달 상태
   const [memoModal, setMemoModal] = useState({
@@ -92,6 +94,24 @@ const GatheringManagementPage = () => {
     }
   };
 
+  // 실시간 집중 모니터링 모임 목록 로드 (3회 이상)
+  const fetchCautionGatherings = async () => {
+    try {
+      const response = await getCautionGatherings();
+      if (response && response.data) {
+        const mapped = response.data.map(item => ({
+          ...item,
+          id: String(item.id),
+          adminMemo: item.adminMemo || '-',
+          reportReason: item.reportReason || '',
+        }));
+        setCautionGatherings(mapped);
+      }
+    } catch (error) {
+      console.error("집중 모니터링 모임 조회 실패:", error);
+    }
+  };
+
   // 필터 조건 변경 시 페이지 번호 1로 초기화
   useEffect(() => {
     setCurrentPage(1);
@@ -100,6 +120,10 @@ const GatheringManagementPage = () => {
   useEffect(() => {
     fetchGatherings();
   }, [status, sortBy, keyword, reportedOnly, currentPage]);
+
+  useEffect(() => {
+    fetchCautionGatherings();
+  }, []);
 
   const filteredGatherings = gatherings;
 
@@ -132,6 +156,7 @@ const GatheringManagementPage = () => {
       await updateGatheringStatus(Number(gatId), newStatus);
       alert(`모임 노출 상태가 [${STATUS_LABELS[newStatus]}] 상태로 변경되었습니다.`);
       fetchGatherings();
+      fetchCautionGatherings();
     } catch (error) {
       console.error("노출 상태 토글 실패:", error);
       alert("모임 상태 변경에 실패했습니다.");
@@ -150,6 +175,7 @@ const GatheringManagementPage = () => {
         await acceptGatheringReports(Number(gatId), memo);
         alert("신고가 정상적으로 승인 처리되었습니다.");
         fetchGatherings();
+        fetchCautionGatherings();
       } catch (error) {
         console.error("신고 승인 처리 실패:", error);
         alert("신고 승인 처리에 실패했습니다.");
@@ -167,6 +193,7 @@ const GatheringManagementPage = () => {
         await deleteGatheringByAdmin(Number(gat.id));
         alert('모임 데이터가 영구적으로 제거되었습니다.');
         fetchGatherings();
+        fetchCautionGatherings();
       } catch (error) {
         console.error("모임 영구 삭제 실패:", error);
         alert("모임 영구 삭제에 실패했습니다.");
@@ -204,6 +231,7 @@ const GatheringManagementPage = () => {
       alert("관리자 메모가 성공적으로 업데이트되었습니다.");
       setMemoModal({ ...memoModal, isOpen: false });
       fetchGatherings();
+      fetchCautionGatherings();
     } catch (error) {
       console.error("메모 저장 실패:", error);
       alert("관리자 메모 저장에 실패했습니다.");
@@ -274,7 +302,7 @@ const GatheringManagementPage = () => {
               <input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder="제목, 호스트, ID 검색"
+                placeholder="제목, 호스트, 방 번호 검색"
                 className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 pl-11 pr-4 text-sm font-bold text-gray-700 outline-none transition focus:border-[#6d3df2]/40 focus:bg-white"
               />
             </div>
@@ -324,7 +352,7 @@ const GatheringManagementPage = () => {
             </colgroup>
             <thead>
               <tr className="bg-gray-50/50 text-[11px] font-black text-gray-400 uppercase tracking-wider">
-                <th className="px-6 py-4 text-center">ID</th>
+                <th className="px-6 py-4 text-center">방 번호</th>
                 <th className="px-4 py-4">모임 구분 / 제목</th>
                 <th className="px-4 py-4 text-center">호스트</th>
                 <th className="px-4 py-4 text-center">참여현황</th>
@@ -467,9 +495,12 @@ const GatheringManagementPage = () => {
       {/* 하단 중점 모니터링 영역 (메모 수정 버튼 명시화) */}
       <section>
         <article className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-6">
-            <ShieldAlert size={22} className="text-red-500" />
-            <h2 className="text-lg font-black text-gray-900">신고 누적 모임 집중 모니터링</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between items-start gap-3 mb-6">
+            <div className="flex items-center gap-2">
+              <ShieldAlert size={22} className="text-red-500 shrink-0" />
+              <h2 className="text-base sm:text-lg font-black text-gray-900 leading-tight">신고 누적 모임 집중 모니터링</h2>
+            </div>
+            <span className="text-[11px] sm:text-xs font-black text-red-500 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 shrink-0">신고 누적 3회 이상 상시 추적</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -491,11 +522,11 @@ const GatheringManagementPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-sm">
-                {gatherings.filter(g => Number(g.reports) >= 5).map((g) => (
+                {cautionGatherings.map((g) => (
                   <tr key={g.id} className="hover:bg-gray-50/50 transition">
                     <td className="px-4 py-4">
                       <p className="font-black text-gray-800 truncate">{g.title}</p>
-                      <p className="text-[11px] font-bold text-gray-400">{g.hostNickname}</p>
+                      <p className="text-[11px] font-bold text-gray-400">방 번호: {g.id} | 호스트: {g.hostNickname}</p>
                     </td>
                     <td className="px-4 py-4 text-center animate-pulse">
                       <button 
@@ -540,7 +571,7 @@ const GatheringManagementPage = () => {
                     </td>
                   </tr>
                 ))}
-                {gatherings.filter(g => Number(g.reports) >= 5).length === 0 && (
+                {cautionGatherings.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center text-xs font-bold text-gray-400">
                       현재 집중 모니터링 대상인 모임이 없습니다.

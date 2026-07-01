@@ -188,6 +188,10 @@ export const getAdminGatherings = (params) => {
   return maxios.get('/admin/gatherings', { params });
 };
 
+export const getCautionGatherings = () => {
+  return maxios.get('/admin/gatherings/caution');
+};
+
 export const updateGatheringStatus = (roomId, status) => {
   return maxios.put(`/admin/gatherings/${roomId}/status`, { status });
 };

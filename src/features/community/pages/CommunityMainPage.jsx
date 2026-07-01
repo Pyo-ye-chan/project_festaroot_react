@@ -12,6 +12,7 @@ import CommunitySidebar from '../components/CommunitySidebar';
 import { getPopularPosts } from '../../../api/boardApi';
 import { DEFAULT_IMAGES } from '../../../constants/DefaultImages';
 import gatheringApi from '../../../api/gatheringApi';
+import useAuthStore from '../../../store/useAuthStore';
 
 const CATEGORY_LABELS = {
   all: '전체',
@@ -93,6 +94,10 @@ const CommunityMainPage = () => {
   const [isGatheringsLoading, setIsGatheringsLoading] = useState(true);
   
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [joinedRoomIds, setJoinedRoomIds] = useState(new Set());
+
+  const { user } = useAuthStore();
+  const loggedInUserId = user?.member_id || user?.id;
 
   useEffect(() => {
     const fetchHomeData = async () => {
@@ -139,6 +144,25 @@ const CommunityMainPage = () => {
     fetchHomeData();
   }, []);
 
+  // 3. 참여 중인 모임 목록 로딩
+  useEffect(() => {
+    const fetchJoinedRooms = async () => {
+      if (!loggedInUserId) {
+        setJoinedRoomIds(new Set());
+        return;
+      }
+      try {
+        const res = await gatheringApi.getJoinedGatherings(loggedInUserId, 1, 100, '전체', '');
+        const list = res.list || [];
+        const ids = new Set(list.map(room => Number(room.room_id || room.ROOM_ID)));
+        setJoinedRoomIds(ids);
+      } catch (error) {
+        console.error("참여중인 모임 조회 실패:", error);
+      }
+    };
+    fetchJoinedRooms();
+  }, [loggedInUserId]);
+
   const getCategoryClasses = (value) => {
     const normalizedValue = normalizeCategory(value);
 
@@ -181,13 +205,15 @@ const CommunityMainPage = () => {
             <section className="relative bg-[var(--festival-purple)] text-white rounded-[2.5rem] p-8 overflow-hidden shadow-lg border border-gray-100">
               <div className="flex flex-col md:flex-row items-center justify-between">
                 <div className="md:w-2/3 text-center md:text-left mb-6 md:mb-0">
-                  <h2 className="text-3xl font-black mb-2 leading-tight">
+                  <h2 className="text-2xl sm:text-3xl font-black mb-2 leading-tight">
                     <span className="text-[var(--festival-yellow)]">FestaRoute</span>와 함께
                     <br />
-                    전국 축제를 즐겨보세요!
+                    <span className="inline-block">전국 축제를 즐겨보세요!</span>
                   </h2>
                   <p className="text-gray-200 text-lg mb-4">
-                    다양한 축제 정보와 특별한 경험이 여러분을 기다립니다.
+                    다양한 축제 정보와 특별한 경험이
+                    <br />
+                    여러분을 기다립니다.
                   </p>
                   <Link
                     to="/search"
@@ -237,23 +263,25 @@ const CommunityMainPage = () => {
                       key={post.post_id || post.id}
                       className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group border border-transparent hover:border-[var(--festival-purple-soft)]"
                     >
-                      <span className={`text-xl font-black ${idx === 0 ? 'text-[var(--festival-purple)]' : 'text-gray-300'}`}>
+                      <span className={`text-xl font-black shrink-0 ${idx === 0 ? 'text-[var(--festival-purple)]' : 'text-gray-300'}`}>
                         {idx + 1}
                       </span>
-                      <div className="flex-grow">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`inline-flex border text-[10px] font-black px-2 py-0.5 rounded-md ${getCategoryClasses(post.category || '자유')}`}>
-                            {getCategoryLabel(post.category || '자유')}
-                          </span>
-                          <span className="text-xs font-bold text-gray-400">{post.nickname || post.author || '익명'}</span>
+                      <div className="flex-grow min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className={`inline-flex border text-[10px] font-black px-2 py-0.5 rounded-md ${getCategoryClasses(post.category || '자유')}`}>
+                              {getCategoryLabel(post.category || '자유')}
+                            </span>
+                            <span className="text-xs font-bold text-gray-400">{post.nickname || post.author || '익명'}</span>
+                          </div>
+                          <h4 className="font-bold text-gray-800 group-hover:text-[var(--festival-purple)] transition-colors truncate text-sm sm:text-base">
+                            {post.title}
+                          </h4>
                         </div>
-                        <h4 className="font-bold text-gray-800 group-hover:text-[var(--festival-purple)] transition-colors truncate">
-                          {post.title}
-                        </h4>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs font-bold text-gray-400">
-                        <span className="flex items-center gap-1">👁️ {Number(post.view_count || post.views || 0).toLocaleString()}</span>
-                        <span className="flex items-center gap-1 text-rose-500">❤️ {Number(post.like_count || post.likes || 0).toLocaleString()}</span>
+                        <div className="flex items-center gap-3 text-xs font-bold text-gray-400 self-end sm:self-center mt-1 sm:mt-0 shrink-0">
+                          <span className="flex items-center gap-1">👁️ {Number(post.view_count || post.views || 0).toLocaleString()}</span>
+                          <span className="flex items-center gap-1 text-rose-500">❤️ {Number(post.like_count || post.likes || 0).toLocaleString()}</span>
+                        </div>
                       </div>
                     </Link>
                   ))
@@ -270,14 +298,14 @@ const CommunityMainPage = () => {
                 </h3>
                 <button onClick={() => navigate('/community/gathering')} className="text-sm font-bold text-gray-400 hover:text-[var(--festival-purple)]">더보기</button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex overflow-x-auto pb-6 md:pb-0 gap-6 scrollbar-hide snap-x snap-mandatory md:grid md:grid-cols-2">
                 {isGatheringsLoading ? (
-                  <div className="col-span-2 text-center py-10 font-bold text-gray-400">추천 모임을 탐색 중입니다...</div>
+                  <div className="col-span-2 w-full text-center py-10 font-bold text-gray-400">추천 모임을 탐색 중입니다...</div>
                 ) : gatherings.length === 0 ? (
-                  <div className="col-span-2 text-center py-10 font-bold text-gray-400">이번 주 활성화된 인기 모임이 존재하지 않습니다.</div>
+                  <div className="col-span-2 w-full text-center py-10 font-bold text-gray-400">이번 주 활성화된 인기 모임이 존재하지 않습니다.</div>
                 ) : (
                   gatherings.map((moim) => (
-                    <div key={moim.roomId} className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between overflow-hidden">
+                    <div key={moim.roomId} className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between overflow-hidden flex-shrink-0 w-[280px] md:w-auto snap-start">
                       <div>
                         <div className="relative w-full h-48 bg-gray-50 overflow-hidden border-b border-gray-50">
                           <img
@@ -297,6 +325,12 @@ const CommunityMainPage = () => {
                           }`}>
                             {moim.roomType?.toUpperCase() === 'FESTIVAL' ? '축제 모임' : '자유 모임'}
                           </span>
+                          
+                          {(joinedRoomIds.has(Number(moim.roomId)) || (loggedInUserId && String(loggedInUserId) === String(moim.ownerId))) && (
+                            <span className="absolute top-4 right-4 px-2 py-1 bg-green-50/95 text-green-600 text-[9px] font-black rounded-md shadow-md border border-green-200 select-none whitespace-nowrap z-10">
+                              참여중
+                            </span>
+                          )}
                         </div>
                         
                         <div className="p-6">

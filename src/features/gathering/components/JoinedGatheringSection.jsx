@@ -13,12 +13,12 @@ const JoinedGatheringSection = ({ joinedFilter, onFilterChange, joinedItems, act
       </div>
       
       {/* 토글 필터 */}
-      <div className="flex p-1 bg-gray-50 rounded-xl border border-gray-100 self-start md:self-auto">
+      <div className="flex p-1 bg-gray-50 rounded-xl border border-gray-100 w-full md:w-auto flex-row flex-nowrap overflow-x-auto scrollbar-hide">
         {['전체', '축제별 모임', '자유 모임', '개설한 모임'].map(filter => (
           <button
             key={filter}
             onClick={() => onFilterChange(filter)}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+            className={`px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg text-[10px] sm:text-xs font-black transition-all whitespace-nowrap shrink-0 flex-1 text-center md:flex-none ${
               joinedFilter === filter 
               ? 'bg-white text-gray-900 shadow-sm' 
               : 'text-gray-400 hover:text-gray-600'

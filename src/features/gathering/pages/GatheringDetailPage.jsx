@@ -512,36 +512,42 @@ const GatheringDetailPage = () => {
                 </div>
               ) : (
                 <>
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <h1 className="text-3xl font-black text-gray-900 truncate">{gathering.room_title}</h1>
-                      {isJoined && (
-                        <span className="shrink-0 px-3 py-1 bg-green-100 text-green-600 text-xs font-black rounded-full border border-green-200">
+                  <div className="flex flex-col mb-4">
+                    {isJoined && (
+                      <div className="flex items-center mb-1.5">
+                        <span className="px-3 py-1 bg-green-100 text-green-600 text-xs font-black rounded-full border border-green-200">
                           참여 중
                         </span>
-                      )}
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <h1 className="text-2xl sm:text-3xl font-black text-gray-900 truncate flex-1 min-w-0 pr-2" title={gathering.room_title}>
+                        {gathering.room_title}
+                      </h1>
+                      <div className="flex items-center shrink-0 ml-4">
+                        {isOwner && !isDelegating && (
+                          <button
+                            onClick={() => {
+                              setIsEditing(true);
+                              setIsDelegating(false);
+                            }}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-gray-50 text-gray-600 hover:bg-purple-50 hover:text-[var(--festival-purple)] rounded-full transition-all border border-gray-100 font-bold text-sm whitespace-nowrap"
+                          >
+                            <Settings className="w-4 h-4" />
+                            편집하기
+                          </button>
+                        )}
+                        {!isFestival && !isOwner && !isDelegating && gathering.status !== 'BLIND' && (
+                          <button
+                            onClick={handleReportClick}
+                            className="flex items-center justify-center p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all border border-transparent hover:border-red-100 shadow-sm"
+                            title="모임 신고하기"
+                          >
+                            <ShieldAlert className="w-6 h-6" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    {isOwner && !isDelegating && (
-                      <button
-                        onClick={() => {
-                          setIsEditing(true);
-                          setIsDelegating(false);
-                        }}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-gray-50 text-gray-600 hover:bg-purple-50 hover:text-[var(--festival-purple)] rounded-full transition-all border border-gray-100 font-bold text-sm ml-4 whitespace-nowrap"
-                      >
-                        <Settings className="w-4 h-4" />
-                        편집하기
-                      </button>
-                    )}
-                    {!isFestival && !isOwner && !isDelegating && gathering.status !== 'BLIND' && (
-                      <button
-                        onClick={handleReportClick}
-                        className="flex items-center justify-center p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all border border-transparent hover:border-red-100 ml-4 shrink-0 shadow-sm"
-                        title="모임 신고하기"
-                      >
-                        <ShieldAlert className="w-6 h-6" />
-                      </button>
-                    )}
                   </div>
 
                   {gathering.status === 'BLIND' && (
@@ -644,10 +650,10 @@ const GatheringDetailPage = () => {
 
                   <div className="mb-8">
                     <h3 className="text-xl font-bold text-gray-800 mb-4">참여자 ({gathering.current_count || 0}명)</h3>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex items-center gap-3 overflow-x-auto pb-2 flex-nowrap w-full">
                       {ownerId && (
                         <div
-                          className="member-menu-container relative flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm cursor-pointer select-none"
+                          className="member-menu-container relative flex items-center gap-2 bg-purple-50 pl-2 pr-4 py-1.5 rounded-full border border-purple-100 shadow-sm cursor-pointer select-none shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveMenuMemberId(activeMenuMemberId === ownerId ? null : ownerId);
@@ -658,9 +664,11 @@ const GatheringDetailPage = () => {
                             alt={gathering.nickname}
                             className="w-9 h-9 rounded-full object-cover border-2 border-primary"
                           />
-                          <div className="flex flex-col">
+                          <div className="flex flex-col min-w-0">
                             <span className="text-[10px] text-gray-400 font-bold bg-purple-100 px-1.5 rounded w-max mb-0.5">방장 👑</span>
-                            <span className="text-sm font-black text-gray-800 leading-tight">{gathering.nickname || '방장'}</span>
+                            <span className="text-sm font-black text-gray-800 leading-tight truncate max-w-[80px] block" title={gathering.nickname || '방장'}>
+                              {gathering.nickname || '방장'}
+                            </span>
                           </div>
 
                           {activeMenuMemberId === ownerId && (
@@ -696,7 +704,7 @@ const GatheringDetailPage = () => {
                         return (
                           <div
                             key={pId}
-                            className="member-menu-container relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group cursor-pointer select-none"
+                            className="member-menu-container relative flex items-center gap-2 bg-gray-50 pl-2 pr-4 py-1.5 rounded-full border border-gray-100 transition-all hover:bg-gray-100 group cursor-pointer select-none shrink-0"
                             onClick={(e) => {
                               e.stopPropagation();
                               setActiveMenuMemberId(activeMenuMemberId === pId ? null : pId);
@@ -707,9 +715,11 @@ const GatheringDetailPage = () => {
                               alt={pNickname}
                               className="w-9 h-9 rounded-full object-cover border border-gray-200"
                             />
-                            <div className="flex flex-col">
+                            <div className="flex flex-col min-w-0">
                               <span className="text-[10px] text-gray-400 font-medium mb-0.5">멤버</span>
-                              <span className="text-sm font-bold text-gray-700 leading-tight">{pNickname}</span>
+                              <span className="text-sm font-bold text-gray-700 leading-tight truncate max-w-[80px] block" title={pNickname}>
+                                {pNickname}
+                              </span>
                             </div>
 
                             {isOwner && !isMe && (
@@ -752,19 +762,19 @@ const GatheringDetailPage = () => {
                     </div>
                   </div>
                   {loggedInUserId && !isDelegating && (
-                    <div className="flex justify-end gap-3">
+                    <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
                       {gathering.status === 'BLIND' ? (
                         isJoined ? (
                           <button
                             onClick={handleLeaveClick}
-                            className="inline-flex items-center px-8 py-3.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-full transition-colors font-bold"
+                            className="inline-flex items-center justify-center px-4 sm:px-8 py-3.5 bg-gray-50 text-gray-500 hover:text-red-500 hover:bg-red-50/50 hover:border-red-100/50 border border-gray-200/60 rounded-full transition-all font-bold text-sm whitespace-nowrap flex-1 sm:flex-none"
                           >
                             모임 나가기
                           </button>
                         ) : (
                           <button
                             disabled
-                            className="inline-flex items-center px-10 py-4 rounded-full bg-gray-200 text-gray-400 border border-gray-300/50 font-black text-lg cursor-not-allowed select-none"
+                            className="inline-flex items-center justify-center px-6 py-3.5 rounded-full bg-gray-100 text-gray-400 border border-gray-200/50 font-black text-sm cursor-not-allowed select-none w-full"
                           >
                             참여 불가능한 모임입니다
                           </button>
@@ -774,49 +784,49 @@ const GatheringDetailPage = () => {
                           <>
                             <button
                               onClick={handleLeaveClick}
-                              className="inline-flex items-center px-8 py-3.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-full transition-colors font-bold"
+                              className="inline-flex items-center justify-center px-4 sm:px-8 py-3.5 bg-gray-50 text-gray-500 hover:text-red-500 hover:bg-red-50/50 hover:border-red-100/50 border border-gray-200/60 rounded-full transition-all font-bold text-sm whitespace-nowrap flex-1 sm:flex-none"
                             >
                               모임 나가기
                             </button>
                             <button
                               onClick={handleChatClick}
-                              className="inline-flex items-center gap-2 px-8 py-3.5 bg-[var(--festival-purple)] text-white hover:bg-[var(--festival-purple-soft)] rounded-full transition-colors font-bold shadow-lg shadow-purple-100"
+                              className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-8 py-3.5 bg-purple-50 text-[var(--festival-purple)] hover:bg-purple-100/80 border border-purple-200/60 rounded-full transition-all font-bold text-sm shadow-sm whitespace-nowrap flex-1 sm:flex-none"
                             >
-                              <MessageCircle className="w-5 h-5" />
-                              채팅방 입장하기
+                              <MessageCircle className="w-4 h-4 shrink-0" />
+                              채팅방 입장
                             </button>
                           </>
                         ) : (
                           <button
                             disabled
-                            className="inline-flex items-center px-10 py-4 rounded-full bg-gray-200 text-gray-400 border border-gray-300/50 font-black text-lg cursor-not-allowed select-none"
+                            className="inline-flex items-center justify-center px-6 py-3.5 rounded-full bg-gray-100 text-gray-400 border border-gray-200/50 font-black text-sm cursor-not-allowed select-none w-full"
                           >
-                            {isFull ? "모집 마감 및 숨김 처리된 모임입니다" : "관리자에 의해 숨김 처리된 모임입니다"}
+                            {isFull ? "모집 마감 및 숨김 모임" : "숨김 처리된 모임"}
                           </button>
                         )
                       ) : isJoined ? (
                         <>
                           <button
                             onClick={handleLeaveClick}
-                            className="inline-flex items-center px-8 py-3.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-full transition-colors font-bold"
+                            className="inline-flex items-center justify-center px-4 sm:px-8 py-3.5 bg-gray-50 text-gray-500 hover:text-red-500 hover:bg-red-50/50 hover:border-red-100/50 border border-gray-200/60 rounded-full transition-all font-bold text-sm whitespace-nowrap flex-1 sm:flex-none"
                           >
                             모임 나가기
                           </button>
                           <button
                             onClick={handleChatClick}
-                            className="inline-flex items-center gap-2 px-8 py-3.5 bg-[var(--festival-purple)] text-white hover:bg-[var(--festival-purple-soft)] rounded-full transition-colors font-bold shadow-lg shadow-purple-100"
+                            className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-8 py-3.5 bg-purple-50 text-[var(--festival-purple)] hover:bg-purple-100/80 border border-purple-200/60 rounded-full transition-all font-bold text-sm shadow-sm whitespace-nowrap flex-1 sm:flex-none"
                           >
-                            <MessageCircle className="w-5 h-5" />
-                            채팅방 입장하기
+                            <MessageCircle className="w-4 h-4 shrink-0" />
+                            채팅방 입장
                           </button>
                         </>
                       ) : (
                         <button
                           onClick={handleJoinClick}
                           disabled={isFull}
-                          className={`inline-flex items-center px-10 py-4 rounded-full text-white font-black text-lg transition-all shadow-lg ${isFull
+                          className={`inline-flex items-center justify-center px-8 py-3.5 rounded-full text-white font-black text-sm transition-all shadow-md w-full sm:w-auto ${isFull
                             ? 'bg-gray-300 cursor-not-allowed shadow-none'
-                            : 'bg-[var(--festival-purple)] hover:bg-[var(--festival-purple-soft)] shadow-purple-100 hover:scale-[1.02]'
+                            : 'bg-purple-600 hover:bg-purple-700 shadow-purple-100 hover:scale-[1.01]'
                             }`}
                         >
                           {isFull ? '정원이 마감되었습니다' : '모임 참여하기'}
