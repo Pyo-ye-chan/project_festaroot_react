@@ -111,7 +111,7 @@ const ReportModal = ({ isOpen, onClose, onSubmit, reviewId, memberId }) => {
                         : 'text-gray-700'
                     }`}
                   >
-                    {reason}
+                    {reason.label}
                   </span>
                 </label>
               ))}
