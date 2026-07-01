@@ -482,7 +482,7 @@ const FestivalDetailPage = () => {
                     {festival.tourism_portal_url && (
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <p className="text-xs text-gray-400 font-bold mb-1">
-                          지역 관광 포털
+                          지역 관광 포탈
                         </p>
                         <a
                           href={festival.tourism_portal_url}
