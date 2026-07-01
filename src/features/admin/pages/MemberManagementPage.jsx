@@ -325,9 +325,9 @@ const MemberManagementPage = () => {
             </div>
             <div>
               <label className="mb-2 block text-xs font-black text-gray-400 uppercase">가입 기간 설정</label>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }} className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 text-xs font-bold text-gray-700 outline-none focus:bg-white focus:border-[#6d3df2]/40" />
-                <span className="text-gray-300 font-bold">~</span>
+                <span className="text-gray-300 font-bold text-center hidden sm:inline">~</span>
                 <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }} className="h-12 w-full rounded-2xl border border-gray-100 bg-gray-50 px-4 text-xs font-bold text-gray-700 outline-none focus:bg-white focus:border-[#6d3df2]/40" />
               </div>
             </div>
@@ -394,7 +394,11 @@ const MemberManagementPage = () => {
                 </tr>
               ) : (
                 displayedMembers.map((member, index) => (
-                  <tr key={`${member.id}-${index}`} className="text-sm hover:bg-gray-50/50 transition">
+                  <tr 
+                    key={`${member.id}-${index}`} 
+                    onClick={() => handleOpenDetail(member.id)} 
+                    className="text-sm hover:bg-gray-50/50 transition cursor-pointer"
+                  >
                     <td className="px-5 py-4 text-center text-xs font-bold text-gray-400">
                       {(currentPage - 1) * 10 + index + 1}
                     </td>
@@ -420,12 +424,12 @@ const MemberManagementPage = () => {
                     <td className="px-4 py-4 text-right font-black text-gray-400">
                       <span>{member.reports}</span>
                     </td>
-                    <td className="px-4 py-4 text-center">
+                    <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => handleOpenDetail(member.id)} title="상세보기" className="p-1.5 rounded-lg border border-gray-100 hover:bg-white text-[#6d3df2] transition"><Eye size={13} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleOpenDetail(member.id); }} title="상세보기" className="p-1.5 rounded-lg border border-gray-100 hover:bg-white text-[#6d3df2] transition"><Eye size={13} /></button>
 
                         <button
-                          onClick={() => member.status === 'SUSPENDED' ? handleStatusRestore(member.id) : openSuspensionModal(member)}
+                          onClick={(e) => { e.stopPropagation(); member.status === 'SUSPENDED' ? handleStatusRestore(member.id) : openSuspensionModal(member); }}
                           title={member.status === 'SUSPENDED' ? "제재 해제 복원" : "활동 정지 조치"}
                           className={`p-1.5 rounded-lg border transition ${member.status === 'SUSPENDED'
                             ? 'bg-orange-500 border-orange-500 text-white hover:bg-orange-600'
@@ -436,7 +440,7 @@ const MemberManagementPage = () => {
                         </button>
 
                         <button
-                          onClick={() => member.status === 'BLACKLISTED' ? handleStatusRestore(member.id) : openBlacklistModal(member)}
+                          onClick={(e) => { e.stopPropagation(); member.status === 'BLACKLISTED' ? handleStatusRestore(member.id) : openBlacklistModal(member); }}
                           title={member.status === 'BLACKLISTED' ? "제재 해제 복원" : "블랙리스트 등록"}
                           className={`p-1.5 rounded-lg border transition ${member.status === 'BLACKLISTED'
                             ? 'bg-red-500 border-red-500 text-white hover:bg-red-600'
@@ -477,12 +481,12 @@ const MemberManagementPage = () => {
       {/* 하단 모니터링 영역 */}
       <section>
         <article className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between items-start gap-3 mb-6">
             <div className="flex items-center gap-2">
-              <ShieldAlert size={22} className="text-red-500" />
-              <h2 className="text-lg font-black text-gray-900">주의 대상 회원 집중 모니터링</h2>
+              <ShieldAlert size={22} className="text-red-500 shrink-0" />
+              <h2 className="text-base sm:text-lg font-black text-gray-900 leading-tight">주의 대상 회원 집중 모니터링</h2>
             </div>
-            <span className="text-xs font-black text-red-500 bg-red-50 px-3 py-1 rounded-lg border border-red-100">승인된 제재 3회 이상 상시 추적</span>
+            <span className="text-[11px] sm:text-xs font-black text-red-500 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 shrink-0">승인된 제재 3회 이상 상시 추적</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -493,7 +497,7 @@ const MemberManagementPage = () => {
                   <th className="px-4 py-3">회원 정보</th>
                   <th className="px-4 py-3 text-center">활동 상태</th>
                   <th className="px-4 py-3 text-center">누적 제재 / 등급</th>
-                  <th className="px-4 py-3">최근 신고 승인 사유</th>
+                  <th className="px-4 py-3">최근 신고 사유</th>
                   <th className="px-4 py-3 text-center">최근 처리일</th>
                   <th className="px-4 py-3 text-center">조치</th>
                 </tr>
