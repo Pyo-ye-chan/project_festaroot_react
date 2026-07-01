@@ -225,6 +225,9 @@ const FestivalDetailPage = () => {
   const period = `${formatDate(festival.event_start_date)} ~ ${formatDate(festival.event_end_date)}`;
 
   const location = `${festival.addr1 || ''} ${festival.addr2 || ''}`.trim();
+  const isPopulationDecline = festival.is_population_decline_yn === 'Y';
+  const digitalTourCardUrl =
+    'https://korean.visitkorea.or.kr/dgtourcard/biz/main/main.do';
 
   const openKakaoMap = () => {
     const lat = festival?.map_y;
@@ -337,8 +340,38 @@ const FestivalDetailPage = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
           <div className="absolute bottom-10 left-0 right-0 max-w-7xl mx-auto px-6">
+            {isPopulationDecline && (
+              <div className="mb-3 inline-flex max-w-full flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-white/20 bg-black/30 px-4 py-3 text-white shadow-lg backdrop-blur-md">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black text-orange-200">
+                    디지털 관광주민증
+                  </p>
+                  <p className="text-xs md:text-sm font-bold text-white/90">
+                    인구감소지역 여행 혜택을 공식 페이지에서 확인해보세요.
+                  </p>
+                </div>
+
+                <a
+                  href={digitalTourCardUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex shrink-0 items-center justify-center gap-1 rounded-full bg-white px-3.5 py-2 text-[11px] font-black text-slate-900 transition-all hover:bg-orange-50 active:scale-95"
+                >
+                  혜택 보기
+                  <ChevronRight size={14} />
+                </a>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <span className={getStatusBadge(status)}>● {status}</span>
+
+              {isPopulationDecline && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-100/95 px-4 py-1.5 text-xs font-black text-amber-950 shadow-sm backdrop-blur-md">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  인구감소지역
+                </span>
+              )}
 
               {festival.themes?.map((theme, index) => (
                 <span
@@ -444,6 +477,22 @@ const FestivalDetailPage = () => {
                       </a>
                     ) : (
                       <p className="font-bold text-gray-800">정보 없음</p>
+                    )}
+
+                    {festival.tourism_portal_url && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <p className="text-xs text-gray-400 font-bold mb-1">
+                          지역 관광 포털
+                        </p>
+                        <a
+                          href={festival.tourism_portal_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-bold text-purple-600 hover:underline truncate flex items-center gap-2"
+                        >
+                          {festival.tourism_portal_url}
+                        </a>
+                      </div>
                     )}
                   </div>
                 </div>
